@@ -1,4 +1,23 @@
 {
   "name": "opusgl",
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "description": "A minimal rendering library",
+  "keywords": [
+    "3d",
+    "rendering",
+    "webgl",
+    "webxr",
+    "shaders"
+  ],
+  "author": "Cody Bennett (https://github.com/codyjasonbennett)",
+  "homepage": "https://github.com/CodyJasonBennett/opusgl",
+  "repository": "https://github.com/CodyJasonBennett/opusgl",
+  "license": "MIT",
+  "private": true,
+  "devDependencies": {},
+  "dependencies": {
+    "colord": "^2.9.2",
+    "gl-matrix": "^3.4.3"
+  },
+  "scripts": {}
 }
