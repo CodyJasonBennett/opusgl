@@ -17,7 +17,7 @@ export class Color {
     yield this.b
   }
 
-  constructor(r: ColorRepresentation, g?: number, b?: number) {
+  constructor(r: ColorRepresentation = 0xffffff, g?: number, b?: number) {
     this.set(r, g, b)
   }
 
