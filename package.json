@@ -35,7 +35,7 @@
     "prebuild": "rimraf dist",
     "build": "swc src -d dist",
     "postbuild": "tsc && node postbuild",
-    "test": "jest --passWithNoTests",
+    "test": "jest",
     "lint": "prettier . --check && eslint **/*.ts",
     "lint-fix": "prettier . --write && eslint --fix **/*.ts"
   }
