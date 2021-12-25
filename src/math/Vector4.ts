@@ -37,4 +37,60 @@ export class Vector4 {
   clone() {
     return new Vector4(this.x, this.y, this.z, this.w)
   }
+
+  add(t: number | Vector4) {
+    if (typeof t === 'number') {
+      this.x += t
+      this.y += t
+      this.z += t
+    } else {
+      this.x += t.x
+      this.y += t.y
+      this.z += t.z
+    }
+
+    return this
+  }
+
+  sub(t: number | Vector4) {
+    if (typeof t === 'number') {
+      this.x -= t
+      this.y -= t
+      this.z -= t
+    } else {
+      this.x -= t.x
+      this.y -= t.y
+      this.z -= t.z
+    }
+
+    return this
+  }
+
+  multiply(t: number | Vector4) {
+    if (typeof t === 'number') {
+      this.x *= t
+      this.y *= t
+      this.z *= t
+    } else {
+      this.x *= t.x
+      this.y *= t.y
+      this.z *= t.z
+    }
+
+    return this
+  }
+
+  divide(t: number | Vector4) {
+    if (typeof t === 'number') {
+      this.x /= t
+      this.y /= t
+      this.z /= t
+    } else {
+      this.x /= t.x
+      this.y /= t.y
+      this.z /= t.z
+    }
+
+    return this
+  }
 }
