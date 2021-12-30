@@ -9,14 +9,6 @@ describe('math/Color', () => {
     expect(color.b).toBe(0)
   })
 
-  it('can accept a hex string', () => {
-    const color = new Color('#000000')
-
-    expect(color.r).toBe(0)
-    expect(color.g).toBe(0)
-    expect(color.b).toBe(0)
-  })
-
   it('can accept a color name', () => {
     const color = new Color('black')
 
@@ -25,7 +17,7 @@ describe('math/Color', () => {
     expect(color.b).toBe(0)
   })
 
-  it('can accept integers', () => {
+  it('can accept RGB', () => {
     const color = new Color(0, 0, 0)
 
     expect(color.r).toBe(0)

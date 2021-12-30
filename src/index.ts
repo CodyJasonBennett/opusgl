@@ -7,3 +7,5 @@ export * from './math/Quaternion'
 export * from './math/Vector2'
 export * from './math/Vector3'
 export * from './math/Vector4'
+
+export * from './constants'

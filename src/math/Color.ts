@@ -1,10 +1,22 @@
-import { extend, AnyColor, colord } from 'colord'
-import names from 'colord/plugins/names'
 import { MathArray } from './MathArray'
+import { COLORS } from '../constants'
 
-extend([names])
+export type ColorRepresentation = keyof typeof COLORS | number
 
-export type ColorRepresentation = AnyColor | number
+/**
+ * Converts a CSS string name or hexadecimal to RGB (0-1)
+ */
+export const toRGB = (c: ColorRepresentation) => {
+  // Convert string to hexadecimal
+  if (typeof c === 'string') c = COLORS[c] ?? 0xffffff
+
+  // Convert hexadecimal to RGB
+  const r = (((c as number) >> 16) & 255) / 255
+  const g = (((c as number) >> 8) & 255) / 255
+  const b = (c as number & 255) / 255
+
+  return { r, g, b }
+}
 
 export class Color extends MathArray {
   readonly isColor = true
@@ -18,16 +30,13 @@ export class Color extends MathArray {
   }
 
   set(r: ColorRepresentation, g?: number, b?: number) {
-    if (typeof r === 'number' && g === undefined) {
-      this.r = ((r >> 16) & 255) / 255
-      this.g = ((r >> 8) & 255) / 255
-      this.b = (r & 255) / 255
-    } else if (typeof r === 'number') {
+    if (typeof r === 'number' && typeof g === 'number' && typeof b === 'number') {
       this.r = r
       this.g = g
       this.b = b
     } else {
-      const color = colord(r).toRgb()
+      // Convert string or hexadecimal to RGB
+      const color = toRGB(r)
       this.r = color.r
       this.g = color.g
       this.b = color.b
