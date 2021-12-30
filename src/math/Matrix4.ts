@@ -1,28 +1,7 @@
-export class Matrix4 {
+import { MathArray } from './MathArray'
+
+export class Matrix4 extends MathArray {
   readonly isMatrix4 = true
-  public elements: number[];
-
-  *[Symbol.iterator]() {
-    yield this.elements[0]
-    yield this.elements[1]
-    yield this.elements[2]
-    yield this.elements[3]
-
-    yield this.elements[4]
-    yield this.elements[5]
-    yield this.elements[6]
-    yield this.elements[7]
-
-    yield this.elements[8]
-    yield this.elements[9]
-    yield this.elements[10]
-    yield this.elements[11]
-
-    yield this.elements[12]
-    yield this.elements[13]
-    yield this.elements[14]
-    yield this.elements[15]
-  }
 
   constructor(
     m00 = 1,
@@ -42,8 +21,8 @@ export class Matrix4 {
     m32 = 0,
     m33 = 1,
   ) {
-    this.elements = []
-    return this.set(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33)
+    super(16, null)
+    this.set(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33)
   }
 
   set(
@@ -64,36 +43,292 @@ export class Matrix4 {
     m32: number,
     m33: number,
   ) {
-    this.elements[0] = m00
-    this.elements[1] = m01
-    this.elements[2] = m02
-    this.elements[3] = m03
+    this[0] = m00
+    this[1] = m01
+    this[2] = m02
+    this[3] = m03
 
-    this.elements[4] = m10
-    this.elements[5] = m11
-    this.elements[6] = m12
-    this.elements[7] = m13
+    this[4] = m10
+    this[5] = m11
+    this[6] = m12
+    this[7] = m13
 
-    this.elements[8] = m20
-    this.elements[9] = m21
-    this.elements[10] = m22
-    this.elements[11] = m23
+    this[8] = m20
+    this[9] = m21
+    this[10] = m22
+    this[11] = m23
 
-    this.elements[12] = m30
-    this.elements[13] = m31
-    this.elements[14] = m32
-    this.elements[15] = m33
+    this[12] = m30
+    this[13] = m31
+    this[14] = m32
+    this[15] = m33
 
     return this
   }
 
   copy(m: Matrix4) {
-    this.elements = m.elements
+    this[0] = m[0]
+    this[1] = m[1]
+    this[2] = m[2]
+    this[3] = m[3]
+
+    this[4] = m[4]
+    this[5] = m[5]
+    this[6] = m[6]
+    this[7] = m[7]
+
+    this[8] = m[8]
+    this[9] = m[9]
+    this[10] = m[10]
+    this[11] = m[11]
+
+    this[12] = m[12]
+    this[13] = m[13]
+    this[14] = m[14]
+    this[15] = m[15]
 
     return this
   }
 
   clone() {
-    return new Matrix4(...this.elements)
+    return new Matrix4().copy(this)
+  }
+
+  identity() {
+    return this.set(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+  }
+
+  add(t: number | Matrix4) {
+    if (typeof t === 'number') {
+      this[0] += t
+      this[1] += t
+      this[2] += t
+      this[3] += t
+
+      this[4] += t
+      this[5] += t
+      this[6] += t
+      this[7] += t
+
+      this[8] += t
+      this[9] += t
+      this[10] += t
+      this[11] += t
+
+      this[12] += t
+      this[13] += t
+      this[14] += t
+      this[15] += t
+    } else {
+      this[0] += t[0]
+      this[1] += t[1]
+      this[2] += t[2]
+      this[3] += t[3]
+
+      this[4] += t[4]
+      this[5] += t[5]
+      this[6] += t[6]
+      this[7] += t[7]
+
+      this[8] += t[8]
+      this[9] += t[9]
+      this[10] += t[10]
+      this[11] += t[11]
+
+      this[12] += t[12]
+      this[13] += t[13]
+      this[14] += t[14]
+      this[15] += t[15]
+    }
+
+    return this
+  }
+
+  sub(t: number | Matrix4) {
+    if (typeof t === 'number') {
+      this[0] -= t
+      this[1] -= t
+      this[2] -= t
+      this[3] -= t
+
+      this[4] -= t
+      this[5] -= t
+      this[6] -= t
+      this[7] -= t
+
+      this[8] -= t
+      this[9] -= t
+      this[10] -= t
+      this[11] -= t
+
+      this[12] -= t
+      this[13] -= t
+      this[14] -= t
+      this[15] -= t
+    } else {
+      this[0] -= t[0]
+      this[1] -= t[1]
+      this[2] -= t[2]
+      this[3] -= t[3]
+
+      this[4] -= t[4]
+      this[5] -= t[5]
+      this[6] -= t[6]
+      this[7] -= t[7]
+
+      this[8] -= t[8]
+      this[9] -= t[9]
+      this[10] -= t[10]
+      this[11] -= t[11]
+
+      this[12] -= t[12]
+      this[13] -= t[13]
+      this[14] -= t[14]
+      this[15] -= t[15]
+    }
+
+    return this
+  }
+
+  multiply(t: number | Matrix4) {
+    if (typeof t === 'number') {
+      this[0] *= t
+      this[1] *= t
+      this[2] *= t
+      this[3] *= t
+
+      this[4] *= t
+      this[5] *= t
+      this[6] *= t
+      this[7] *= t
+
+      this[8] *= t
+      this[9] *= t
+      this[10] *= t
+      this[11] *= t
+
+      this[12] *= t
+      this[13] *= t
+      this[14] *= t
+      this[15] *= t
+    } else {
+      this[0] *= t[0]
+      this[1] *= t[1]
+      this[2] *= t[2]
+      this[3] *= t[3]
+
+      this[4] *= t[4]
+      this[5] *= t[5]
+      this[6] *= t[6]
+      this[7] *= t[7]
+
+      this[8] *= t[8]
+      this[9] *= t[9]
+      this[10] *= t[10]
+      this[11] *= t[11]
+
+      this[12] *= t[12]
+      this[13] *= t[13]
+      this[14] *= t[14]
+      this[15] *= t[15]
+    }
+
+    return this
+  }
+
+  divide(t: number | Matrix4) {
+    if (typeof t === 'number') {
+      this[0] /= t
+      this[1] /= t
+      this[2] /= t
+      this[3] /= t
+
+      this[4] /= t
+      this[5] /= t
+      this[6] /= t
+      this[7] /= t
+
+      this[8] /= t
+      this[9] /= t
+      this[10] /= t
+      this[11] /= t
+
+      this[12] /= t
+      this[13] /= t
+      this[14] /= t
+      this[15] /= t
+    } else {
+      this[0] /= t[0]
+      this[1] /= t[1]
+      this[2] /= t[2]
+      this[3] /= t[3]
+
+      this[4] /= t[4]
+      this[5] /= t[5]
+      this[6] /= t[6]
+      this[7] /= t[7]
+
+      this[8] /= t[8]
+      this[9] /= t[9]
+      this[10] /= t[10]
+      this[11] /= t[11]
+
+      this[12] /= t[12]
+      this[13] /= t[13]
+      this[14] /= t[14]
+      this[15] /= t[15]
+    }
+
+    return this
+  }
+
+  equals(m: Matrix4) {
+    // prettier-ignore
+    return (
+      this[0] === m[0] &&
+      this[1] === m[1] &&
+      this[2] === m[2] &&
+      this[3] === m[3] &&
+
+      this[4] === m[4] &&
+      this[5] === m[5] &&
+      this[6] === m[6] &&
+      this[7] === m[7] &&
+
+      this[8] === m[8] &&
+      this[9] === m[9] &&
+      this[10] === m[10] &&
+      this[11] === m[11] &&
+
+      this[12] === m[12] &&
+      this[13] === m[13] &&
+      this[14] === m[14] &&
+      this[15] === m[15]
+    )
+  }
+
+  negate() {
+    return this.multiply(-1)
+  }
+
+  transpose(m: Matrix4 = this) {
+    this[0] = m[0]
+    this[1] = m[4]
+    this[2] = m[8]
+    this[3] = m[12]
+    this[4] = m[1]
+    this[5] = m[5]
+    this[6] = m[9]
+    this[7] = m[13]
+    this[8] = m[2]
+    this[9] = m[6]
+    this[10] = m[10]
+    this[11] = m[14]
+    this[12] = m[3]
+    this[13] = m[7]
+    this[14] = m[11]
+    this[15] = m[15]
+
+    return this
   }
 }

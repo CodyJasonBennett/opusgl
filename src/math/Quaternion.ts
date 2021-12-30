@@ -1,37 +1,48 @@
 import { MathArray } from './MathArray'
+import { Euler } from '../math/Euler'
+import { Matrix3 } from '../math/Matrix3'
+import { Matrix4 } from '../math/Matrix4'
+import { Vector3 } from '../math/Vector3'
 
-export class Vector3 extends MathArray {
-  readonly isVector3 = true
+export class Quaternion extends MathArray {
+  readonly isQuaternion = true
   public x: number
   public y: number
   public z: number
+  public w: number
 
-  constructor(x = 0, y = x, z = x) {
-    super(3)
-    this.set(x, y, z)
+  constructor(x = 0, y = 0, z = 0, w = 1) {
+    super(4)
+    this.set(x, y, z, w)
   }
 
-  set(x: number, y: number = x, z: number = x) {
+  set(x: number, y: number, z: number, w: number) {
     this.x = x
     this.y = y
     this.z = z
+    this.w = w
 
     return this
   }
 
-  copy(v: Vector3) {
-    this.x = v.x
-    this.y = v.y
-    this.z = v.z
+  copy(q: Quaternion) {
+    this.x = q.x
+    this.y = q.y
+    this.z = q.z
+    this.w = q.w
 
     return this
   }
 
   clone() {
-    return new Vector3().copy(this)
+    return new Quaternion().copy(this)
   }
 
-  add(t: number | Vector3) {
+  identity() {
+    return this.set(0, 0, 0, 1)
+  }
+
+  add(t: number | Quaternion) {
     if (typeof t === 'number') {
       this.x += t
       this.y += t
@@ -45,7 +56,7 @@ export class Vector3 extends MathArray {
     return this
   }
 
-  sub(t: number | Vector3) {
+  sub(t: number | Quaternion) {
     if (typeof t === 'number') {
       this.x -= t
       this.y -= t
@@ -59,7 +70,7 @@ export class Vector3 extends MathArray {
     return this
   }
 
-  multiply(t: number | Vector3) {
+  multiply(t: number | Quaternion) {
     if (typeof t === 'number') {
       this.x *= t
       this.y *= t
@@ -73,7 +84,7 @@ export class Vector3 extends MathArray {
     return this
   }
 
-  divide(t: number | Vector3) {
+  divide(t: number | Quaternion) {
     if (typeof t === 'number') {
       this.x /= t
       this.y /= t
@@ -87,21 +98,22 @@ export class Vector3 extends MathArray {
     return this
   }
 
-  equals(v: Vector3) {
+  equals(q: Quaternion) {
     // prettier-ignore
     return (
-      this.x === v.x &&
-      this.y === v.y &&
-      this.z === v.z
+      this.x === q.x &&
+      this.y === q.y &&
+      this.z === q.z &&
+      this.w === q.w
     )
   }
 
-  negate() {
+  conjugate() {
     return this.multiply(-1)
   }
 
   length() {
-    return Math.hypot(this.x, this.y, this.z)
+    return Math.hypot(this.x, this.y, this.z, this.w)
   }
 
   normalize() {
@@ -112,35 +124,7 @@ export class Vector3 extends MathArray {
     return this.normalize().multiply(l)
   }
 
-  distanceTo(v: Vector3) {
-    return v.length() - this.length()
-  }
-
-  inverse() {
-    this.x = 1 / this.x
-    this.y = 1 / this.y
-    this.z = 1 / this.z
-
-    return this
-  }
-
-  dot(v: Vector3) {
-    return this.x * v.x + this.y * v.y + this.z * v.z
-  }
-
-  cross(v: Vector3) {
-    this.x = this.y * v.z - this.z * v.y
-    this.y = this.z * v.x - this.x * v.z
-    this.z = this.x * v.y - this.y * v.x
-
-    return this
-  }
-
-  lerp(v: Vector3, t: number) {
-    this.x += t * (v.x - this.x)
-    this.x += t * (v.y - this.y)
-    this.x += t * (v.z - this.z)
-
-    return this
+  dot(q: Quaternion) {
+    return this.x * q.x + this.y * q.y + this.z * q.z + this.w * q.w
   }
 }

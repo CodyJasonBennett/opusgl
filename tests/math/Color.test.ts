@@ -33,12 +33,6 @@ describe('math/Color', () => {
     expect(color.b).toBe(0)
   })
 
-  it('can spread into an array', () => {
-    const arr = [...new Color()]
-
-    expect(arr).toMatchSnapshot()
-  })
-
   it('can copy a color', () => {
     const color = new Color()
     color.copy(new Color(0x000000))
@@ -57,5 +51,12 @@ describe('math/Color', () => {
     expect(color2.r).toBe(0)
     expect(color2.g).toBe(0)
     expect(color2.b).toBe(0)
+  })
+
+  it('can check for equality', () => {
+    const color = new Color(0x000000)
+
+    expect(color.equals(color.clone())).toBe(true)
+    expect(color.equals(new Color())).toBe(false)
   })
 })

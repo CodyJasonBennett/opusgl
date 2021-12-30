@@ -17,12 +17,6 @@ describe('math/Vector3', () => {
     expect(vector.z).toBe(3)
   })
 
-  it('can spread into an array', () => {
-    const arr = [...new Vector3()]
-
-    expect(arr).toMatchSnapshot()
-  })
-
   it('can copy a vector', () => {
     const vector = new Vector3()
     vector.copy(new Vector3(1, 2, 3))
@@ -113,5 +107,12 @@ describe('math/Vector3', () => {
     expect(vector.x).toBe(2)
     expect(vector.y).toBe(2)
     expect(vector.z).toBe(2)
+  })
+
+  it('can check for equality', () => {
+    const vector = new Vector3(1)
+
+    expect(vector.equals(vector.clone())).toBe(true)
+    expect(vector.equals(new Vector3())).toBe(false)
   })
 })

@@ -1,22 +1,17 @@
+import { MathArray } from './MathArray'
+
 export type EulerOrder = 'XYZ' | 'XZY' | 'YXZ' | 'YZX' | 'ZXY' | 'ZYX'
 
-export class Euler {
+export class Euler extends MathArray {
   readonly isEuler = true
   public x: number
   public y: number
   public z: number
-  public order: EulerOrder;
+  public order: EulerOrder = 'YXZ'
 
-  *[Symbol.iterator]() {
-    yield this.x
-    yield this.y
-    yield this.z
-    yield this.order
-  }
-
-  constructor(x = 0, y = 0, z = 0, order: EulerOrder = 'YXZ') {
+  constructor(x = 0, y = x, z = x) {
+    super(3)
     this.set(x, y, z)
-    this.order = order
   }
 
   set(x: number, y: number = x, z: number = x) {
@@ -31,11 +26,78 @@ export class Euler {
     this.x = e.x
     this.y = e.y
     this.z = e.z
+    this.order = e.order
 
     return this
   }
 
   clone() {
-    return new Euler(this.x, this.y, this.z, this.order)
+    return new Euler().copy(this)
+  }
+
+  add(t: number | Euler) {
+    if (typeof t === 'number') {
+      this.x += t
+      this.y += t
+      this.z += t
+    } else {
+      this.x += t.x
+      this.y += t.y
+      this.z += t.z
+    }
+
+    return this
+  }
+
+  sub(t: number | Euler) {
+    if (typeof t === 'number') {
+      this.x -= t
+      this.y -= t
+      this.z -= t
+    } else {
+      this.x -= t.x
+      this.y -= t.y
+      this.z -= t.z
+    }
+
+    return this
+  }
+
+  multiply(t: number | Euler) {
+    if (typeof t === 'number') {
+      this.x *= t
+      this.y *= t
+      this.z *= t
+    } else {
+      this.x *= t.x
+      this.y *= t.y
+      this.z *= t.z
+    }
+
+    return this
+  }
+
+  divide(t: number | Euler) {
+    if (typeof t === 'number') {
+      this.x /= t
+      this.y /= t
+      this.z /= t
+    } else {
+      this.x /= t.x
+      this.y /= t.y
+      this.z /= t.z
+    }
+
+    return this
+  }
+
+  equals(e: Euler) {
+    // prettier-ignore
+    return (
+      this.x === e.x &&
+      this.y === e.y &&
+      this.z === e.z &&
+      this.order === e.order
+    )
   }
 }

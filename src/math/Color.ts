@@ -1,23 +1,19 @@
 import { extend, AnyColor, colord } from 'colord'
 import names from 'colord/plugins/names'
+import { MathArray } from './MathArray'
 
 extend([names])
 
 export type ColorRepresentation = AnyColor | number
 
-export class Color {
+export class Color extends MathArray {
   readonly isColor = true
   public r: number
   public g: number
-  public b: number;
-
-  *[Symbol.iterator]() {
-    yield this.r
-    yield this.g
-    yield this.b
-  }
+  public b: number
 
   constructor(r: ColorRepresentation = 0xffffff, g?: number, b?: number) {
+    super(3, ['r', 'g', 'b'])
     this.set(r, g, b)
   }
 
@@ -49,6 +45,15 @@ export class Color {
   }
 
   clone() {
-    return new Color(this.r, this.g, this.b)
+    return new Color().copy(this)
+  }
+
+  equals(c: Color) {
+    // prettier-ignore
+    return (
+      this.r === c.r &&
+      this.g === c.g &&
+      this.b === c.b
+    )
   }
 }

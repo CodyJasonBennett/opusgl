@@ -1,14 +1,12 @@
-export class Vector2 {
+import { MathArray } from './MathArray'
+
+export class Vector2 extends MathArray {
   readonly isVector2 = true
   public x: number
-  public y: number;
-
-  *[Symbol.iterator]() {
-    yield this.x
-    yield this.y
-  }
+  public y: number
 
   constructor(x = 0, y = x) {
+    super(2)
     this.set(x, y)
   }
 
@@ -27,7 +25,7 @@ export class Vector2 {
   }
 
   clone() {
-    return new Vector2(this.x, this.y)
+    return new Vector2().copy(this)
   }
 
   add(t: number | Vector2) {
@@ -74,6 +72,56 @@ export class Vector2 {
       this.x /= t.x
       this.y /= t.y
     }
+
+    return this
+  }
+
+  equals(v: Vector2) {
+    // prettier-ignore
+    return (
+      this.x === v.x &&
+      this.y === v.y
+    )
+  }
+
+  negate() {
+    return this.multiply(-1)
+  }
+
+  length() {
+    return Math.hypot(this.x, this.y)
+  }
+
+  normalize() {
+    return this.divide(this.length() || 1)
+  }
+
+  setLength(l: number) {
+    return this.normalize().multiply(l)
+  }
+
+  distanceTo(v: Vector2) {
+    return v.length() - this.length()
+  }
+
+  inverse() {
+    this.x = 1 / this.x
+    this.y = 1 / this.y
+
+    return this
+  }
+
+  dot(v: Vector2) {
+    return this.x * v.x + this.y * v.y
+  }
+
+  cross(v: Vector2) {
+    return this.x * v.y - this.y * v.x
+  }
+
+  lerp(v: Vector2, t: number) {
+    this.x += t * (v.x - this.x)
+    this.x += t * (v.y - this.y)
 
     return this
   }

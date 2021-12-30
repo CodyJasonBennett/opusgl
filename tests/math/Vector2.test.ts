@@ -15,12 +15,6 @@ describe('math/Vector2', () => {
     expect(vector.y).toBe(2)
   })
 
-  it('can spread into an array', () => {
-    const arr = [...new Vector2()]
-
-    expect(arr).toMatchSnapshot()
-  })
-
   it('can copy a vector', () => {
     const vector = new Vector2()
     vector.copy(new Vector2(1, 2))
@@ -101,5 +95,12 @@ describe('math/Vector2', () => {
 
     expect(vector.x).toBe(2)
     expect(vector.y).toBe(2)
+  })
+
+  it('can check for equality', () => {
+    const vector = new Vector2(1)
+
+    expect(vector.equals(vector.clone())).toBe(true)
+    expect(vector.equals(new Vector2())).toBe(false)
   })
 })
