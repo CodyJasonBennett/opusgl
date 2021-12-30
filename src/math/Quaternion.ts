@@ -1,8 +1,4 @@
 import { MathArray } from './MathArray'
-import { Euler } from '../math/Euler'
-import { Matrix3 } from '../math/Matrix3'
-import { Matrix4 } from '../math/Matrix4'
-import { Vector3 } from '../math/Vector3'
 
 export class Quaternion extends MathArray {
   readonly isQuaternion = true
