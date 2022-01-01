@@ -1,6 +1,7 @@
 import { Color } from '../math/Color'
 import type { Mesh } from '../core/Mesh'
 import type { Scene } from '../core/Scene'
+import { GPU_DRAW_MODES } from '../constants'
 
 export interface WebGPURendererOptions {
   /**
@@ -226,6 +227,7 @@ export class WebGPURenderer {
     const { vertex, fragment } = this.compileShaders(child)
 
     // Create mesh rendering pipeline from program
+    const topology = GPU_DRAW_MODES[child.mode] ?? GPU_DRAW_MODES.TRIANGLES
     const pipeline = this._device.createRenderPipeline({
       layout,
       vertex,
@@ -233,7 +235,7 @@ export class WebGPURenderer {
       primitive: {
         frontFace: 'cw',
         cullMode: 'none',
-        topology: 'triangle-list',
+        topology,
       },
       depthStencil: {
         depthWriteEnabled: true,

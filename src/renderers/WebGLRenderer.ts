@@ -2,7 +2,7 @@ import { Color } from '../math/Color'
 import type { GeometryAttribute } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Scene } from '../core/Scene'
-import { SHADER_TEMPLATES, GL, DATA_TYPES } from '../constants'
+import { SHADER_TEMPLATES, GL, DATA_TYPES, DRAW_MODES } from '../constants'
 
 export interface WebGLRendererOptions {
   /**
@@ -339,10 +339,11 @@ export class WebGLRenderer {
 
       // Alternate drawing for indexed and non-indexed meshes
       const { index, position } = child.geometry.attributes
+      const mode = DRAW_MODES[child.mode] ?? DRAW_MODES.TRIANGLES
       if (index) {
-        this.gl.drawElements(child.mode, index.data.length / index.size, GL.ATTRIBUTE_INDEX_TYPE, 0)
+        this.gl.drawElements(mode, index.data.length / index.size, GL.ATTRIBUTE_INDEX_TYPE, 0)
       } else {
-        this.gl.drawArrays(child.mode, 0, position.data.length / position.size)
+        this.gl.drawArrays(mode, 0, position.data.length / position.size)
       }
 
       // Unbind

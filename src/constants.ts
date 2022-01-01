@@ -38,11 +38,17 @@ export const GL = {
 export const DRAW_MODES = {
   POINTS: 0x0000,
   LINES: 0x0001,
-  LINES_LOOP: 0x0002,
   LINE_STRIP: 0x0003,
   TRIANGLES: 0x0004,
   TRIANGLE_STRIP: 0x0005,
-  TRIANGLE_FAN: 0x0006,
+} as const
+
+export const GPU_DRAW_MODES = {
+  POINTS: 'point-list',
+  LINES: 'line-list',
+  LINE_STRIP: 'line-strip',
+  TRIANGLES: 'triangle-list',
+  TRIANGLE_STRIP: 'triangle-strip',
 } as const
 
 export const SHADER_TEMPLATES = {
