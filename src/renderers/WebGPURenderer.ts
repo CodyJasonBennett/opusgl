@@ -22,7 +22,7 @@ export interface WebGPURendererOptions {
 }
 
 interface CompiledMesh {
-  uniforms: Map<string, { value: any; buffer: GPUBuffer }>
+  uniforms: Map<string, GPUBuffer>
   uniformBindGroup: GPUBindGroup
   pipeline: GPURenderPipeline
   buffers: Map<string, GPUBuffer>
@@ -127,9 +127,6 @@ export class WebGPURenderer {
   }
 
   private createBuffer(data: Uint16Array | Float32Array, usage?: number) {
-    // @ts-expect-error Unwrap MathArrays
-    data = data.isMathArray ? data.instance : data
-
     const buffer = this._device.createBuffer({
       size: data.byteLength,
       usage,
@@ -148,9 +145,12 @@ export class WebGPURenderer {
     // Create uniform buffers to bind
     const uniforms = new Map()
     const entries = Object.entries(child.material.uniforms).map(([name, value], index) => {
+      // Unwrap MathArrays
+      value = value.isMathArray ? value.instance : value
+
       // Cache initial uniform
       const buffer = this.createBuffer(value, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST)
-      uniforms.set(name, { buffer: buffer, value: value.clone?.() ?? value })
+      uniforms.set(name, buffer)
 
       return {
         binding: index,
@@ -253,43 +253,48 @@ export class WebGPURenderer {
     this._compiled.set(child.id, { uniforms, uniformBindGroup, pipeline, buffers })
   }
 
-  private updateUniforms(child: Mesh, commandEncoder: GPUCommandEncoder) {
+  private updateUniforms(child: Mesh) {
     const compiled = this._compiled.get(child.id)
 
     Object.entries(child.material.uniforms).forEach(([name, value]) => {
-      const uniform = compiled.uniforms.get(name)
-
-      // Bail if uniform hasn't changed
-      const needsUpdate =
-        typeof uniform.value.equals === 'function' ? !uniform.value.equals(value) : uniform.value !== value
-      if (!needsUpdate) return
+      // Unwrap MathArrays
+      value = value.isMathArray ? value.instance : value
 
       // Update uniform buffer
-      const buffer = this.createBuffer(value, GPUBufferUsage.COPY_SRC)
-      commandEncoder.copyBufferToBuffer(buffer, 0, uniform.buffer, value.byteOffset, value.byteLength)
-
-      // Cache new uniform
-      compiled.uniforms.set(name, { buffer, value: value.clone?.() ?? value })
+      const buffer = compiled.uniforms.get(name)
+      this._device.queue.writeBuffer(buffer, value.byteOffset, value)
     })
   }
 
-  private updateAttributes(child: Mesh, commandEncoder: GPUCommandEncoder) {
+  private updateAttributes(child: Mesh) {
     const compiled = this._compiled.get(child.id)
 
     Object.entries(child.geometry.attributes).forEach(([name, attribute]) => {
       if (!attribute.needsUpdate) return
 
       // Update attribute buffer
-      const buffer = this.createBuffer(attribute.data, GPUBufferUsage.COPY_SRC)
-      const target = compiled.buffers.get(name)
-      commandEncoder.copyBufferToBuffer(buffer, 0, target, attribute.data.byteOffset, attribute.data.byteLength)
-
-      // Cache attribute buffer
-      compiled.buffers.set(name, buffer)
+      const buffer = compiled.buffers.get(name)
+      this._device.queue.writeBuffer(buffer, attribute.data.byteOffset, attribute.data)
     })
   }
 
-  private updateFrame(commandEncoder: GPUCommandEncoder) {
+  render(scene: Scene) {
+    // Begin recording GL commands
+    const commandEncoder = this._device.createCommandEncoder()
+
+    // Compile meshes and handle updates
+    scene.children.forEach((child: Mesh) => {
+      if (!child.isMesh || !child.visible) return
+
+      // Compile on first render
+      const isCompiled = this._compiled.has(child.id)
+      if (!isCompiled) this.compileMesh(child)
+
+      // Update uniforms & attributes
+      this.updateUniforms(child)
+      this.updateAttributes(child)
+    })
+
     // Flush screen
     this._colorTexture = this.gl.getCurrentTexture()
     this._colorTextureView = this._colorTexture.createView()
@@ -312,28 +317,7 @@ export class WebGPURenderer {
       },
     })
 
-    return passEncoder
-  }
-
-  render(scene: Scene) {
-    // Begin recording GL commands
-    const commandEncoder = this._device.createCommandEncoder()
-
-    // Compile meshes and handle updates
-    scene.children.forEach((child: Mesh) => {
-      if (!child.isMesh || !child.visible) return
-
-      // Compile on first render
-      const isCompiled = this._compiled.has(child.id)
-      if (!isCompiled) this.compileMesh(child)
-
-      // Update uniforms & attributes
-      this.updateUniforms(child, commandEncoder)
-      this.updateAttributes(child, commandEncoder)
-    })
-
-    // Create and update frame
-    const passEncoder = this.updateFrame(commandEncoder)
+    // Update drawing area
     passEncoder.setViewport(this._viewport.x, this._viewport.y, this._viewport.width, this._viewport.height, 0, 1)
     passEncoder.setScissorRect(this._scissor.x, this._scissor.y, this._scissor.width, this._scissor.height)
 
