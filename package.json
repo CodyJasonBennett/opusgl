@@ -13,6 +13,9 @@
   "homepage": "https://github.com/CodyJasonBennett/opusgl",
   "repository": "https://github.com/CodyJasonBennett/opusgl",
   "license": "MIT",
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
   "private": true,
   "devDependencies": {
     "@swc/cli": "^0.1.55",
@@ -25,13 +28,13 @@
     "eslint": "^8.5.0",
     "jest": "^27.4.5",
     "prettier": "^2.5.1",
+    "recursive-readdir": "^2.2.2",
     "rimraf": "^3.0.2",
     "typescript": "^4.5.4"
   },
   "scripts": {
     "prebuild": "rimraf dist",
-    "build": "swc src -d dist",
-    "postbuild": "tsc && node postbuild",
+    "build": "tsc && node build",
     "test": "jest",
     "lint": "prettier . --check && eslint **/*.ts",
     "lint-fix": "prettier . --write && eslint --fix **/*.ts"
