@@ -1,8 +1,13 @@
 export class MathArray {
+  readonly isMathArray = true
   private _instance: Float32Array;
 
   *[Symbol.iterator]() {
     yield* this._instance
+  }
+
+  get instance() {
+    return this._instance
   }
 
   constructor(length: number, namedIndices = ['x', 'y', 'z', 'w']) {

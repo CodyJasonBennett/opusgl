@@ -1,7 +1,7 @@
 import { Color } from '../math/Color'
-import { GeometryAttribute } from '../core/Geometry'
-import { Mesh } from '../core/Mesh'
-import { Scene } from '../core/Scene'
+import type { GeometryAttribute } from '../core/Geometry'
+import type { Mesh } from '../core/Mesh'
+import type { Scene } from '../core/Scene'
 import { SHADER_TEMPLATES, GL, DATA_TYPES } from '../constants'
 
 export interface WebGLRendererOptions {
@@ -58,12 +58,14 @@ interface CompiledMesh {
 export class WebGLRenderer {
   readonly canvas: HTMLCanvasElement
   readonly gl: WebGL2RenderingContext
-  public autoClear: boolean
-  public clearColor: Color
-  public clearAlpha: number
+  public autoClear = true
+  public clearColor = new Color(1, 1, 1)
+  public clearAlpha = 0
 
-  private _pixelRatio: number
+  private _pixelRatio = 1
   private _viewport: { x: number; y: number; width: number; height: number }
+  private _scissor: { x: number; y: number; width: number; height: number }
+
   private _compiled = new Map<Mesh['id'], CompiledMesh>()
 
   constructor({
@@ -94,11 +96,7 @@ export class WebGLRenderer {
 
     if (depth) this.gl.enable(GL.EXTENSIONS_DEPTH)
 
-    this._pixelRatio = 1
-    this._viewport = { x: 0, y: 0, width: null, height: null }
-    this.clearColor = new Color(1, 1, 1)
-    this.clearAlpha = 0
-    this.autoClear = true
+    this.setSize(canvas.width, canvas.height)
   }
 
   setSize(width: number, height: number) {
@@ -109,6 +107,7 @@ export class WebGLRenderer {
     this.canvas.style.height = `${height}px`
 
     this.setViewport(0, 0, width, height)
+    this.setScissor(0, 0, width, height)
   }
 
   get pixelRatio() {
@@ -143,8 +142,13 @@ export class WebGLRenderer {
     }
   }
 
+  get scissor() {
+    return this._scissor
+  }
+
   setScissor(x: number, y: number, width: number, height: number) {
     this.gl.scissor(x, y, width, height)
+    this._scissor = { x, y, width, height }
   }
 
   private compileShader(name: string, source: string) {
@@ -318,7 +322,7 @@ export class WebGLRenderer {
     }
 
     // Render children
-    ;(scene.children as Mesh[]).forEach((child) => {
+    scene.children.forEach((child: Mesh) => {
       if (!child.isMesh || !child.visible) return
 
       const isCompiled = this._compiled.has(child.id)

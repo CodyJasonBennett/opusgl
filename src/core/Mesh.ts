@@ -1,6 +1,6 @@
 import { Object3D } from './Object3D'
-import { Geometry } from './Geometry'
-import { Material } from './Material'
+import type { Geometry } from './Geometry'
+import type { Material } from './Material'
 import { DRAW_MODES } from '../constants'
 
 export type MeshDrawMode = typeof DRAW_MODES[keyof typeof DRAW_MODES]
