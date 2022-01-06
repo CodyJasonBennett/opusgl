@@ -2,8 +2,8 @@ import { Color } from '../math/Color'
 import type { GeometryAttribute } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Scene } from '../core/Scene'
-import { SHADER_TEMPLATES, GL, DATA_TYPES, DRAW_MODES } from '../constants'
 import type { Camera } from '../core/Camera'
+import { SHADER_TEMPLATES, GL, DATA_TYPES, CULL_SIDES, DRAW_MODES } from '../constants'
 
 export interface WebGLRendererOptions {
   /**
@@ -365,6 +365,14 @@ export class WebGLRenderer {
       // Update program uniforms and attributes
       this.updateUniforms(child, compiled)
       this.updateAttributes(child, compiled)
+
+      // Update material state
+      if (child.material.side) {
+        this.gl.enable(GL.EXTENSIONS_CULL)
+        this.gl.cullFace(CULL_SIDES[child.material.side] ?? CULL_SIDES.BACK)
+      } else {
+        this.gl.disable(GL.EXTENSIONS_CULL)
+      }
 
       // Alternate drawing for indexed and non-indexed meshes
       const { index, position } = child.geometry.attributes

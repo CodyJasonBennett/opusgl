@@ -1,5 +1,6 @@
 import { Matrix4 } from '../math/Matrix4'
 import { Matrix3 } from '../math/Matrix3'
+import { CULL_SIDES } from '../constants'
 
 let id = 0
 
@@ -19,6 +20,7 @@ export class Material {
     normalMatrix: new Matrix3(),
     projectionMatrix: new Matrix4(),
   }
+  public side: keyof typeof CULL_SIDES = 'BACK'
 
   constructor(options?: MaterialOptions) {
     this.id = id++
