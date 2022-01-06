@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`math/Matrix3 can accept args 1`] = `
+exports[`math/Matrix4 can accept args 1`] = `
 Array [
   0,
   1,
@@ -21,7 +21,57 @@ Array [
 ]
 `;
 
-exports[`math/Matrix3 can clone itself 1`] = `
+exports[`math/Matrix4 can be set from orthogonal 1`] = `
+Matrix4 {
+  "_instance": Float32Array [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    -0.20000000298023224,
+    0,
+    -0,
+    -0,
+    -1,
+    1,
+  ],
+  "isMathArray": true,
+  "isMatrix4": true,
+}
+`;
+
+exports[`math/Matrix4 can be set from perspective 1`] = `
+Matrix4 {
+  "_instance": Float32Array [
+    -Infinity,
+    0,
+    0,
+    0,
+    0,
+    -0.1561199575662613,
+    0,
+    0,
+    0,
+    0,
+    -1.0202020406723022,
+    -1,
+    0,
+    0,
+    -0.20202019810676575,
+    0,
+  ],
+  "isMathArray": true,
+  "isMatrix4": true,
+}
+`;
+
+exports[`math/Matrix4 can clone itself 1`] = `
 Array [
   0,
   1,
@@ -42,7 +92,28 @@ Array [
 ]
 `;
 
-exports[`math/Matrix3 can copy a matrix 1`] = `
+exports[`math/Matrix4 can compose from a set of properties 1`] = `
+Array [
+  1,
+  8.74227694680485e-8,
+  8.742279078433057e-8,
+  0,
+  -8.742278367890322e-8,
+  1,
+  8.74227694680485e-8,
+  0,
+  -8.742277657347586e-8,
+  -8.742278367890322e-8,
+  1,
+  0,
+  1,
+  2,
+  3,
+  1,
+]
+`;
+
+exports[`math/Matrix4 can copy a matrix 1`] = `
 Array [
   0,
   1,
@@ -60,5 +131,139 @@ Array [
   13,
   14,
   15,
+]
+`;
+
+exports[`math/Matrix4 can decompose to a set of properties 1`] = `
+Array [
+  0,
+  0,
+  0,
+]
+`;
+
+exports[`math/Matrix4 can decompose to a set of properties 2`] = `
+Array [
+  0,
+  0,
+  0,
+  1,
+]
+`;
+
+exports[`math/Matrix4 can decompose to a set of properties 3`] = `
+Array [
+  1,
+  1,
+  1,
+]
+`;
+
+exports[`math/Matrix4 can lookAt a set of vectors 1`] = `
+Matrix4 {
+  "_instance": Float32Array [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    5,
+    1,
+  ],
+  "isMathArray": true,
+  "isMatrix4": true,
+}
+`;
+
+exports[`math/Matrix4 can multiply a matrix 1`] = `
+Array [
+  16,
+  16,
+  16,
+  16,
+  44,
+  44,
+  44,
+  44,
+  128,
+  128,
+  128,
+  128,
+  380,
+  380,
+  380,
+  380,
+]
+`;
+
+exports[`math/Matrix4 can multiply a scalar 1`] = `
+Array [
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+]
+`;
+
+exports[`math/Matrix4 can rotate along an axis 1`] = `
+Array [
+  1,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  1,
+]
+`;
+
+exports[`math/Matrix4 can scale from a vector 1`] = `
+Array [
+  2,
+  0,
+  0,
+  0,
+  0,
+  2,
+  0,
+  0,
+  0,
+  0,
+  2,
+  0,
+  0,
+  0,
+  0,
+  1,
 ]
 `;

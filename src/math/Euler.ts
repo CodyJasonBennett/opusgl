@@ -7,7 +7,7 @@ export class Euler extends MathArray {
   public x: number
   public y: number
   public z: number
-  public order: EulerOrder = 'YXZ'
+  public order: EulerOrder = 'XYZ'
 
   constructor(x = 0, y = x, z = x) {
     super(3)

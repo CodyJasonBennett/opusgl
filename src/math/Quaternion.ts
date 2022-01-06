@@ -1,4 +1,6 @@
 import { MathArray } from './MathArray'
+import type { Euler } from './Euler'
+import type { Vector3 } from './Vector3'
 
 export class Quaternion extends MathArray {
   readonly isQuaternion = true
@@ -122,5 +124,72 @@ export class Quaternion extends MathArray {
 
   dot(q: Quaternion) {
     return this.x * q.x + this.y * q.y + this.z * q.z + this.w * q.w
+  }
+
+  getAxisAngle(axis: Vector3) {
+    const rad = Math.acos(this.w) * 2
+    const s = Math.sin(rad / 2)
+
+    if (s > Number.EPSILON) {
+      return axis.set(this.x / s, this.y / s, this.z / s)
+    } else {
+      return axis.set(1, 0, 0)
+    }
+  }
+
+  fromEuler(e: Euler) {
+    const c1 = Math.cos(e.x / 2)
+    const c2 = Math.cos(e.y / 2)
+    const c3 = Math.cos(e.z / 2)
+
+    const s1 = Math.sin(e.x / 2)
+    const s2 = Math.sin(e.y / 2)
+    const s3 = Math.sin(e.z / 2)
+
+    switch (e.order) {
+      case 'XYZ':
+        this.x = s1 * c2 * c3 + c1 * s2 * s3
+        this.y = c1 * s2 * c3 - s1 * c2 * s3
+        this.z = c1 * c2 * s3 + s1 * s2 * c3
+        this.w = c1 * c2 * c3 - s1 * s2 * s3
+        break
+
+      case 'YXZ':
+        this.x = s1 * c2 * c3 + c1 * s2 * s3
+        this.y = c1 * s2 * c3 - s1 * c2 * s3
+        this.z = c1 * c2 * s3 - s1 * s2 * c3
+        this.w = c1 * c2 * c3 + s1 * s2 * s3
+        break
+
+      case 'ZXY':
+        this.x = s1 * c2 * c3 - c1 * s2 * s3
+        this.y = c1 * s2 * c3 + s1 * c2 * s3
+        this.z = c1 * c2 * s3 + s1 * s2 * c3
+        this.w = c1 * c2 * c3 - s1 * s2 * s3
+        break
+
+      case 'ZYX':
+        this.x = s1 * c2 * c3 - c1 * s2 * s3
+        this.y = c1 * s2 * c3 + s1 * c2 * s3
+        this.z = c1 * c2 * s3 - s1 * s2 * c3
+        this.w = c1 * c2 * c3 + s1 * s2 * s3
+        break
+
+      case 'YZX':
+        this.x = s1 * c2 * c3 + c1 * s2 * s3
+        this.y = c1 * s2 * c3 + s1 * c2 * s3
+        this.z = c1 * c2 * s3 - s1 * s2 * c3
+        this.w = c1 * c2 * c3 - s1 * s2 * s3
+        break
+
+      case 'XZY':
+        this.x = s1 * c2 * c3 - c1 * s2 * s3
+        this.y = c1 * s2 * c3 - s1 * c2 * s3
+        this.z = c1 * c2 * s3 + s1 * s2 * c3
+        this.w = c1 * c2 * c3 + s1 * s2 * s3
+        break
+    }
+
+    return this
   }
 }

@@ -1,4 +1,4 @@
-import { Quaternion } from '../../src'
+import { Euler, Quaternion, Vector3 } from '../../src'
 
 describe('math/Quaternion', () => {
   it('can accept args', () => {
@@ -109,5 +109,17 @@ describe('math/Quaternion', () => {
 
     expect(quaternion.equals(quaternion.clone())).toBe(true)
     expect(quaternion.equals(new Quaternion())).toBe(false)
+  })
+
+  it('can be set from a Euler', () => {
+    const quaternion = new Quaternion().fromEuler(new Euler(0, Math.PI / 2, 0))
+
+    expect(Array.from(quaternion)).toMatchSnapshot()
+  })
+
+  it('can calculate an axis angle', () => {
+    const axis = new Quaternion().fromEuler(new Euler(0, Math.PI / 2, 0)).getAxisAngle(new Vector3())
+
+    expect(Array.from(axis).map((n) => Math.round(n))).toStrictEqual([0, 1, 0])
   })
 })

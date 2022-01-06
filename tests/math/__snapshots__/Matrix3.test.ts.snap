@@ -41,3 +41,31 @@ Array [
   8,
 ]
 `;
+
+exports[`math/Matrix3 can multiply a matrix 1`] = `
+Array [
+  12,
+  12,
+  12,
+  32,
+  32,
+  32,
+  92,
+  92,
+  92,
+]
+`;
+
+exports[`math/Matrix3 can multiply a scalar 1`] = `
+Array [
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+]
+`;

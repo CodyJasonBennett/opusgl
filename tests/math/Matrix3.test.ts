@@ -25,60 +25,18 @@ describe('math/Matrix3', () => {
     expect(Array.from(matrix2)).toMatchSnapshot()
   })
 
-  it('can add a scalar', () => {
-    const matrix = new Matrix3(...instance.map(() => 0))
-    matrix.add(1)
-
-    expect(Array.from(matrix)).toStrictEqual(instance.map(() => 1))
-  })
-
-  it('can add a matrix', () => {
-    const matrix = new Matrix3(...instance.map(() => 0))
-    matrix.add(new Matrix3(...instance.map(() => 1)))
-
-    expect(Array.from(matrix)).toStrictEqual(instance.map(() => 1))
-  })
-
-  it('can subtract a scalar', () => {
-    const matrix = new Matrix3(...instance.map(() => 1))
-    matrix.sub(1)
-
-    expect(Array.from(matrix)).toStrictEqual(instance.map(() => 0))
-  })
-
-  it('can subtract a matrix', () => {
-    const matrix = new Matrix3(...instance.map(() => 1))
-    matrix.sub(new Matrix3(...instance.map(() => 1)))
-
-    expect(Array.from(matrix)).toStrictEqual(instance.map(() => 0))
-  })
-
   it('can multiply a scalar', () => {
     const matrix = new Matrix3(...instance.map(() => 2))
     matrix.multiply(2)
 
-    expect(Array.from(matrix)).toStrictEqual(instance.map(() => 4))
+    expect(Array.from(matrix)).toMatchSnapshot()
   })
 
   it('can multiply a matrix', () => {
     const matrix = new Matrix3(...instance.map(() => 2))
     matrix.multiply(new Matrix3(...instance.map(() => 2)))
 
-    expect(Array.from(matrix)).toStrictEqual(instance.map(() => 4))
-  })
-
-  it('can divide a scalar', () => {
-    const matrix = new Matrix3(...instance.map(() => 4))
-    matrix.divide(2)
-
-    expect(Array.from(matrix)).toStrictEqual(instance.map(() => 2))
-  })
-
-  it('can divide a matrix', () => {
-    const matrix = new Matrix3(...instance.map(() => 4))
-    matrix.divide(new Matrix3(...instance.map(() => 2)))
-
-    expect(Array.from(matrix)).toStrictEqual(instance.map(() => 2))
+    expect(Array.from(matrix)).toMatchSnapshot()
   })
 
   it('can check for equality', () => {

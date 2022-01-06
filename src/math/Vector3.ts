@@ -100,6 +100,10 @@ export class Vector3 extends MathArray {
     return this.multiply(-1)
   }
 
+  lengthSq() {
+    return this.x * this.x + this.y * this.y + this.z * this.z
+  }
+
   length() {
     return Math.hypot(this.x, this.y, this.z)
   }
@@ -129,18 +133,10 @@ export class Vector3 extends MathArray {
   }
 
   cross(v: Vector3) {
-    this.x = this.y * v.z - this.z * v.y
-    this.y = this.z * v.x - this.x * v.z
-    this.z = this.x * v.y - this.y * v.x
-
-    return this
+    return this.set(this.y * v.z - this.z * v.y, this.z * v.x - this.x * v.z, this.x * v.y - this.y * v.x)
   }
 
   lerp(v: Vector3, t: number) {
-    this.x += t * (v.x - this.x)
-    this.x += t * (v.y - this.y)
-    this.x += t * (v.z - this.z)
-
-    return this
+    return this.set(v.x - this.x, v.y - this.y, v.z - this.z).multiply(t)
   }
 }
