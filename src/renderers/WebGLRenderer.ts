@@ -239,14 +239,10 @@ export class WebGLRenderer {
     // Create attribute buffer
     const buffer = this.gl.createBuffer()
 
-    // Wrap attribute into a typed array
-    const ArrayView = name === 'index' ? Uint16Array : Float32Array
-    const data = new ArrayView(Array.from(attribute.data))
-
     // Bind it
     const bufferType = name === 'index' ? GL.BUFFER_INDEX_TYPE : GL.BUFFER_TYPE
     this.gl.bindBuffer(bufferType, buffer)
-    this.gl.bufferData(bufferType, data, GL.BUFFER_USAGE)
+    this.gl.bufferData(bufferType, attribute.data as unknown as BufferSource, GL.BUFFER_USAGE)
 
     // Save attribute with pointer for VAO
     const location = this.gl.getAttribLocation(program, name)
@@ -318,12 +314,8 @@ export class WebGLRenderer {
 
       const { buffer } = compiled.attributes.get(name)
 
-      // Wrap attribute into a typed array
-      const ArrayView = name === 'index' ? Uint16Array : Float32Array
-      const data = new ArrayView(Array.from(attribute.data))
-
       this.gl.bindBuffer(GL.BUFFER_TYPE, buffer)
-      this.gl.bufferSubData(GL.BUFFER_TYPE, 0, data)
+      this.gl.bufferSubData(GL.BUFFER_TYPE, 0, attribute.data as unknown as BufferSource)
       this.gl.bindBuffer(GL.BUFFER_TYPE, null)
 
       child.geometry.attributes[name].needsUpdate = false
