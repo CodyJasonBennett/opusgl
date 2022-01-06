@@ -3,6 +3,7 @@ import type { GeometryAttribute } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Scene } from '../core/Scene'
 import { SHADER_TEMPLATES, GL, DATA_TYPES, DRAW_MODES } from '../constants'
+import type { Camera } from '../core/Camera'
 
 export interface WebGLRendererOptions {
   /**
@@ -329,17 +330,25 @@ export class WebGLRenderer {
     })
   }
 
-  render(scene: Scene) {
+  render(scene: Scene, camera?: Camera) {
     // Clear screen
     if (this.autoClear) {
       this.gl.clear(GL.CLEAR_COLOR | GL.CLEAR_DEPTH)
       this.gl.clearColor(this.clearColor.r, this.clearColor.g, this.clearColor.b, this.clearAlpha)
     }
 
+    // Update camera matrix
+    if (camera) camera.updateMatrixWorld()
+
     // Render children
     scene.children.forEach((child: Mesh) => {
+      child.updateMatrixWorld()
+
+      // Don't render invisible objects
+      // TODO: filter out occluded meshes
       if (!child.isMesh || !child.visible) return
 
+      // Compile mesh
       const isCompiled = this._compiled.has(child.id)
       if (!isCompiled) this.compileMesh(child)
 
@@ -347,6 +356,11 @@ export class WebGLRenderer {
       const compiled = this._compiled.get(child.id)
       this.gl.useProgram(compiled.program)
       this.gl.bindVertexArray(compiled.VAO)
+
+      // Update built-in uniforms
+      child.material.uniforms.modelMatrix.copy(child.matrix)
+      child.material.uniforms.normalMatrix.copy(child.normalMatrix)
+      if (camera) child.material.uniforms.projectionMatrix.copy(camera.projectionMatrix)
 
       // Update program uniforms and attributes
       this.updateUniforms(child, compiled)

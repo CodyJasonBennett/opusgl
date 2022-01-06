@@ -1,3 +1,6 @@
+import { Matrix4 } from '../math/Matrix4'
+import { Matrix3 } from '../math/Matrix3'
+
 let id = 0
 
 export interface MaterialOptions {
@@ -11,7 +14,11 @@ export class Material {
   readonly id: number
   readonly vertex: string
   readonly fragment: string
-  readonly uniforms: { [name: string]: any } = {}
+  readonly uniforms: { [name: string]: any } = {
+    modelMatrix: new Matrix4(),
+    normalMatrix: new Matrix3(),
+    projectionMatrix: new Matrix4(),
+  }
 
   constructor(options?: MaterialOptions) {
     this.id = id++
@@ -19,7 +26,7 @@ export class Material {
     if (options) {
       this.vertex = options.vertex
       this.fragment = options.fragment
-      this.uniforms = options.uniforms ?? {}
+      if (options.uniforms) Object.assign(this.uniforms, options.uniforms)
     }
   }
 }
