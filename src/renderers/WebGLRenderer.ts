@@ -130,7 +130,10 @@ export class WebGLRenderer {
   }
 
   setViewport(x: number, y: number, width: number, height: number) {
-    this.gl.viewport(x, y, width, height)
+    const scaledWidth = Math.floor(width * this._pixelRatio)
+    const scaledHeight = Math.floor(height * this._pixelRatio)
+
+    this.gl.viewport(x, y, scaledWidth, scaledHeight)
     this._viewport = { x, y, width, height }
   }
 
@@ -234,13 +237,22 @@ export class WebGLRenderer {
   private setAttribute(name: string, attribute: GeometryAttribute, program: CompiledMesh['program']) {
     // Create attribute buffer
     const buffer = this.gl.createBuffer()
-    this.gl.bindBuffer(GL.BUFFER_TYPE, buffer)
-    this.gl.bufferData(GL.BUFFER_TYPE, attribute.data as unknown as BufferSource, GL.BUFFER_USAGE)
+
+    // Wrap attribute into a typed array
+    const ArrayView = name === 'index' ? Uint16Array : Float32Array
+    const data = new ArrayView(Array.from(attribute.data))
+
+    // Bind it
+    const bufferType = name === 'index' ? GL.BUFFER_INDEX_TYPE : GL.BUFFER_TYPE
+    this.gl.bindBuffer(bufferType, buffer)
+    this.gl.bufferData(bufferType, data, GL.BUFFER_USAGE)
 
     // Save attribute with pointer for VAO
     const location = this.gl.getAttribLocation(program, name)
-    this.gl.enableVertexAttribArray(location)
-    this.gl.vertexAttribPointer(location, attribute.size, GL.ATTRIBUTE_TYPE, false, 0, 0)
+    if (location !== -1) {
+      this.gl.enableVertexAttribArray(location)
+      this.gl.vertexAttribPointer(location, attribute.size, GL.ATTRIBUTE_TYPE, false, 0, 0)
+    }
 
     return { buffer, location }
   }
@@ -292,22 +304,25 @@ export class WebGLRenderer {
       const value = child.material.uniforms[name]
       if (value === undefined) throw `Uniform not found for ${name}!`
 
-      const needsUpdate = compiled.uniforms.get(name)?.value !== value
-      if (needsUpdate) {
-        const { location } = this.setUniform(name, type, value, compiled.program)
-        compiled.uniforms.set(name, { value, location })
-      }
+      // TODO: automatically flag for updates in material w/setters
+      const { location } = this.setUniform(name, type, value, compiled.program)
+      compiled.uniforms.set(name, { value, location })
     }
   }
 
   private updateAttributes(child: Mesh, compiled: CompiledMesh) {
     Object.entries(child.geometry.attributes).forEach(([name, attribute]) => {
+      // TODO: automatically flag for updates in material w/setters
       if (!attribute.needsUpdate) return
 
       const { buffer } = compiled.attributes.get(name)
 
+      // Wrap attribute into a typed array
+      const ArrayView = name === 'index' ? Uint16Array : Float32Array
+      const data = new ArrayView(Array.from(attribute.data))
+
       this.gl.bindBuffer(GL.BUFFER_TYPE, buffer)
-      this.gl.bufferSubData(GL.BUFFER_TYPE, 0, attribute.data as unknown as BufferSource)
+      this.gl.bufferSubData(GL.BUFFER_TYPE, 0, data)
       this.gl.bindBuffer(GL.BUFFER_TYPE, null)
 
       child.geometry.attributes[name].needsUpdate = false

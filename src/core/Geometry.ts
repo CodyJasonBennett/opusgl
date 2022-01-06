@@ -1,8 +1,8 @@
 let id = 0
 
 export interface GeometryAttribute {
-  data: Float32Array | Uint16Array
-  size: 1 | 2 | 3 | 4
+  data: number[]
+  size?: 1 | 2 | 3 | 4
   needsUpdate?: boolean
 }
 
@@ -35,6 +35,8 @@ export class Geometry {
 
   setAttribute(name: string, attribute: GeometryAttribute) {
     attribute.needsUpdate = this.hasAttribute(name)
-    this.attributes[name] = attribute
+
+    const size = name === 'index' ? 1 : 3
+    this.attributes[name] = { size, ...attribute }
   }
 }

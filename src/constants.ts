@@ -23,6 +23,7 @@ export const GL = {
   CLEAR_COLOR: 0x00004000,
   CLEAR_DEPTH: 0x00000100,
   BUFFER_TYPE: 0x8892,
+  BUFFER_INDEX_TYPE: 0x8893,
   BUFFER_USAGE: 0x88e4,
   ATTRIBUTE_TYPE: DATA_TYPES.FLOAT,
   ATTRIBUTE_INDEX_TYPE: DATA_TYPES.UNSIGNED_SHORT,
@@ -52,8 +53,8 @@ export const GPU_DRAW_MODES = {
 } as const
 
 export const SHADER_TEMPLATES = {
-  vertex: '#version 300 es\nprecision highp float;',
-  fragment: '#version 300 es\nprecision highp float;',
+  vertex: '#version 300 es\nprecision highp float;\nprecision highp int;',
+  fragment: '#version 300 es\nprecision highp float;\nprecision highp int;',
 } as const
 
 export const COLORS = {
