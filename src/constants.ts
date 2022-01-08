@@ -40,7 +40,13 @@ export const GL = {
 export const CULL_SIDES = {
   FRONT: 0x0404,
   BACK: 0x0405,
-  BOTH: 0x0408,
+  NONE: 0,
+} as const
+
+export const GPU_CULL_SIDES = {
+  FRONT: 'front',
+  BACK: 'back',
+  NONE: 'none',
 } as const
 
 export const DRAW_MODES = {

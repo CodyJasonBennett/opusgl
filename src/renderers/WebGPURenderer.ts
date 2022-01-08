@@ -1,7 +1,8 @@
 import { Color } from '../math/Color'
 import type { Mesh } from '../core/Mesh'
 import type { Scene } from '../core/Scene'
-import { GPU_DRAW_MODES } from '../constants'
+import type { Camera } from '../core/Camera'
+import { GPU_CULL_SIDES, GPU_DRAW_MODES } from '../constants'
 
 export interface WebGPURendererOptions {
   /**
@@ -227,15 +228,14 @@ export class WebGPURenderer {
     const { vertex, fragment } = this.compileShaders(child)
 
     // Create mesh rendering pipeline from program
-    const topology = GPU_DRAW_MODES[child.mode] ?? GPU_DRAW_MODES.TRIANGLES
     const pipeline = this._device.createRenderPipeline({
       layout,
       vertex,
       fragment,
       primitive: {
-        frontFace: 'cw',
-        cullMode: 'none',
-        topology,
+        frontFace: 'cw', // ccw
+        cullMode: GPU_CULL_SIDES[child.material.side] ?? GPU_CULL_SIDES.BACK,
+        topology: GPU_DRAW_MODES[child.mode] ?? GPU_DRAW_MODES.TRIANGLES,
       },
       depthStencil: {
         depthWriteEnabled: true,
@@ -280,9 +280,12 @@ export class WebGPURenderer {
     })
   }
 
-  render(scene: Scene) {
+  render(scene: Scene, camera?: Camera) {
     // Begin recording GL commands
     const commandEncoder = this._device.createCommandEncoder()
+
+    // Update camera matrix
+    if (camera) camera.updateMatrixWorld()
 
     // Compile meshes and handle updates
     scene.children.forEach((child: Mesh) => {
@@ -291,6 +294,11 @@ export class WebGPURenderer {
       // Compile on first render
       const isCompiled = this._compiled.has(child.id)
       if (!isCompiled) this.compileMesh(child)
+
+      // Update built-in uniforms
+      child.material.uniforms.modelMatrix.copy(child.matrix)
+      child.material.uniforms.normalMatrix.copy(child.normalMatrix)
+      if (camera) child.material.uniforms.projectionMatrix.copy(camera.projectionMatrix)
 
       // Update uniforms & attributes
       this.updateUniforms(child)

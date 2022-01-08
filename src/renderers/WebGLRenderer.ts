@@ -359,9 +359,10 @@ export class WebGLRenderer {
       this.updateAttributes(child, compiled)
 
       // Update material state
-      if (child.material.side) {
+      const side = CULL_SIDES[child.material.side] ?? CULL_SIDES.BACK
+      if (side) {
         this.gl.enable(GL.EXTENSIONS_CULL)
-        this.gl.cullFace(CULL_SIDES[child.material.side] ?? CULL_SIDES.BACK)
+        this.gl.cullFace(side)
       } else {
         this.gl.disable(GL.EXTENSIONS_CULL)
       }
