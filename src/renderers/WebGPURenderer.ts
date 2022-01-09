@@ -284,27 +284,6 @@ export class WebGPURenderer {
     // Begin recording GL commands
     const commandEncoder = this._device.createCommandEncoder()
 
-    // Update camera matrix
-    if (camera) camera.updateMatrixWorld()
-
-    // Compile meshes and handle updates
-    scene.children.forEach((child: Mesh) => {
-      if (!child.isMesh || !child.visible) return
-
-      // Compile on first render
-      const isCompiled = this._compiled.has(child.id)
-      if (!isCompiled) this.compileMesh(child)
-
-      // Update built-in uniforms
-      child.material.uniforms.modelMatrix.copy(child.matrix)
-      child.material.uniforms.normalMatrix.copy(child.normalMatrix)
-      if (camera) child.material.uniforms.projectionMatrix.copy(camera.projectionMatrix)
-
-      // Update uniforms & attributes
-      this.updateUniforms(child)
-      this.updateAttributes(child)
-    })
-
     // Flush screen
     this._colorTexture = this.gl.getCurrentTexture()
     this._colorTextureView = this._colorTexture.createView()
@@ -331,9 +310,20 @@ export class WebGPURenderer {
     passEncoder.setViewport(this._viewport.x, this._viewport.y, this._viewport.width, this._viewport.height, 0, 1)
     passEncoder.setScissorRect(this._scissor.x, this._scissor.y, this._scissor.width, this._scissor.height)
 
+    // Update camera matrix
+    if (camera) camera.updateMatrixWorld()
+
     // Render children
     scene.children.forEach((child: Mesh) => {
+      child.updateMatrixWorld()
+
+      // Don't render invisible objects
+      // TODO: filter out occluded meshes
       if (!child.isMesh || !child.visible) return
+
+      // Compile on first render
+      const isCompiled = this._compiled.has(child.id)
+      if (!isCompiled) this.compileMesh(child)
 
       // Bind
       const compiled = this._compiled.get(child.id)
@@ -344,6 +334,15 @@ export class WebGPURenderer {
         .forEach((name, slot) => {
           passEncoder.setVertexBuffer(slot, compiled.buffers.get(name))
         })
+
+      // Update built-in uniforms
+      child.material.uniforms.modelMatrix.copy(child.matrix)
+      child.material.uniforms.normalMatrix.copy(child.normalMatrix)
+      if (camera) child.material.uniforms.projectionMatrix.copy(camera.projectionMatrix)
+
+      // Update uniforms & attributes
+      this.updateUniforms(child)
+      this.updateAttributes(child)
 
       // Alternate drawing for indexed and non-indexed meshes
       const { index, position } = child.geometry.attributes

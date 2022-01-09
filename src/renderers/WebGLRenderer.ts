@@ -340,7 +340,7 @@ export class WebGLRenderer {
       // TODO: filter out occluded meshes
       if (!child.isMesh || !child.visible) return
 
-      // Compile mesh
+      // Compile on first render
       const isCompiled = this._compiled.has(child.id)
       if (!isCompiled) this.compileMesh(child)
 
