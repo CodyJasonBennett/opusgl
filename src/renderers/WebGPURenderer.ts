@@ -10,6 +10,10 @@ export interface WebGPURendererOptions {
    */
   canvas: HTMLCanvasElement
   /**
+   * An optional WebGPU context to draw with.
+   */
+  context: GPUCanvasContext
+  /**
    * Whether to prioritize rendering performance or power efficiency.
    */
   powerPreference: 'high-performance' | 'low-power'
@@ -40,7 +44,7 @@ export class WebGPURenderer {
   private _viewport: { x: number; y: number; width: number; height: number; minDepth: number; maxDepth: number }
   private _scissor: { x: number; y: number; width: number; height: number }
 
-  private _params: Partial<WebGPURendererOptions>
+  private _params: Partial<Omit<WebGPURendererOptions, 'canvas'>>
   private _adapter: GPUAdapter
   private _device: GPUDevice
   private _presentationFormat: GPUTextureFormat
@@ -109,7 +113,7 @@ export class WebGPURenderer {
     this._device = await this._adapter.requestDevice(this._params)
 
     // Init GL
-    this.gl = this.canvas.getContext('webgpu')
+    this.gl = this._params.context ?? this.canvas.getContext('webgpu')
     this._presentationFormat = this.gl.getPreferredFormat(this._adapter)
     this.gl.configure({
       device: this._device,
@@ -233,7 +237,7 @@ export class WebGPURenderer {
       vertex,
       fragment,
       primitive: {
-        frontFace: 'cw', // ccw
+        frontFace: 'ccw',
         cullMode: GPU_CULL_SIDES[child.material.side] ?? GPU_CULL_SIDES.BACK,
         topology: GPU_DRAW_MODES[child.mode] ?? GPU_DRAW_MODES.TRIANGLES,
       },
@@ -310,8 +314,9 @@ export class WebGPURenderer {
     passEncoder.setViewport(this._viewport.x, this._viewport.y, this._viewport.width, this._viewport.height, 0, 1)
     passEncoder.setScissorRect(this._scissor.x, this._scissor.y, this._scissor.width, this._scissor.height)
 
-    // Update camera matrix
+    // Update camera matrices
     if (camera) camera.updateMatrixWorld()
+    if (camera?.needsUpdate) camera.updateProjectionMatrix()
 
     // Render children
     scene.children.forEach((child: Mesh) => {

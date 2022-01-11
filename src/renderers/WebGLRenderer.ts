@@ -329,8 +329,9 @@ export class WebGLRenderer {
       this.gl.clearColor(this.clearColor.r, this.clearColor.g, this.clearColor.b, this.clearAlpha)
     }
 
-    // Update camera matrix
+    // Update camera matrices
     if (camera) camera.updateMatrixWorld()
+    if (camera?.needsUpdate) camera.updateProjectionMatrix()
 
     // Render children
     scene.children.forEach((child: Mesh) => {
