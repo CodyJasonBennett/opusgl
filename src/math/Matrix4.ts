@@ -1,8 +1,7 @@
-import { MathArray } from './MathArray'
 import type { Vector3 } from './Vector3'
 import type { Quaternion } from './Quaternion'
 
-export class Matrix4 extends MathArray {
+export class Matrix4 extends Float32Array {
   readonly isMatrix4 = true
 
   constructor(
@@ -23,10 +22,11 @@ export class Matrix4 extends MathArray {
     m32 = 0,
     m33 = 1,
   ) {
-    super(16, null)
+    super(16)
     this.set(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33)
   }
 
+  // @ts-expect-error
   set(
     m00: number,
     m01: number,
@@ -337,7 +337,7 @@ export class Matrix4 extends MathArray {
   }
 
   rotate(radians: number, axis: Vector3) {
-    const length = axis.length()
+    const length = axis.getLength()
 
     if (length < Number.EPSILON) return
 

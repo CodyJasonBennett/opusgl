@@ -1,4 +1,3 @@
-import { MathArray } from './MathArray'
 import { COLORS } from '../constants'
 
 export type ColorRepresentation = keyof typeof COLORS | number
@@ -18,17 +17,39 @@ export const toRGB = (c: ColorRepresentation) => {
   return { r, g, b }
 }
 
-export class Color extends MathArray {
+export class Color extends Float32Array {
   readonly isColor = true
-  public r: number
-  public g: number
-  public b: number
 
   constructor(r: ColorRepresentation = 0xffffff, g?: number, b?: number) {
-    super(3, ['r', 'g', 'b'])
+    super(3)
     this.set(r, g, b)
   }
 
+  get r() {
+    return this[0]
+  }
+
+  get g() {
+    return this[1]
+  }
+
+  get b() {
+    return this[2]
+  }
+
+  set r(r) {
+    this[0] = r
+  }
+
+  set g(g) {
+    this[1] = g
+  }
+
+  set b(b) {
+    this[2] = b
+  }
+
+  // @ts-expect-error
   set(r: ColorRepresentation, g?: number, b?: number) {
     if (typeof r === 'number' && typeof g === 'number' && typeof b === 'number') {
       this.r = r

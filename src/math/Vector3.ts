@@ -1,16 +1,36 @@
-import { MathArray } from './MathArray'
-
-export class Vector3 extends MathArray {
+export class Vector3 extends Float32Array {
   readonly isVector3 = true
-  public x: number
-  public y: number
-  public z: number
 
   constructor(x = 0, y = x, z = x) {
     super(3)
     this.set(x, y, z)
   }
 
+  get x() {
+    return this[0]
+  }
+
+  get y() {
+    return this[1]
+  }
+
+  get z() {
+    return this[2]
+  }
+
+  set x(x) {
+    this[0] = x
+  }
+
+  set y(y) {
+    this[1] = y
+  }
+
+  set z(z) {
+    this[2] = z
+  }
+
+  // @ts-expect-error
   set(x: number, y: number = x, z: number = x) {
     this.x = x
     this.y = y
@@ -104,20 +124,20 @@ export class Vector3 extends MathArray {
     return this.x * this.x + this.y * this.y + this.z * this.z
   }
 
-  length() {
+  getLength() {
     return Math.hypot(this.x, this.y, this.z)
-  }
-
-  normalize() {
-    return this.divide(this.length() || 1)
   }
 
   setLength(l: number) {
     return this.normalize().multiply(l)
   }
 
+  normalize() {
+    return this.divide(this.getLength() || 1)
+  }
+
   distanceTo(v: Vector3) {
-    return v.length() - this.length()
+    return v.getLength() - this.getLength()
   }
 
   inverse() {

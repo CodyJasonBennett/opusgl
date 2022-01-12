@@ -22,53 +22,45 @@ Array [
 `;
 
 exports[`math/Matrix4 can be set from orthogonal 1`] = `
-Matrix4 {
-  "_instance": Float32Array [
-    1,
-    0,
-    0,
-    0,
-    0,
-    1,
-    0,
-    0,
-    0,
-    0,
-    -0.20000000298023224,
-    0,
-    -0,
-    -0,
-    -1,
-    1,
-  ],
-  "isMathArray": true,
-  "isMatrix4": true,
-}
+Matrix4 [
+  1,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  -0.20000000298023224,
+  0,
+  -0,
+  -0,
+  -1,
+  1,
+]
 `;
 
 exports[`math/Matrix4 can be set from perspective 1`] = `
-Matrix4 {
-  "_instance": Float32Array [
-    -Infinity,
-    0,
-    0,
-    0,
-    0,
-    -0.1561199575662613,
-    0,
-    0,
-    0,
-    0,
-    -1.0202020406723022,
-    -1,
-    0,
-    0,
-    -0.20202019810676575,
-    0,
-  ],
-  "isMathArray": true,
-  "isMatrix4": true,
-}
+Matrix4 [
+  -Infinity,
+  0,
+  0,
+  0,
+  0,
+  -0.1561199575662613,
+  0,
+  0,
+  0,
+  0,
+  -1.0202020406723022,
+  -1,
+  0,
+  0,
+  -0.20202019810676575,
+  0,
+]
 `;
 
 exports[`math/Matrix4 can clone itself 1`] = `
@@ -160,28 +152,24 @@ Array [
 `;
 
 exports[`math/Matrix4 can lookAt a set of vectors 1`] = `
-Matrix4 {
-  "_instance": Float32Array [
-    1,
-    0,
-    0,
-    0,
-    0,
-    1,
-    0,
-    0,
-    0,
-    0,
-    1,
-    0,
-    0,
-    0,
-    5,
-    1,
-  ],
-  "isMathArray": true,
-  "isMatrix4": true,
-}
+Matrix4 [
+  1,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  5,
+  1,
+]
 `;
 
 exports[`math/Matrix4 can multiply a matrix 1`] = `

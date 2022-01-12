@@ -7,7 +7,6 @@ export * from './core/Scene'
 
 export * from './math/Color'
 export * from './math/Euler'
-export * from './math/MathArray'
 export * from './math/Matrix3'
 export * from './math/Matrix4'
 export * from './math/Quaternion'

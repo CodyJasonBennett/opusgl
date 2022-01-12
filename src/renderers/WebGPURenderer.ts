@@ -151,9 +151,6 @@ export class WebGPURenderer {
     // Create uniform buffers to bind
     const uniforms = new Map()
     const entries = Object.entries(child.material.uniforms).map(([name, value], index) => {
-      // Unwrap MathArrays
-      value = value.isMathArray ? value.instance : value
-
       // Cache initial uniform
       const buffer = this.createBuffer(value, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST)
       uniforms.set(name, buffer)
@@ -263,10 +260,6 @@ export class WebGPURenderer {
     const compiled = this._compiled.get(child.id)
 
     Object.entries(child.material.uniforms).forEach(([name, value]) => {
-      // Unwrap MathArrays
-      value = value.isMathArray ? value.instance : value
-
-      // Update uniform buffer
       const buffer = compiled.uniforms.get(name)
       this._device.queue.writeBuffer(buffer, value.byteOffset, value)
     })

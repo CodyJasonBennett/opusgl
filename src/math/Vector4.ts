@@ -1,17 +1,44 @@
-import { MathArray } from './MathArray'
-
-export class Vector4 extends MathArray {
+export class Vector4 extends Float32Array {
   readonly isVector4 = true
-  public x: number
-  public y: number
-  public z: number
-  public w: number
 
   constructor(x = 0, y = 0, z = 0, w = 1) {
     super(4)
     this.set(x, y, z, w)
   }
 
+  get x() {
+    return this[0]
+  }
+
+  get y() {
+    return this[1]
+  }
+
+  get z() {
+    return this[2]
+  }
+
+  get w() {
+    return this[3]
+  }
+
+  set x(x) {
+    this[0] = x
+  }
+
+  set y(y) {
+    this[1] = y
+  }
+
+  set z(z) {
+    this[2] = z
+  }
+
+  set w(w) {
+    this[3] = w
+  }
+
+  // @ts-expect-error
   set(x: number, y: number, z: number, w: number) {
     this.x = x
     this.y = y
@@ -112,16 +139,16 @@ export class Vector4 extends MathArray {
     return this.multiply(-1)
   }
 
-  length() {
+  getLength() {
     return Math.hypot(this.x, this.y, this.z, this.w)
-  }
-
-  normalize() {
-    return this.divide(this.length() || 1)
   }
 
   setLength(l: number) {
     return this.normalize().multiply(l)
+  }
+
+  normalize() {
+    return this.divide(this.getLength() || 1)
   }
 
   dot(v: Vector4) {

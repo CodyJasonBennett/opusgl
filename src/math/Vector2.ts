@@ -1,15 +1,28 @@
-import { MathArray } from './MathArray'
-
-export class Vector2 extends MathArray {
+export class Vector2 extends Float32Array {
   readonly isVector2 = true
-  public x: number
-  public y: number
 
   constructor(x = 0, y = x) {
     super(2)
     this.set(x, y)
   }
 
+  get x() {
+    return this[0]
+  }
+
+  get y() {
+    return this[1]
+  }
+
+  set x(x) {
+    this[0] = x
+  }
+
+  set y(y) {
+    this[1] = y
+  }
+
+  // @ts-expect-error
   set(x: number, y: number = x) {
     this.x = x
     this.y = y
@@ -88,20 +101,20 @@ export class Vector2 extends MathArray {
     return this.multiply(-1)
   }
 
-  length() {
+  getLength() {
     return Math.hypot(this.x, this.y)
-  }
-
-  normalize() {
-    return this.divide(this.length() || 1)
   }
 
   setLength(l: number) {
     return this.normalize().multiply(l)
   }
 
+  normalize() {
+    return this.divide(this.getLength() || 1)
+  }
+
   distanceTo(v: Vector2) {
-    return v.length() - this.length()
+    return v.getLength() - this.getLength()
   }
 
   inverse() {

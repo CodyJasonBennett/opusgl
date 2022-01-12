@@ -1,12 +1,7 @@
-import { MathArray } from './MathArray'
-
 export type EulerOrder = 'XYZ' | 'XZY' | 'YXZ' | 'YZX' | 'ZXY' | 'ZYX'
 
-export class Euler extends MathArray {
+export class Euler extends Float32Array {
   readonly isEuler = true
-  public x: number
-  public y: number
-  public z: number
   public order: EulerOrder = 'XYZ'
 
   constructor(x = 0, y = x, z = x) {
@@ -14,6 +9,31 @@ export class Euler extends MathArray {
     this.set(x, y, z)
   }
 
+  get x() {
+    return this[0]
+  }
+
+  get y() {
+    return this[1]
+  }
+
+  get z() {
+    return this[2]
+  }
+
+  set x(x) {
+    this[0] = x
+  }
+
+  set y(y) {
+    this[1] = y
+  }
+
+  set z(z) {
+    this[2] = z
+  }
+
+  // @ts-expect-error
   set(x: number, y: number = x, z: number = x) {
     this.x = x
     this.y = y
