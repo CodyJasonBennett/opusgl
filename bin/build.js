@@ -3,7 +3,7 @@ const path = require('path')
 const fs = require('fs')
 const swc = require('@swc/core')
 const recursiveReaddir = require('recursive-readdir')
-const package = require('./package.json')
+const package = require('../package.json')
 
 // Get project config
 const swcrc = path.join(process.cwd(), '.swcrc')
