@@ -3,7 +3,7 @@ import type { GeometryAttribute } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Scene } from '../core/Scene'
 import type { Camera } from '../core/Camera'
-import { SHADER_TEMPLATES, GL, DATA_TYPES, CULL_SIDES, DRAW_MODES } from '../constants'
+import { GL_SHADER_TEMPLATES, GL_CULL_SIDES, GL_DRAW_MODES } from '../constants'
 
 export interface WebGLRendererOptions {
   /**
@@ -63,6 +63,7 @@ export class WebGLRenderer {
   public clearColor = new Color(1, 1, 1)
   public clearAlpha = 0
 
+  private _params: Partial<Omit<WebGLRendererOptions, 'canvas' | 'context'>>
   private _pixelRatio = 1
   private _viewport: { x: number; y: number; width: number; height: number }
   private _scissor: { x: number; y: number; width: number; height: number }
@@ -81,21 +82,24 @@ export class WebGLRenderer {
     preserveDrawingBuffer = false,
     powerPreference = 'default',
   }: Partial<WebGLRendererOptions> = {}) {
-    this.canvas = canvas
-    this.gl =
-      context ||
-      (this.canvas.getContext('webgl2', {
-        alpha,
-        antialias,
-        depth,
-        failIfMajorPerformanceCaveat,
-        premultipliedAlpha,
-        preserveDrawingBuffer,
-        powerPreference,
-        stencil,
-      }) as WebGL2RenderingContext)
+    this._params = {
+      alpha,
+      antialias,
+      depth,
+      failIfMajorPerformanceCaveat,
+      premultipliedAlpha,
+      preserveDrawingBuffer,
+      powerPreference,
+      stencil,
+    }
 
-    if (depth) this.gl.enable(GL.EXTENSIONS_DEPTH)
+    this.canvas = canvas
+    this.gl = context ?? (this.canvas.getContext('webgl2', this._params) as WebGL2RenderingContext)
+
+    if (depth) {
+      this.gl.enable(this.gl.DEPTH_TEST)
+      this.gl.depthFunc(this.gl.LESS)
+    }
 
     this.setSize(canvas.width, canvas.height)
   }
@@ -138,14 +142,6 @@ export class WebGLRenderer {
     this._viewport = { x, y, width, height }
   }
 
-  setScissorTest(scissorTest = false) {
-    if (scissorTest) {
-      this.gl.enable(GL.EXTENSIONS_SCISSOR)
-    } else {
-      this.gl.disable(GL.EXTENSIONS_SCISSOR)
-    }
-  }
-
   get scissor() {
     return this._scissor
   }
@@ -155,15 +151,45 @@ export class WebGLRenderer {
     this._scissor = { x, y, width, height }
   }
 
+  setScissorTest(enabled: boolean) {
+    if (enabled) {
+      this.gl.enable(this.gl.SCISSOR_TEST)
+    } else {
+      this.gl.disable(this.gl.SCISSOR_TEST)
+    }
+  }
+
+  setCullFace(side: keyof typeof GL_CULL_SIDES) {
+    const cullMode = GL_CULL_SIDES[side] ?? GL_CULL_SIDES.back
+    if (cullMode) {
+      this.gl.enable(this.gl.CULL_FACE)
+      this.gl.cullFace(cullMode)
+    } else {
+      this.gl.disable(this.gl.CULL_FACE)
+    }
+  }
+
+  setDepthTest(enabled: boolean) {
+    if (enabled) {
+      this.gl.enable(this.gl.DEPTH_TEST)
+    } else {
+      this.gl.enable(this.gl.DEPTH_TEST)
+    }
+  }
+
+  setDepthMask(enabled: boolean) {
+    this.gl.depthMask(enabled)
+  }
+
   private compileShader(name: string, source: string) {
-    const type = GL[`SHADER_${name.toUpperCase()}`]
+    const type = name === 'vertex' ? this.gl.VERTEX_SHADER : this.gl.FRAGMENT_SHADER
     const shader = this.gl.createShader(type)
 
-    const template = SHADER_TEMPLATES[name]
+    const template = GL_SHADER_TEMPLATES[name]
     this.gl.shaderSource(shader, template + source)
 
     this.gl.compileShader(shader)
-    if (!this.gl.getShaderParameter(shader, GL.PROGRAM_COMPILE_STATUS)) {
+    if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
       const error = this.gl.getShaderInfoLog(shader)
       throw `Error compiling ${name} shader: ${error}`
     }
@@ -179,7 +205,7 @@ export class WebGLRenderer {
     })
 
     this.gl.linkProgram(program)
-    if (!this.gl.getProgramParameter(program, GL.PROGRAM_LINK_STATUS)) {
+    if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
       const error = this.gl.getProgramInfoLog(program)
       throw `Error creating program: ${error}`
     }
@@ -191,43 +217,43 @@ export class WebGLRenderer {
     const location = this.gl.getUniformLocation(program, name)
 
     switch (type) {
-      case DATA_TYPES.FLOAT:
+      case this.gl.FLOAT:
         value.length ? this.gl.uniform1fv(location, value) : this.gl.uniform1f(location, value)
         break
-      case DATA_TYPES.FLOAT_VEC2:
+      case this.gl.FLOAT_VEC2:
         this.gl.uniform2fv(location, value)
         break
-      case DATA_TYPES.FLOAT_VEC3:
+      case this.gl.FLOAT_VEC3:
         this.gl.uniform3fv(location, value)
         break
-      case DATA_TYPES.FLOAT_VEC4:
+      case this.gl.FLOAT_VEC4:
         this.gl.uniform4fv(location, value)
         break
-      case DATA_TYPES.BOOL:
-      case DATA_TYPES.INT:
-      case DATA_TYPES.SAMPLER_2D:
-      case DATA_TYPES.SAMPLER_CUBE:
+      case this.gl.BOOL:
+      case this.gl.INT:
+      case this.gl.SAMPLER_2D:
+      case this.gl.SAMPLER_CUBE:
         value.length ? this.gl.uniform1iv(location, value) : this.gl.uniform1i(location, value)
         break
-      case DATA_TYPES.BOOL_VEC2:
-      case DATA_TYPES.INT_VEC2:
+      case this.gl.BOOL_VEC2:
+      case this.gl.INT_VEC2:
         this.gl.uniform2iv(location, value)
         break
-      case DATA_TYPES.BOOL_VEC3:
-      case DATA_TYPES.INT_VEC3:
+      case this.gl.BOOL_VEC3:
+      case this.gl.INT_VEC3:
         this.gl.uniform3iv(location, value)
         break
-      case DATA_TYPES.BOOL_VEC4:
-      case DATA_TYPES.INT_VEC4:
+      case this.gl.BOOL_VEC4:
+      case this.gl.INT_VEC4:
         this.gl.uniform4iv(location, value)
         break
-      case DATA_TYPES.FLOAT_MAT2:
+      case this.gl.FLOAT_MAT2:
         this.gl.uniformMatrix2fv(location, false, value)
         break
-      case DATA_TYPES.FLOAT_MAT3:
+      case this.gl.FLOAT_MAT3:
         this.gl.uniformMatrix3fv(location, false, value)
         break
-      case DATA_TYPES.FLOAT_MAT4:
+      case this.gl.FLOAT_MAT4:
         this.gl.uniformMatrix4fv(location, false, value)
         break
     }
@@ -240,15 +266,15 @@ export class WebGLRenderer {
     const buffer = this.gl.createBuffer()
 
     // Bind it
-    const bufferType = name === 'index' ? GL.BUFFER_INDEX_TYPE : GL.BUFFER_TYPE
+    const bufferType = name === 'index' ? this.gl.ELEMENT_ARRAY_BUFFER : this.gl.ARRAY_BUFFER
     this.gl.bindBuffer(bufferType, buffer)
-    this.gl.bufferData(bufferType, attribute.data as unknown as BufferSource, GL.BUFFER_USAGE)
+    this.gl.bufferData(bufferType, attribute.data as unknown as BufferSource, this.gl.STATIC_DRAW)
 
     // Save attribute with pointer for VAO
     const location = this.gl.getAttribLocation(program, name)
     if (location !== -1) {
       this.gl.enableVertexAttribArray(location)
-      this.gl.vertexAttribPointer(location, attribute.size, GL.ATTRIBUTE_TYPE, false, 0, 0)
+      this.gl.vertexAttribPointer(location, attribute.size, this.gl.FLOAT, false, 0, 0)
     }
 
     return { buffer, location }
@@ -291,11 +317,11 @@ export class WebGLRenderer {
     // Cleanup
     this.gl.bindVertexArray(null)
     this.gl.useProgram(null)
-    this.gl.bindBuffer(GL.BUFFER_TYPE, null)
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null)
   }
 
   private updateUniforms(child: Mesh, compiled: CompiledMesh) {
-    const uniformsLength = this.gl.getProgramParameter(compiled.program, GL.PROGRAM_UNIFORMS)
+    const uniformsLength = this.gl.getProgramParameter(compiled.program, this.gl.ACTIVE_UNIFORMS)
     for (let i = 0; i < uniformsLength; i++) {
       const { name, type } = this.gl.getActiveUniform(compiled.program, i)
       const value = child.material.uniforms[name]
@@ -314,9 +340,9 @@ export class WebGLRenderer {
 
       const { buffer } = compiled.attributes.get(name)
 
-      this.gl.bindBuffer(GL.BUFFER_TYPE, buffer)
-      this.gl.bufferSubData(GL.BUFFER_TYPE, 0, attribute.data as unknown as BufferSource)
-      this.gl.bindBuffer(GL.BUFFER_TYPE, null)
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer)
+      this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, attribute.data as unknown as BufferSource)
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null)
 
       child.geometry.attributes[name].needsUpdate = false
     })
@@ -325,7 +351,7 @@ export class WebGLRenderer {
   render(scene: Scene, camera?: Camera) {
     // Clear screen
     if (this.autoClear) {
-      this.gl.clear(GL.CLEAR_COLOR | GL.CLEAR_DEPTH)
+      this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT)
       this.gl.clearColor(this.clearColor.r, this.clearColor.g, this.clearColor.b, this.clearAlpha)
     }
 
@@ -360,19 +386,27 @@ export class WebGLRenderer {
       this.updateAttributes(child, compiled)
 
       // Update material state
-      const side = CULL_SIDES[child.material.side] ?? CULL_SIDES.BACK
-      if (side) {
-        this.gl.enable(GL.EXTENSIONS_CULL)
-        this.gl.cullFace(side)
+      const { side, depthTest, depthWrite, transparent } = child.material
+
+      this.setCullFace(side)
+      this.setDepthTest(depthTest)
+      this.setDepthMask(depthWrite)
+
+      if (transparent) {
+        this.gl.enable(this.gl.BLEND)
+        this.gl.blendFunc(
+          this._params.premultipliedAlpha ? this.gl.ONE : this.gl.SRC_ALPHA,
+          this.gl.ONE_MINUS_SRC_ALPHA,
+        )
       } else {
-        this.gl.disable(GL.EXTENSIONS_CULL)
+        this.gl.disable(this.gl.BLEND)
       }
 
       // Alternate drawing for indexed and non-indexed meshes
       const { index, position } = child.geometry.attributes
-      const mode = DRAW_MODES[child.mode] ?? DRAW_MODES.TRIANGLES
+      const mode = GL_DRAW_MODES[child.mode] ?? GL_DRAW_MODES.triangles
       if (index) {
-        this.gl.drawElements(mode, index.data.length / index.size, GL.ATTRIBUTE_INDEX_TYPE, 0)
+        this.gl.drawElements(mode, index.data.length / index.size, this.gl.UNSIGNED_SHORT, 0)
       } else {
         this.gl.drawArrays(mode, 0, position.data.length / position.size)
       }

@@ -132,7 +132,7 @@ export class WebGPURenderer {
     this._depthTextureView = this._depthTexture.createView()
   }
 
-  private createBuffer(data: Uint16Array | Float32Array, usage?: number) {
+  private createBuffer(data: Uint16Array | Float32Array, usage: GPUBufferUsageFlags) {
     const buffer = this._device.createBuffer({
       size: data.byteLength,
       usage,
@@ -238,8 +238,8 @@ export class WebGPURenderer {
       fragment,
       primitive: {
         frontFace: 'ccw',
-        cullMode: GPU_CULL_SIDES[child.material.side] ?? GPU_CULL_SIDES.BACK,
-        topology: GPU_DRAW_MODES[child.mode] ?? GPU_DRAW_MODES.TRIANGLES,
+        cullMode: GPU_CULL_SIDES[child.material.side] ?? GPU_CULL_SIDES.back,
+        topology: GPU_DRAW_MODES[child.mode] ?? GPU_DRAW_MODES.triangles,
       },
       depthStencil: {
         depthWriteEnabled: true,
@@ -348,6 +348,8 @@ export class WebGPURenderer {
       // Update uniforms & attributes
       this.updateUniforms(child)
       this.updateAttributes(child)
+
+      // TODO: Update material state
 
       // Alternate drawing for indexed and non-indexed meshes
       const { index, position } = child.geometry.attributes

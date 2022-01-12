@@ -1,71 +1,32 @@
-export const DATA_TYPES = {
-  UNSIGNED_SHORT: 0x1403,
-  FLOAT: 0x1406,
-  FLOAT_VEC2: 0x8b50,
-  FLOAT_VEC3: 0x8b51,
-  FLOAT_VEC4: 0x8b52,
-  BOOL: 0x8b56,
-  INT: 0x1404,
-  SAMPLER_2D: 0x8b5e,
-  SAMPLER_CUBE: 0x8b60,
-  BOOL_VEC2: 0x8b57,
-  INT_VEC2: 0x8b53,
-  BOOL_VEC3: 0x8b58,
-  INT_VEC3: 0x8b54,
-  BOOL_VEC4: 0x8b59,
-  INT_VEC4: 0x8b55,
-  FLOAT_MAT2: 0x8b5a,
-  FLOAT_MAT3: 0x8b5b,
-  FLOAT_MAT4: 0x8b5c,
-} as const
-
-export const GL = {
-  CLEAR_COLOR: 0x00004000,
-  CLEAR_DEPTH: 0x00000100,
-  BUFFER_TYPE: 0x8892,
-  BUFFER_INDEX_TYPE: 0x8893,
-  BUFFER_USAGE: 0x88e4,
-  ATTRIBUTE_TYPE: DATA_TYPES.FLOAT,
-  ATTRIBUTE_INDEX_TYPE: DATA_TYPES.UNSIGNED_SHORT,
-  EXTENSIONS_DEPTH: 0x0b71,
-  EXTENSIONS_CULL: 0x0b44,
-  EXTENSIONS_SCISSOR: 0x0c11,
-  PROGRAM_COMPILE_STATUS: 0x8b81,
-  PROGRAM_LINK_STATUS: 0x8b82,
-  PROGRAM_UNIFORMS: 0x8b86,
-  SHADER_VERTEX: 0x8b31,
-  SHADER_FRAGMENT: 0x8b30,
-} as const
-
-export const CULL_SIDES = {
-  FRONT: 0x0404,
-  BACK: 0x0405,
-  NONE: 0,
+export const GL_CULL_SIDES = {
+  front: 0x0404,
+  back: 0x0405,
+  none: 0,
 } as const
 
 export const GPU_CULL_SIDES = {
-  FRONT: 'front',
-  BACK: 'back',
-  NONE: 'none',
+  front: 'front',
+  back: 'back',
+  none: 'none',
 } as const
 
-export const DRAW_MODES = {
-  POINTS: 0x0000,
-  LINES: 0x0001,
-  LINE_STRIP: 0x0003,
-  TRIANGLES: 0x0004,
-  TRIANGLE_STRIP: 0x0005,
+export const GL_DRAW_MODES = {
+  points: 0x0000,
+  lines: 0x0001,
+  lineStrip: 0x0003,
+  triangles: 0x0004,
+  triangleStrip: 0x0005,
 } as const
 
 export const GPU_DRAW_MODES = {
-  POINTS: 'point-list',
-  LINES: 'line-list',
-  LINE_STRIP: 'line-strip',
-  TRIANGLES: 'triangle-list',
-  TRIANGLE_STRIP: 'triangle-strip',
+  points: 'point-list',
+  lines: 'line-list',
+  lineStrip: 'line-strip',
+  triangles: 'triangle-list',
+  triangleStrip: 'triangle-strip',
 } as const
 
-export const SHADER_TEMPLATES = {
+export const GL_SHADER_TEMPLATES = {
   vertex: '#version 300 es\nprecision highp float;\nprecision highp int;',
   fragment: '#version 300 es\nprecision highp float;\nprecision highp int;',
 } as const
