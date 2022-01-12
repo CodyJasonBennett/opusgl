@@ -36,22 +36,22 @@ interface CompiledMesh {
 
 export class WebGPURenderer {
   readonly canvas: HTMLCanvasElement
-  public gl: GPUCanvasContext
+  public gl!: GPUCanvasContext
   public clearColor = new Color(1, 1, 1)
   public clearAlpha = 0
 
   private _pixelRatio = 1
-  private _viewport: { x: number; y: number; width: number; height: number; minDepth: number; maxDepth: number }
-  private _scissor: { x: number; y: number; width: number; height: number }
+  private _viewport!: { x: number; y: number; width: number; height: number; minDepth: number; maxDepth: number }
+  private _scissor!: { x: number; y: number; width: number; height: number }
 
   private _params: Partial<Omit<WebGPURendererOptions, 'canvas'>>
-  private _adapter: GPUAdapter
-  private _device: GPUDevice
-  private _presentationFormat: GPUTextureFormat
-  private _colorTexture: GPUTexture
-  private _colorTextureView: GPUTextureView
-  private _depthTexture: GPUTexture
-  private _depthTextureView: GPUTextureView
+  private _adapter!: GPUAdapter
+  private _device!: GPUDevice
+  private _presentationFormat!: GPUTextureFormat
+  private _colorTexture!: GPUTexture
+  private _colorTextureView!: GPUTextureView
+  private _depthTexture!: GPUTexture
+  private _depthTextureView!: GPUTextureView
   private _compiled = new Map<Mesh['id'], CompiledMesh>()
 
   constructor({ canvas = document.createElement('canvas'), ...params }: Partial<WebGPURendererOptions> = {}) {
@@ -109,11 +109,11 @@ export class WebGPURenderer {
     if (!isSupported) throw 'WebGPU is not supported on this device!'
 
     // Init API
-    this._adapter = await navigator.gpu.requestAdapter(this._params)
+    this._adapter = (await navigator.gpu.requestAdapter(this._params))!
     this._device = await this._adapter.requestDevice(this._params)
 
     // Init GL
-    this.gl = this._params.context ?? this.canvas.getContext('webgpu')
+    this.gl = this._params.context ?? this.canvas.getContext('webgpu')!
     this._presentationFormat = this.gl.getPreferredFormat(this._adapter)
     this.gl.configure({
       device: this._device,
@@ -257,22 +257,22 @@ export class WebGPURenderer {
   }
 
   private updateUniforms(child: Mesh) {
-    const compiled = this._compiled.get(child.id)
+    const compiled = this._compiled.get(child.id)!
 
     Object.entries(child.material.uniforms).forEach(([name, value]) => {
-      const buffer = compiled.uniforms.get(name)
+      const buffer = compiled.uniforms.get(name)!
       this._device.queue.writeBuffer(buffer, value.byteOffset, value)
     })
   }
 
   private updateAttributes(child: Mesh) {
-    const compiled = this._compiled.get(child.id)
+    const compiled = this._compiled.get(child.id)!
 
     Object.entries(child.geometry.attributes).forEach(([name, attribute]) => {
       if (!attribute.needsUpdate) return
 
       // Update attribute buffer
-      const buffer = compiled.buffers.get(name)
+      const buffer = compiled.buffers.get(name)!
       this._device.queue.writeBuffer(buffer, attribute.data.byteOffset, attribute.data)
     })
   }
@@ -312,7 +312,8 @@ export class WebGPURenderer {
     if (camera?.needsUpdate) camera.updateProjectionMatrix()
 
     // Render children
-    scene.children.forEach((child: Mesh) => {
+    const renderList = scene.children as Mesh[]
+    renderList.forEach((child) => {
       child.updateMatrixWorld()
 
       // Don't render invisible objects
@@ -324,13 +325,13 @@ export class WebGPURenderer {
       if (!isCompiled) this.compileMesh(child)
 
       // Bind
-      const compiled = this._compiled.get(child.id)
+      const compiled = this._compiled.get(child.id)!
       passEncoder.setPipeline(compiled.pipeline)
       passEncoder.setBindGroup(0, compiled.uniformBindGroup)
       Object.keys(child.geometry.attributes)
         .filter((name) => name !== 'index')
         .forEach((name, slot) => {
-          passEncoder.setVertexBuffer(slot, compiled.buffers.get(name))
+          passEncoder.setVertexBuffer(slot, compiled.buffers.get(name)!)
         })
 
       // Update built-in uniforms
@@ -347,7 +348,7 @@ export class WebGPURenderer {
       // Alternate drawing for indexed and non-indexed meshes
       const { index, position } = child.geometry.attributes
       if (child.geometry.attributes.index) {
-        passEncoder.setIndexBuffer(compiled.buffers.get('index'), 'uint16')
+        passEncoder.setIndexBuffer(compiled.buffers.get('index')!, 'uint16')
         passEncoder.drawIndexed(index.data.length / index.size, 1, 0, 0, 0)
       } else {
         passEncoder.draw(position.data.length / position.size, 1, 0, 0)

@@ -17,14 +17,14 @@ export interface MaterialOptions {
 export class Material implements MaterialOptions {
   readonly isMaterial = true
   readonly id: number
-  public vertex: string
-  public fragment: string
+  public vertex!: string
+  public fragment!: string
   readonly uniforms: { [name: string]: any } = {
     modelMatrix: new Matrix4(),
     normalMatrix: new Matrix3(),
     projectionMatrix: new Matrix4(),
   }
-  public side: keyof typeof GL_CULL_SIDES = 'BACK'
+  public side: keyof typeof GL_CULL_SIDES = 'back'
   public transparent = false
   public depthTest = true
   public depthWrite = true

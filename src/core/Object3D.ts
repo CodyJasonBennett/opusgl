@@ -20,7 +20,7 @@ export class Object3D {
   readonly quaternion = new Quaternion()
   readonly children: Object3D[] = []
   public matrixAutoUpdate = true
-  public parent?: Object3D = null
+  public parent?: Object3D
   public name?: string
 
   constructor() {
@@ -62,6 +62,6 @@ export class Object3D {
   remove(child: Object3D) {
     const childIndex = this.children.indexOf(child)
     if (childIndex !== -1) this.children.splice(childIndex, 1)
-    child.parent = null
+    delete child.parent
   }
 }

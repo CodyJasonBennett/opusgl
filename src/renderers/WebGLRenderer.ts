@@ -65,8 +65,8 @@ export class WebGLRenderer {
 
   private _params: Partial<Omit<WebGLRendererOptions, 'canvas' | 'context'>>
   private _pixelRatio = 1
-  private _viewport: { x: number; y: number; width: number; height: number }
-  private _scissor: { x: number; y: number; width: number; height: number }
+  private _viewport!: { x: number; y: number; width: number; height: number }
+  private _scissor!: { x: number; y: number; width: number; height: number }
 
   private _compiled = new Map<Mesh['id'], CompiledMesh>()
 
@@ -181,9 +181,9 @@ export class WebGLRenderer {
     this.gl.depthMask(enabled)
   }
 
-  private compileShader(name: string, source: string) {
+  private compileShader(name: 'vertex' | 'fragment', source: string) {
     const type = name === 'vertex' ? this.gl.VERTEX_SHADER : this.gl.FRAGMENT_SHADER
-    const shader = this.gl.createShader(type)
+    const shader = this.gl.createShader(type)!
 
     const template = GL_SHADER_TEMPLATES[name]
     this.gl.shaderSource(shader, template + source)
@@ -198,7 +198,7 @@ export class WebGLRenderer {
   }
 
   private compileProgram(shaders: CompiledMesh['shaders']) {
-    const program = this.gl.createProgram()
+    const program = this.gl.createProgram()!
 
     shaders.forEach((shader) => {
       this.gl.attachShader(program, shader)
@@ -214,7 +214,7 @@ export class WebGLRenderer {
   }
 
   private setUniform(name: string, type: number, value: any, program: CompiledMesh['program']) {
-    const location = this.gl.getUniformLocation(program, name)
+    const location = this.gl.getUniformLocation(program, name)!
 
     switch (type) {
       case this.gl.FLOAT:
@@ -286,14 +286,15 @@ export class WebGLRenderer {
     const attributes = new Map()
 
     // Create VAO. This will let us bind the mesh in a single call
-    const VAO = this.gl.createVertexArray()
+    const VAO = this.gl.createVertexArray()!
     this.gl.bindVertexArray(VAO)
 
     // Compile shaders
-    ;['vertex', 'fragment'].forEach((name) => {
-      const shader = this.compileShader(name, mesh.material[name])
-      shaders.set(name, shader)
-    })
+    const vertexShader = this.compileShader('vertex', mesh.material.vertex)
+    shaders.set('vertex', vertexShader)
+
+    const fragmentShader = this.compileShader('fragment', mesh.material.fragment)
+    shaders.set('fragment', fragmentShader)
 
     // Create program and compile it
     const program = this.compileProgram(shaders)
@@ -323,7 +324,7 @@ export class WebGLRenderer {
   private updateUniforms(child: Mesh, compiled: CompiledMesh) {
     const uniformsLength = this.gl.getProgramParameter(compiled.program, this.gl.ACTIVE_UNIFORMS)
     for (let i = 0; i < uniformsLength; i++) {
-      const { name, type } = this.gl.getActiveUniform(compiled.program, i)
+      const { name, type } = this.gl.getActiveUniform(compiled.program, i)!
       const value = child.material.uniforms[name]
       if (value === undefined) throw `Uniform not found for ${name}!`
 
@@ -338,7 +339,7 @@ export class WebGLRenderer {
       // TODO: automatically flag for updates in material w/setters
       if (!attribute.needsUpdate) return
 
-      const { buffer } = compiled.attributes.get(name)
+      const { buffer } = compiled.attributes.get(name)!
 
       this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer)
       this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, attribute.data as unknown as BufferSource)
@@ -360,7 +361,8 @@ export class WebGLRenderer {
     if (camera?.needsUpdate) camera.updateProjectionMatrix()
 
     // Render children
-    scene.children.forEach((child: Mesh) => {
+    const renderList = scene.children as Mesh[]
+    renderList.forEach((child) => {
       child.updateMatrixWorld()
 
       // Don't render invisible objects
@@ -372,7 +374,7 @@ export class WebGLRenderer {
       if (!isCompiled) this.compileMesh(child)
 
       // Bind
-      const compiled = this._compiled.get(child.id)
+      const compiled = this._compiled.get(child.id)!
       this.gl.useProgram(compiled.program)
       this.gl.bindVertexArray(compiled.VAO)
 
