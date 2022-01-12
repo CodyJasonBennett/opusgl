@@ -1,5 +1,3 @@
-import { Matrix4 } from '../math/Matrix4'
-import { Matrix3 } from '../math/Matrix3'
 import { GL_CULL_SIDES } from '../constants'
 
 let id = 0
@@ -19,11 +17,7 @@ export class Material implements MaterialOptions {
   readonly id: number
   public vertex!: string
   public fragment!: string
-  readonly uniforms: { [name: string]: any } = {
-    modelMatrix: new Matrix4(),
-    normalMatrix: new Matrix3(),
-    projectionMatrix: new Matrix4(),
-  }
+  readonly uniforms: { [name: string]: any } = {}
   public side: keyof typeof GL_CULL_SIDES = 'back'
   public transparent = false
   public depthTest = true
@@ -32,9 +26,6 @@ export class Material implements MaterialOptions {
   constructor(options?: MaterialOptions) {
     this.id = id++
 
-    if (options) {
-      const uniforms = Object.assign(this.uniforms, options.uniforms ?? {})
-      Object.assign(this, { ...options, uniforms })
-    }
+    if (options) Object.assign(this, options)
   }
 }

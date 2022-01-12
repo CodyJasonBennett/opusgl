@@ -1,8 +1,13 @@
 import { Color } from '../math/Color'
+import { Matrix4 } from '../math/Matrix4'
+import { Matrix3 } from '../math/Matrix3'
 import type { Mesh } from '../core/Mesh'
 import type { Scene } from '../core/Scene'
 import type { Camera } from '../core/Camera'
 import { GPU_CULL_SIDES, GPU_DRAW_MODES } from '../constants'
+
+// Converts WebGL NDC space (-1 to 1) to WebGPU (0 to 1, normalized)
+const NDCConversionMatrix = new Matrix4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0.5, 0.5, 0, 0, 0, 1)
 
 export interface WebGPURendererOptions {
   /**
@@ -147,7 +152,14 @@ export class WebGPURenderer {
     return buffer
   }
 
-  private compileUniformLayout(child: Mesh) {
+  private compileUniformLayout(child: Mesh, camera?: boolean) {
+    // Add camera built-ins
+    if (camera) {
+      child.material.uniforms.modelMatrix = new Matrix4()
+      child.material.uniforms.normalMatrix = new Matrix3()
+      child.material.uniforms.projectionMatrix = new Matrix4()
+    }
+
     // Create uniform buffers to bind
     const uniforms = new Map()
     const entries = Object.entries(child.material.uniforms).map(([name, value], index) => {
@@ -223,9 +235,9 @@ export class WebGPURenderer {
     return { vertex, fragment }
   }
 
-  private compileMesh(child: Mesh) {
+  private compileMesh(child: Mesh, camera?: boolean) {
     // Compile shaders and their uniforms
-    const { uniforms, uniformBindGroup, layout } = this.compileUniformLayout(child)
+    const { uniforms, uniformBindGroup, layout } = this.compileUniformLayout(child, camera)
     const { vertex, fragment } = this.compileShaders(child)
 
     // Create mesh rendering pipeline from program
@@ -309,7 +321,11 @@ export class WebGPURenderer {
 
     // Update camera matrices
     if (camera) camera.updateMatrixWorld()
-    if (camera?.needsUpdate) camera.updateProjectionMatrix()
+    if (camera?.needsUpdate) {
+      camera.updateProjectionMatrix()
+      camera.projectionMatrix.multiply(NDCConversionMatrix)
+      camera.needsUpdate = false
+    }
 
     // Render children
     const renderList = scene.children as Mesh[]
@@ -322,7 +338,7 @@ export class WebGPURenderer {
 
       // Compile on first render
       const isCompiled = this._compiled.has(child.id)
-      if (!isCompiled) this.compileMesh(child)
+      if (!isCompiled) this.compileMesh(child, !!camera)
 
       // Bind
       const compiled = this._compiled.get(child.id)!
@@ -335,9 +351,11 @@ export class WebGPURenderer {
         })
 
       // Update built-in uniforms
-      child.material.uniforms.modelMatrix.copy(child.matrix)
-      child.material.uniforms.normalMatrix.copy(child.normalMatrix)
-      if (camera) child.material.uniforms.projectionMatrix.copy(camera.projectionMatrix)
+      if (camera) {
+        child.material.uniforms.modelMatrix.copy(child.matrix)
+        child.material.uniforms.normalMatrix.copy(child.normalMatrix)
+        child.material.uniforms.projectionMatrix.copy(camera.projectionMatrix)
+      }
 
       // Update uniforms & attributes
       this.updateUniforms(child)

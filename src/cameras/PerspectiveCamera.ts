@@ -13,8 +13,6 @@ export class PerspectiveCamera extends Camera {
     this._aspect = aspect
     this._near = near
     this._far = far
-
-    this.updateProjectionMatrix()
   }
 
   get near() {
@@ -54,9 +52,6 @@ export class PerspectiveCamera extends Camera {
   }
 
   updateProjectionMatrix() {
-    if (!this.needsUpdate) return
-
-    this.needsUpdate = false
     this.projectionMatrix.perspective(this.fov, this.aspect, this.near, this.far)
   }
 }

@@ -17,8 +17,6 @@ export class OrthographicCamera extends Camera {
     this._right = right
     this._bottom = bottom
     this._top = top
-
-    this.updateProjectionMatrix()
   }
 
   get near() {
@@ -76,9 +74,6 @@ export class OrthographicCamera extends Camera {
   }
 
   updateProjectionMatrix() {
-    if (!this.needsUpdate) return
-
-    this.needsUpdate = false
     this.projectionMatrix.orthogonal(this.left, this.right, this.bottom, this.top, this.near, this.far)
   }
 }

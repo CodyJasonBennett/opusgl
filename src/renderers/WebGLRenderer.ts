@@ -1,4 +1,6 @@
 import { Color } from '../math/Color'
+import { Matrix4 } from '../math/Matrix4'
+import { Matrix3 } from '../math/Matrix3'
 import type { GeometryAttribute } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Scene } from '../core/Scene'
@@ -280,7 +282,7 @@ export class WebGLRenderer {
     return { buffer, location }
   }
 
-  private compileMesh(mesh: Mesh) {
+  private compileMesh(mesh: Mesh, camera?: boolean) {
     const shaders = new Map()
     const uniforms = new Map()
     const attributes = new Map()
@@ -299,6 +301,13 @@ export class WebGLRenderer {
     // Create program and compile it
     const program = this.compileProgram(shaders)
     this.gl.useProgram(program)
+
+    // Add camera built-ins
+    if (camera) {
+      mesh.material.uniforms.modelMatrix = new Matrix4()
+      mesh.material.uniforms.normalMatrix = new Matrix3()
+      mesh.material.uniforms.projectionMatrix = new Matrix4()
+    }
 
     // Allocate and set geometry attributes
     Object.entries(mesh.geometry.attributes).forEach(([name, attribute]) => {
@@ -358,7 +367,10 @@ export class WebGLRenderer {
 
     // Update camera matrices
     if (camera) camera.updateMatrixWorld()
-    if (camera?.needsUpdate) camera.updateProjectionMatrix()
+    if (camera?.needsUpdate) {
+      camera.updateProjectionMatrix()
+      camera.needsUpdate = false
+    }
 
     // Render children
     const renderList = scene.children as Mesh[]
@@ -371,7 +383,7 @@ export class WebGLRenderer {
 
       // Compile on first render
       const isCompiled = this._compiled.has(child.id)
-      if (!isCompiled) this.compileMesh(child)
+      if (!isCompiled) this.compileMesh(child, !!camera)
 
       // Bind
       const compiled = this._compiled.get(child.id)!
@@ -379,9 +391,11 @@ export class WebGLRenderer {
       this.gl.bindVertexArray(compiled.VAO)
 
       // Update built-in uniforms
-      child.material.uniforms.modelMatrix.copy(child.matrix)
-      child.material.uniforms.normalMatrix.copy(child.normalMatrix)
-      if (camera) child.material.uniforms.projectionMatrix.copy(camera.projectionMatrix)
+      if (camera) {
+        child.material.uniforms.modelMatrix.copy(child.matrix)
+        child.material.uniforms.normalMatrix.copy(child.normalMatrix)
+        child.material.uniforms.projectionMatrix.copy(camera.projectionMatrix)
+      }
 
       // Update program uniforms and attributes
       this.updateUniforms(child, compiled)
