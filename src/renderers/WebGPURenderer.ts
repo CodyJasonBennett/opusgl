@@ -19,6 +19,10 @@ export interface WebGPURendererOptions {
    */
   context: GPUCanvasContext
   /**
+   * Whether to enable antialiasing. Creates a multisampled rendertarget under the hood. Default is `true`.
+   */
+  antialias: boolean
+  /**
    * Whether to prioritize rendering performance or power efficiency.
    */
   powerPreference: 'high-performance' | 'low-power'
@@ -59,9 +63,20 @@ export class WebGPURenderer {
   private _depthTextureView!: GPUTextureView
   private _compiled = new Map<Mesh['id'], CompiledMesh>()
 
-  constructor({ canvas = document.createElement('canvas'), ...params }: Partial<WebGPURendererOptions> = {}) {
+  constructor({
+    canvas = document.createElement('canvas'),
+    antialias = true,
+    powerPreference,
+    requiredFeatures,
+    requiredLimits,
+  }: Partial<WebGPURendererOptions> = {}) {
     this.canvas = canvas
-    this._params = params
+    this._params = {
+      antialias,
+      powerPreference,
+      requiredFeatures,
+      requiredLimits,
+    }
 
     this.setSize(canvas.width, canvas.height)
   }
@@ -126,14 +141,31 @@ export class WebGPURenderer {
       usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
     })
 
+    // Render texture params
+    const size = [this._viewport.width, this._viewport.height, 1]
+    const sampleCount = this._params.antialias ? 4 : undefined
+    const usage = GPUTextureUsage.RENDER_ATTACHMENT
+
+    // Init multisampled color target for anti-aliasing
+    if (this._params.antialias) {
+      this._colorTexture = this._device.createTexture({
+        format: this._presentationFormat,
+        size,
+        usage,
+        sampleCount,
+      })
+
+      this._colorTextureView = this._colorTexture.createView()
+    }
+
     // Init depth
-    const depthTextureDesc: GPUTextureDescriptor = {
-      size: [this._viewport.width, this._viewport.height, 1],
+    this._depthTexture = this._device.createTexture({
       dimension: '2d',
       format: 'depth24plus-stencil8',
-      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
-    }
-    this._depthTexture = this._device.createTexture(depthTextureDesc)
+      size,
+      usage: usage | GPUTextureUsage.COPY_SRC,
+      sampleCount,
+    })
     this._depthTextureView = this._depthTexture.createView()
   }
 
@@ -241,6 +273,7 @@ export class WebGPURenderer {
     const { vertex, fragment } = this.compileShaders(child)
 
     // Create mesh rendering pipeline from program
+    const multisample = this._params.antialias ? { count: 4 } : undefined
     const pipeline = this._device.createRenderPipeline({
       layout,
       vertex,
@@ -255,6 +288,7 @@ export class WebGPURenderer {
         depthCompare: 'less',
         format: 'depth24plus-stencil8',
       },
+      multisample,
     })
 
     // Create buffer attributes
@@ -293,15 +327,19 @@ export class WebGPURenderer {
     // Begin recording GL commands
     const commandEncoder = this._device.createCommandEncoder()
 
-    // Flush screen
-    this._colorTexture = this.gl.getCurrentTexture()
-    this._colorTextureView = this._colorTexture.createView()
+    // Flush screen. If not anti-aliasing, re-use color texture
+    if (!this._params.antialias) {
+      this._colorTexture = this.gl.getCurrentTexture()
+      this._colorTextureView = this._colorTexture.createView()
+    }
 
     // Create frame
+    const resolveTarget = this._params.antialias ? this.gl.getCurrentTexture().createView() : undefined
     const passEncoder = commandEncoder.beginRenderPass({
       colorAttachments: [
         {
           view: this._colorTextureView,
+          resolveTarget,
           loadValue: { r: this.clearColor.r, g: this.clearColor.g, b: this.clearColor.b, a: this.clearAlpha },
           storeOp: 'store',
         },
@@ -367,9 +405,9 @@ export class WebGPURenderer {
       const { index, position } = child.geometry.attributes
       if (child.geometry.attributes.index) {
         passEncoder.setIndexBuffer(compiled.buffers.get('index')!, 'uint16')
-        passEncoder.drawIndexed(index.data.length / index.size, 1, 0, 0, 0)
+        passEncoder.drawIndexed(index.data.length / index.size)
       } else {
-        passEncoder.draw(position.data.length / position.size, 1, 0, 0)
+        passEncoder.draw(position.data.length / position.size)
       }
     })
 
