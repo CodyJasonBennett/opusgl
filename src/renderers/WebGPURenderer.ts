@@ -1,5 +1,5 @@
 import { Matrix4 } from '../math/Matrix4'
-import { Color } from '../math/Color'
+import { Renderer } from '../core/Renderer'
 import type { Mesh } from '../core/Mesh'
 import type { Scene } from '../core/Scene'
 import type { Camera } from '../core/Camera'
@@ -42,15 +42,8 @@ interface CompiledMesh {
   buffers: Map<string, GPUBuffer>
 }
 
-export class WebGPURenderer {
-  readonly canvas: HTMLCanvasElement
+export class WebGPURenderer extends Renderer {
   public gl!: GPUCanvasContext
-  public clearColor = new Color(1, 1, 1)
-  public clearAlpha = 0
-
-  private _pixelRatio = 1
-  private _viewport!: { x: number; y: number; width: number; height: number; minDepth: number; maxDepth: number }
-  private _scissor!: { x: number; y: number; width: number; height: number }
 
   private _params: Partial<Omit<WebGPURendererOptions, 'canvas'>>
   private _adapter!: GPUAdapter
@@ -69,6 +62,7 @@ export class WebGPURenderer {
     requiredFeatures,
     requiredLimits,
   }: Partial<WebGPURendererOptions> = {}) {
+    super()
     this.canvas = canvas
     this._params = {
       antialias,
@@ -78,48 +72,6 @@ export class WebGPURenderer {
     }
 
     this.setSize(canvas.width, canvas.height)
-  }
-
-  get pixelRatio() {
-    return this._pixelRatio
-  }
-
-  setPixelRatio(pixelRatio: number | number[]) {
-    if (Array.isArray(pixelRatio)) {
-      const [min, max] = pixelRatio
-      this._pixelRatio = Math.min(Math.max(min, window.devicePixelRatio), max)
-    } else {
-      this._pixelRatio = pixelRatio
-    }
-
-    this.setSize(this._viewport.width, this._viewport.height)
-  }
-
-  setSize(width: number, height: number) {
-    this.canvas.width = Math.floor(width * this.pixelRatio)
-    this.canvas.height = Math.floor(height * this.pixelRatio)
-
-    this.canvas.style.width = `${width}px`
-    this.canvas.style.height = `${height}px`
-
-    this.setViewport(0, 0, width, height)
-    this.setScissor(0, 0, width, height)
-  }
-
-  get viewport() {
-    return this._viewport
-  }
-
-  setViewport(x: number, y: number, width: number, height: number, minDepth = 0, maxDepth = 1) {
-    this._viewport = { x, y, width, height, minDepth, maxDepth }
-  }
-
-  get scissor() {
-    return this._scissor
-  }
-
-  setScissor(x: number, y: number, width: number, height: number) {
-    this._scissor = { x, y, width, height }
   }
 
   async init() {
@@ -141,7 +93,7 @@ export class WebGPURenderer {
     })
 
     // Render texture params
-    const size = [this._viewport.width, this._viewport.height, 1]
+    const size = [this.viewport.width, this.viewport.height, 1]
     const sampleCount = this._params.antialias ? 4 : undefined
     const usage = GPUTextureUsage.RENDER_ATTACHMENT
 
@@ -353,8 +305,8 @@ export class WebGPURenderer {
     })
 
     // Update drawing area
-    passEncoder.setViewport(this._viewport.x, this._viewport.y, this._viewport.width, this._viewport.height, 0, 1)
-    passEncoder.setScissorRect(this._scissor.x, this._scissor.y, this._scissor.width, this._scissor.height)
+    passEncoder.setViewport(this.viewport.x, this.viewport.y, this.viewport.width, this.viewport.height, 0, 1)
+    passEncoder.setScissorRect(this.scissor.x, this.scissor.y, this.scissor.width, this.scissor.height)
 
     // Update camera matrices
     if (camera) camera.updateMatrixWorld()

@@ -1,4 +1,4 @@
-import { Color } from '../math/Color'
+import { Renderer } from '../core/Renderer'
 import type { GeometryAttribute } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Scene } from '../core/Scene'
@@ -56,18 +56,12 @@ interface CompiledMesh {
   program: WebGLProgram
 }
 
-export class WebGLRenderer {
+export class WebGLRenderer extends Renderer {
   readonly canvas: HTMLCanvasElement
   readonly gl: WebGL2RenderingContext
   public autoClear = true
-  public clearColor = new Color(1, 1, 1)
-  public clearAlpha = 0
 
   private _params: Partial<Omit<WebGLRendererOptions, 'canvas' | 'context'>>
-  private _pixelRatio = 1
-  private _viewport!: { x: number; y: number; width: number; height: number }
-  private _scissor!: { x: number; y: number; width: number; height: number }
-
   private _compiled = new Map<Mesh['id'], CompiledMesh>()
 
   constructor({
@@ -82,6 +76,7 @@ export class WebGLRenderer {
     preserveDrawingBuffer = false,
     powerPreference = 'default',
   }: Partial<WebGLRendererOptions> = {}) {
+    super()
     this._params = {
       alpha,
       antialias,
@@ -104,51 +99,17 @@ export class WebGLRenderer {
     this.setSize(canvas.width, canvas.height)
   }
 
-  setSize(width: number, height: number) {
-    this.canvas.width = Math.floor(width * this._pixelRatio)
-    this.canvas.height = Math.floor(height * this._pixelRatio)
-
-    this.canvas.style.width = `${width}px`
-    this.canvas.style.height = `${height}px`
-
-    this.setViewport(0, 0, width, height)
-    this.setScissor(0, 0, width, height)
-  }
-
-  get pixelRatio() {
-    return this._pixelRatio
-  }
-
-  setPixelRatio(pixelRatio: number | number[]) {
-    if (Array.isArray(pixelRatio)) {
-      const [min, max] = pixelRatio
-      this._pixelRatio = Math.min(Math.max(min, window.devicePixelRatio), max)
-    } else {
-      this._pixelRatio = pixelRatio
-    }
-
-    this.setSize(this._viewport.width, this._viewport.height)
-  }
-
-  get viewport() {
-    return this._viewport
-  }
-
   setViewport(x: number, y: number, width: number, height: number) {
-    const scaledWidth = Math.floor(width * this._pixelRatio)
-    const scaledHeight = Math.floor(height * this._pixelRatio)
+    super.setViewport(x, y, width, height)
 
+    const scaledWidth = Math.floor(width * this.pixelRatio)
+    const scaledHeight = Math.floor(height * this.pixelRatio)
     this.gl.viewport(x, y, scaledWidth, scaledHeight)
-    this._viewport = { x, y, width, height }
-  }
-
-  get scissor() {
-    return this._scissor
   }
 
   setScissor(x: number, y: number, width: number, height: number) {
+    super.setScissor(x, y, width, height)
     this.gl.scissor(x, y, width, height)
-    this._scissor = { x, y, width, height }
   }
 
   setScissorTest(enabled: boolean) {
