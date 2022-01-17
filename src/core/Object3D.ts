@@ -9,9 +9,11 @@ let id = 0
 export class Object3D {
   readonly isObject3D = true
   readonly id: number
-  readonly matrix = new Matrix4()
-  readonly normalMatrix = new Matrix3()
+  readonly localMatrix = new Matrix4()
   readonly inverseMatrix = new Matrix4()
+  readonly normalMatrix = new Matrix3()
+  readonly modelMatrix = new Matrix4()
+  readonly modelViewMatrix = new Matrix4()
   readonly position = new Vector3()
   readonly target = new Vector3()
   readonly up = new Vector3(0, 1, 0)
@@ -33,25 +35,24 @@ export class Object3D {
     } else {
       this.target.copy(x)
     }
+
+    this.localMatrix.lookAt(this.position, this.target, this.up)
+    this.localMatrix.decompose(this.position, this.quaternion, this.scale)
   }
 
   updateMatrixWorld() {
     if (!this.matrixAutoUpdate) return
 
-    this.inverseMatrix.identity()
-    this.matrix.identity()
-    this.quaternion.identity()
-
-    this.inverseMatrix.lookAt(this.position, this.target, this.up)
-
-    if (this.parent) {
-      this.matrix.multiply(this.parent.matrix)
-    }
-
     this.quaternion.fromEuler(this.rotation)
-    this.matrix.compose(this.position, this.quaternion, this.scale)
+    this.localMatrix.compose(this.position, this.quaternion, this.scale)
 
-    this.normalMatrix.getNormalMatrix(this.matrix)
+    this.normalMatrix.getNormalMatrix(this.localMatrix)
+
+    this.modelMatrix.copy(this.localMatrix)
+    if (this.parent) this.modelMatrix.multiply(this.parent.modelMatrix)
+
+    this.inverseMatrix.copy(this.modelMatrix).invert()
+    this.modelViewMatrix.copy(this.modelMatrix)
   }
 
   add(child: Object3D) {

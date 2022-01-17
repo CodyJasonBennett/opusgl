@@ -1,6 +1,5 @@
-import { Color } from '../math/Color'
 import { Matrix4 } from '../math/Matrix4'
-import { Matrix3 } from '../math/Matrix3'
+import { Color } from '../math/Color'
 import type { Mesh } from '../core/Mesh'
 import type { Scene } from '../core/Scene'
 import type { Camera } from '../core/Camera'
@@ -184,12 +183,12 @@ export class WebGPURenderer {
     return buffer
   }
 
-  private compileUniformLayout(child: Mesh, camera?: boolean) {
+  private compileUniformLayout(child: Mesh, camera?: Camera) {
     // Add camera built-ins
     if (camera) {
-      child.material.uniforms.modelMatrix = new Matrix4()
-      child.material.uniforms.normalMatrix = new Matrix3()
-      child.material.uniforms.projectionMatrix = new Matrix4()
+      child.material.uniforms.modelMatrix = child.modelMatrix
+      child.material.uniforms.normalMatrix = child.normalMatrix
+      child.material.uniforms.projectionMatrix = camera.projectionMatrix
     }
 
     // Create uniform buffers to bind
@@ -267,7 +266,7 @@ export class WebGPURenderer {
     return { vertex, fragment }
   }
 
-  private compileMesh(child: Mesh, camera?: boolean) {
+  private compileMesh(child: Mesh, camera?: Camera) {
     // Compile shaders and their uniforms
     const { uniforms, uniformBindGroup, layout } = this.compileUniformLayout(child, camera)
     const { vertex, fragment } = this.compileShaders(child)
@@ -376,7 +375,7 @@ export class WebGPURenderer {
 
       // Compile on first render
       const isCompiled = this._compiled.has(child.id)
-      if (!isCompiled) this.compileMesh(child, !!camera)
+      if (!isCompiled) this.compileMesh(child, camera)
 
       // Bind
       const compiled = this._compiled.get(child.id)!
@@ -388,12 +387,8 @@ export class WebGPURenderer {
           passEncoder.setVertexBuffer(slot, compiled.buffers.get(name)!)
         })
 
-      // Update built-in uniforms
-      if (camera) {
-        child.material.uniforms.modelMatrix.copy(child.matrix)
-        child.material.uniforms.normalMatrix.copy(child.normalMatrix)
-        child.material.uniforms.projectionMatrix.copy(camera.projectionMatrix)
-      }
+      // Update camera built-ins
+      if (camera) child.modelViewMatrix.multiply(camera.inverseMatrix)
 
       // Update uniforms & attributes
       this.updateUniforms(child)

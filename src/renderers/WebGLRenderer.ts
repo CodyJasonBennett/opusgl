@@ -1,6 +1,4 @@
 import { Color } from '../math/Color'
-import { Matrix4 } from '../math/Matrix4'
-import { Matrix3 } from '../math/Matrix3'
 import type { GeometryAttribute } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Scene } from '../core/Scene'
@@ -282,7 +280,7 @@ export class WebGLRenderer {
     return { buffer, location }
   }
 
-  private compileMesh(mesh: Mesh, camera?: boolean) {
+  private compileMesh(mesh: Mesh, camera?: Camera) {
     const shaders = new Map()
     const uniforms = new Map()
     const attributes = new Map()
@@ -302,11 +300,13 @@ export class WebGLRenderer {
     const program = this.compileProgram(shaders)
     this.gl.useProgram(program)
 
-    // Add camera built-ins
+    // Add built-ins
+    mesh.material.uniforms.modelMatrix = mesh.modelMatrix
+    mesh.material.uniforms.normalMatrix = mesh.normalMatrix
+
     if (camera) {
-      mesh.material.uniforms.modelMatrix = new Matrix4()
-      mesh.material.uniforms.normalMatrix = new Matrix3()
-      mesh.material.uniforms.projectionMatrix = new Matrix4()
+      mesh.material.uniforms.modelViewMatrix = mesh.modelViewMatrix
+      mesh.material.uniforms.projectionMatrix = camera.projectionMatrix
     }
 
     // Allocate and set geometry attributes
@@ -383,19 +383,15 @@ export class WebGLRenderer {
 
       // Compile on first render
       const isCompiled = this._compiled.has(child.id)
-      if (!isCompiled) this.compileMesh(child, !!camera)
+      if (!isCompiled) this.compileMesh(child, camera)
 
       // Bind
       const compiled = this._compiled.get(child.id)!
       this.gl.useProgram(compiled.program)
       this.gl.bindVertexArray(compiled.VAO)
 
-      // Update built-in uniforms
-      if (camera) {
-        child.material.uniforms.modelMatrix.copy(child.matrix)
-        child.material.uniforms.normalMatrix.copy(child.normalMatrix)
-        child.material.uniforms.projectionMatrix.copy(camera.projectionMatrix)
-      }
+      // Update camera built-ins
+      if (camera) child.modelViewMatrix.multiply(camera.inverseMatrix)
 
       // Update program uniforms and attributes
       this.updateUniforms(child, compiled)

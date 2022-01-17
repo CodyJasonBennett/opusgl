@@ -461,4 +461,44 @@ export class Matrix4 extends Float32Array {
 
     return this
   }
+
+  invert() {
+    const b00 = this[0] * this[5] - this[1] * this[4]
+    const b01 = this[0] * this[6] - this[2] * this[4]
+    const b02 = this[0] * this[7] - this[3] * this[4]
+    const b03 = this[1] * this[6] - this[2] * this[5]
+    const b04 = this[1] * this[7] - this[3] * this[5]
+    const b05 = this[2] * this[7] - this[3] * this[6]
+    const b06 = this[8] * this[13] - this[9] * this[12]
+    const b07 = this[8] * this[14] - this[10] * this[12]
+    const b08 = this[8] * this[15] - this[11] * this[12]
+    const b09 = this[9] * this[14] - this[10] * this[13]
+    const b10 = this[9] * this[15] - this[11] * this[13]
+    const b11 = this[10] * this[15] - this[11] * this[14]
+
+    // Calculate the determinant
+    let det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06
+    if (!det) return
+
+    det = 1.0 / det
+
+    this[0] = (this[5] * b11 - this[6] * b10 + this[7] * b09) * det
+    this[1] = (this[2] * b10 - this[1] * b11 - this[3] * b09) * det
+    this[2] = (this[13] * b05 - this[14] * b04 + this[15] * b03) * det
+    this[3] = (this[10] * b04 - this[9] * b05 - this[11] * b03) * det
+    this[4] = (this[6] * b08 - this[4] * b11 - this[7] * b07) * det
+    this[5] = (this[0] * b11 - this[2] * b08 + this[3] * b07) * det
+    this[6] = (this[14] * b02 - this[12] * b05 - this[15] * b01) * det
+    this[7] = (this[8] * b05 - this[10] * b02 + this[11] * b01) * det
+    this[8] = (this[4] * b10 - this[5] * b08 + this[7] * b06) * det
+    this[9] = (this[1] * b08 - this[0] * b10 - this[3] * b06) * det
+    this[10] = (this[12] * b04 - this[13] * b02 + this[15] * b00) * det
+    this[11] = (this[9] * b02 - this[8] * b04 - this[11] * b00) * det
+    this[12] = (this[5] * b07 - this[4] * b09 - this[6] * b06) * det
+    this[13] = (this[0] * b09 - this[1] * b07 + this[2] * b06) * det
+    this[14] = (this[13] * b01 - this[12] * b03 - this[14] * b00) * det
+    this[15] = (this[8] * b03 - this[9] * b01 + this[10] * b00) * det
+
+    return this
+  }
 }
