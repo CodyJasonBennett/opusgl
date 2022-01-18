@@ -137,11 +137,11 @@ export class WebGPURenderer extends Renderer {
 
   private compileUniformLayout(mesh: Mesh, camera?: Camera) {
     // Add built-ins
-    mesh.material.uniforms.modelMatrix = mesh.modelMatrix
-    mesh.material.uniforms.normalMatrix = mesh.normalMatrix
+    mesh.material.uniforms.modelMatrix = mesh.worldMatrix
 
     if (camera) {
       mesh.material.uniforms.modelViewMatrix = mesh.modelViewMatrix
+      mesh.material.uniforms.normalMatrix = mesh.normalMatrix
       mesh.material.uniforms.viewMatrix = camera.viewMatrix
       mesh.material.uniforms.projectionMatrix = camera.projectionMatrix
     }
@@ -322,7 +322,7 @@ export class WebGPURenderer extends Renderer {
     // Render children
     const renderList = scene.children as Mesh[]
     renderList.forEach((mesh) => {
-      mesh.updateMatrixWorld()
+      mesh.updateMatrixWorld(camera)
 
       // Don't render invisible objects
       // TODO: filter out occluded meshes
@@ -341,9 +341,6 @@ export class WebGPURenderer extends Renderer {
         .forEach((name, slot) => {
           passEncoder.setVertexBuffer(slot, compiled.buffers.get(name)!)
         })
-
-      // Update camera built-ins
-      if (camera) mesh.modelViewMatrix.copy(mesh.modelMatrix).multiply(camera.viewMatrix)
 
       // Update uniforms & attributes
       this.updateUniforms(mesh)

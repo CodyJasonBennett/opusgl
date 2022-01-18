@@ -262,11 +262,11 @@ export class WebGLRenderer extends Renderer {
     this.gl.useProgram(program)
 
     // Add built-ins
-    mesh.material.uniforms.modelMatrix = mesh.modelMatrix
-    mesh.material.uniforms.normalMatrix = mesh.normalMatrix
+    mesh.material.uniforms.modelMatrix = mesh.worldMatrix
 
     if (camera) {
       mesh.material.uniforms.modelViewMatrix = mesh.modelViewMatrix
+      mesh.material.uniforms.normalMatrix = mesh.normalMatrix
       mesh.material.uniforms.viewMatrix = camera.viewMatrix
       mesh.material.uniforms.projectionMatrix = camera.projectionMatrix
     }
@@ -336,7 +336,7 @@ export class WebGLRenderer extends Renderer {
     // Render children
     const renderList = scene.children as Mesh[]
     renderList.forEach((mesh) => {
-      mesh.updateMatrixWorld()
+      mesh.updateMatrixWorld(camera)
 
       // Don't render invisible objects
       // TODO: filter out occluded meshes
@@ -350,9 +350,6 @@ export class WebGLRenderer extends Renderer {
       const compiled = this._compiled.get(mesh.id)!
       this.gl.useProgram(compiled.program)
       this.gl.bindVertexArray(compiled.VAO)
-
-      // Update camera built-ins
-      if (camera) mesh.modelViewMatrix.copy(mesh.modelMatrix).multiply(camera.viewMatrix)
 
       // Update program uniforms and attributes
       this.updateUniforms(mesh, compiled)

@@ -1,5 +1,4 @@
 import { Matrix4 } from '../math/Matrix4'
-import { Matrix3 } from '../math/Matrix3'
 import { Vector3 } from '../math/Vector3'
 import { Euler } from '../math/Euler'
 import { Quaternion } from '../math/Quaternion'
@@ -9,10 +8,8 @@ let id = 0
 export class Object3D {
   readonly isObject3D = true
   readonly id: number
-  readonly localMatrix = new Matrix4()
-  readonly normalMatrix = new Matrix3()
-  readonly modelMatrix = new Matrix4()
-  readonly modelViewMatrix = new Matrix4()
+  readonly matrix = new Matrix4()
+  readonly worldMatrix = new Matrix4()
   readonly position = new Vector3()
   readonly target = new Vector3()
   readonly up = new Vector3(0, 1, 0)
@@ -35,20 +32,18 @@ export class Object3D {
       this.target.copy(x)
     }
 
-    this.localMatrix.lookAt(this.position, this.target, this.up)
-    this.localMatrix.decompose(this.position, this.quaternion, this.scale)
+    this.matrix.lookAt(this.position, this.target, this.up)
+    this.matrix.decompose(this.position, this.quaternion, this.scale)
   }
 
   updateMatrixWorld() {
     if (!this.matrixAutoUpdate) return
 
     this.quaternion.fromEuler(this.rotation)
-    this.localMatrix.compose(this.position, this.quaternion, this.scale)
+    this.matrix.compose(this.position, this.quaternion, this.scale)
 
-    this.normalMatrix.getNormalMatrix(this.localMatrix)
-
-    this.modelMatrix.copy(this.localMatrix)
-    if (this.parent) this.modelMatrix.multiply(this.parent.modelMatrix)
+    this.worldMatrix.copy(this.matrix)
+    if (this.parent) this.worldMatrix.multiply(this.parent.worldMatrix)
   }
 
   add(child: Object3D) {

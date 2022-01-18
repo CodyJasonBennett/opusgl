@@ -10,7 +10,7 @@ export abstract class Camera extends Object3D {
   updateMatrixWorld() {
     super.updateMatrixWorld()
 
-    this.viewMatrix.copy(this.modelMatrix).invert()
+    this.viewMatrix.copy(this.worldMatrix).invert()
   }
 
   abstract updateProjectionMatrix(): void
