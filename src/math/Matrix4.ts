@@ -170,10 +170,6 @@ export class Matrix4 extends Float32Array {
     )
   }
 
-  negate() {
-    return this.multiply(-1)
-  }
-
   determinant() {
     const b0 = this[0] * this[5] - this[1] * this[4]
     const b1 = this[0] * this[6] - this[2] * this[4]
@@ -189,25 +185,25 @@ export class Matrix4 extends Float32Array {
     return this[7] * b6 - this[3] * b7 + this[15] * b8 - this[11] * b9
   }
 
-  transpose(m: Matrix4 = this) {
-    this[0] = m[0]
-    this[1] = m[4]
-    this[2] = m[8]
-    this[3] = m[12]
-    this[4] = m[1]
-    this[5] = m[5]
-    this[6] = m[9]
-    this[7] = m[13]
-    this[8] = m[2]
-    this[9] = m[6]
-    this[10] = m[10]
-    this[11] = m[14]
-    this[12] = m[3]
-    this[13] = m[7]
-    this[14] = m[11]
-    this[15] = m[15]
-
-    return this
+  transpose() {
+    return this.set(
+      this[0],
+      this[4],
+      this[8],
+      this[12],
+      this[1],
+      this[5],
+      this[9],
+      this[13],
+      this[2],
+      this[6],
+      this[10],
+      this[14],
+      this[3],
+      this[7],
+      this[11],
+      this[15],
+    )
   }
 
   perspective(fov: number, aspect: number, near: number, far: number) {
@@ -341,7 +337,7 @@ export class Matrix4 extends Float32Array {
   rotate(radians: number, axis: Vector3) {
     const length = axis.getLength()
 
-    if (length < Number.EPSILON) return
+    if (length < Number.EPSILON) return this
 
     axis.multiply(1 / length)
 
@@ -349,7 +345,6 @@ export class Matrix4 extends Float32Array {
     const c = Math.cos(radians)
     const t = 1 - c
 
-    // Construct the elements of the rotation matrix
     const b00 = axis.x * axis.x * t + c
     const b02 = axis.z * axis.x * t - axis.y * s
     const b01 = axis.y * axis.x * t + axis.z * s
@@ -360,8 +355,7 @@ export class Matrix4 extends Float32Array {
     const b21 = axis.y * axis.z * t - axis.x * s
     const b22 = axis.z * axis.z * t + c
 
-    // Perform rotation-specific matrix multiplication
-    this.set(
+    return this.set(
       this[0] * b00 + this[4] * b01 + this[8] * b02,
       this[1] * b00 + this[5] * b01 + this[9] * b02,
       this[2] * b00 + this[6] * b01 + this[10] * b02,
@@ -379,8 +373,6 @@ export class Matrix4 extends Float32Array {
       this[14],
       this[15],
     )
-
-    return this
   }
 
   compose(position: Vector3, quaternion: Quaternion, scale: Vector3) {
@@ -478,29 +470,29 @@ export class Matrix4 extends Float32Array {
     const b10 = this[9] * this[15] - this[11] * this[13]
     const b11 = this[10] * this[15] - this[11] * this[14]
 
-    // Calculate the determinant
-    let det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06
-    if (!det) return
+    // Make sure we're not dividing by zero
+    const det = this.determinant()
+    if (!det) return this
 
-    det = 1.0 / det
+    const invDet = 1 / det
 
-    this[0] = (this[5] * b11 - this[6] * b10 + this[7] * b09) * det
-    this[1] = (this[2] * b10 - this[1] * b11 - this[3] * b09) * det
-    this[2] = (this[13] * b05 - this[14] * b04 + this[15] * b03) * det
-    this[3] = (this[10] * b04 - this[9] * b05 - this[11] * b03) * det
-    this[4] = (this[6] * b08 - this[4] * b11 - this[7] * b07) * det
-    this[5] = (this[0] * b11 - this[2] * b08 + this[3] * b07) * det
-    this[6] = (this[14] * b02 - this[12] * b05 - this[15] * b01) * det
-    this[7] = (this[8] * b05 - this[10] * b02 + this[11] * b01) * det
-    this[8] = (this[4] * b10 - this[5] * b08 + this[7] * b06) * det
-    this[9] = (this[1] * b08 - this[0] * b10 - this[3] * b06) * det
-    this[10] = (this[12] * b04 - this[13] * b02 + this[15] * b00) * det
-    this[11] = (this[9] * b02 - this[8] * b04 - this[11] * b00) * det
-    this[12] = (this[5] * b07 - this[4] * b09 - this[6] * b06) * det
-    this[13] = (this[0] * b09 - this[1] * b07 + this[2] * b06) * det
-    this[14] = (this[13] * b01 - this[12] * b03 - this[14] * b00) * det
-    this[15] = (this[8] * b03 - this[9] * b01 + this[10] * b00) * det
-
-    return this
+    return this.set(
+      this[5] * b11 - this[6] * b10 + this[7] * b09,
+      this[2] * b10 - this[1] * b11 - this[3] * b09,
+      this[13] * b05 - this[14] * b04 + this[15] * b03,
+      this[10] * b04 - this[9] * b05 - this[11] * b03,
+      this[6] * b08 - this[4] * b11 - this[7] * b07,
+      this[0] * b11 - this[2] * b08 + this[3] * b07,
+      this[14] * b02 - this[12] * b05 - this[15] * b01,
+      this[8] * b05 - this[10] * b02 + this[11] * b01,
+      this[4] * b10 - this[5] * b08 + this[7] * b06,
+      this[1] * b08 - this[0] * b10 - this[3] * b06,
+      this[12] * b04 - this[13] * b02 + this[15] * b00,
+      this[9] * b02 - this[8] * b04 - this[11] * b00,
+      this[5] * b07 - this[4] * b09 - this[6] * b06,
+      this[0] * b09 - this[1] * b07 + this[2] * b06,
+      this[13] * b01 - this[12] * b03 - this[14] * b00,
+      this[8] * b03 - this[9] * b01 + this[10] * b00,
+    ).multiply(invDet)
   }
 }

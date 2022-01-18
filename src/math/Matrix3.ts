@@ -108,18 +108,7 @@ export class Matrix3 extends Float32Array {
   }
 
   transpose() {
-    const a01 = this[1]
-    const a02 = this[2]
-    const a12 = this[5]
-
-    this[1] = this[3]
-    this[2] = this[6]
-    this[3] = a01
-    this[5] = this[7]
-    this[6] = a02
-    this[7] = a12
-
-    return this
+    return this.set(this[0], this[3], this[6], this[1], this[4], this[7], this[2], this[5], this[8])
   }
 
   getNormalMatrix(m: Matrix4) {
@@ -139,19 +128,23 @@ export class Matrix3 extends Float32Array {
     const b11 = -this[8] * this[3] + this[5] * this[6]
     const b21 = this[7] * this[3] - this[4] * this[6]
 
-    const invDet = 1 / this.determinant()
+    // Make sure we're not dividing by zero
+    const det = this.determinant()
+    if (!det) return this
 
-    this[0] = b01 * invDet
-    this[1] = (-this[8] * this[1] + this[2] * this[7]) * invDet
-    this[2] = (this[5] * this[1] - this[2] * this[4]) * invDet
-    this[3] = b11 * invDet
-    this[4] = (this[8] * this[0] - this[2] * this[6]) * invDet
-    this[5] = (-this[5] * this[0] + this[2] * this[3]) * invDet
-    this[6] = b21 * invDet
-    this[7] = (-this[7] * this[0] + this[1] * this[6]) * invDet
-    this[8] = (this[4] * this[0] - this[1] * this[3]) * invDet
+    const invDet = 1 / det
 
-    return this
+    return this.set(
+      b01,
+      -this[8] * this[1] + this[2] * this[7],
+      this[5] * this[1] - this[2] * this[4],
+      b11,
+      this[8] * this[0] - this[2] * this[6],
+      -this[5] * this[0] + this[2] * this[3],
+      b21,
+      -this[7] * this[0] + this[1] * this[6],
+      this[4] * this[0] - this[1] * this[3],
+    ).multiply(invDet)
   }
 
   translate(v: Vector2) {
@@ -180,15 +173,17 @@ export class Matrix3 extends Float32Array {
     const c = Math.cos(radians)
     const s = Math.sin(radians)
 
-    this[0] = c * this[0] + s * this[1]
-    this[3] = c * this[3] + s * this[4]
-    this[6] = c * this[6] + s * this[7]
-
-    this[1] = -s * this[0] + c * this[1]
-    this[4] = -s * this[3] + c * this[4]
-    this[7] = -s * this[6] + c * this[7]
-
-    return this
+    return this.set(
+      c * this[0] + s * this[1],
+      -s * this[0] + c * this[1],
+      this[2],
+      c * this[3] + s * this[4],
+      -s * this[3] + c * this[4],
+      this[5],
+      c * this[6] + s * this[7],
+      -s * this[6] + c * this[7],
+      this[8],
+    )
   }
 
   fromMatrix4(m: Matrix4) {
