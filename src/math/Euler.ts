@@ -2,7 +2,7 @@ export type EulerOrder = 'XYZ' | 'XZY' | 'YXZ' | 'YZX' | 'ZXY' | 'ZYX'
 
 export class Euler extends Float32Array {
   readonly isEuler = true
-  public order: EulerOrder = 'XYZ'
+  public order: EulerOrder = 'YXZ'
 
   constructor(x = 0, y = x, z = x) {
     super(3)
@@ -116,8 +116,7 @@ export class Euler extends Float32Array {
     return (
       this.x === e.x &&
       this.y === e.y &&
-      this.z === e.z &&
-      this.order === e.order
+      this.z === e.z
     )
   }
 }

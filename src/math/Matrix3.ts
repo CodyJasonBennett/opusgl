@@ -74,17 +74,17 @@ export class Matrix3 extends Float32Array {
       this[7] *= t
       this[8] *= t
     } else {
-      this[0] = this[0] * t[0] + this[3] * t[1] + this[6] * t[2]
-      this[3] = this[0] * t[3] + this[3] * t[4] + this[6] * t[5]
-      this[6] = this[0] * t[6] + this[3] * t[7] + this[6] * t[8]
-
-      this[1] = this[1] * t[0] + this[4] * t[1] + this[7] * t[2]
-      this[4] = this[1] * t[3] + this[4] * t[4] + this[7] * t[5]
-      this[7] = this[1] * t[6] + this[4] * t[7] + this[7] * t[8]
-
-      this[2] = this[2] * t[0] + this[5] * t[1] + this[8] * t[2]
-      this[5] = this[2] * t[3] + this[5] * t[4] + this[8] * t[5]
-      this[8] = this[2] * t[6] + this[5] * t[7] + this[8] * t[8]
+      this.set(
+        this[0] * t[0] + this[3] * t[1] + this[6] * t[2],
+        this[1] * t[0] + this[4] * t[1] + this[7] * t[2],
+        this[2] * t[0] + this[5] * t[1] + this[8] * t[2],
+        this[0] * t[3] + this[3] * t[4] + this[6] * t[5],
+        this[1] * t[3] + this[4] * t[4] + this[7] * t[5],
+        this[2] * t[3] + this[5] * t[4] + this[8] * t[5],
+        this[0] * t[6] + this[3] * t[7] + this[6] * t[8],
+        this[1] * t[6] + this[4] * t[7] + this[7] * t[8],
+        this[2] * t[6] + this[5] * t[7] + this[8] * t[8],
+      )
     }
 
     return this

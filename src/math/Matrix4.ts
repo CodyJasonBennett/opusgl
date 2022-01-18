@@ -122,25 +122,24 @@ export class Matrix4 extends Float32Array {
       this[14] *= t
       this[15] *= t
     } else {
-      this[0] = this[0] * t[0] + this[4] * t[1] + this[8] * t[2] + this[12] * t[3]
-      this[4] = this[0] * t[4] + this[4] * t[5] + this[8] * t[6] + this[12] * t[7]
-      this[8] = this[0] * t[8] + this[4] * t[9] + this[8] * t[10] + this[12] * t[11]
-      this[12] = this[0] * t[12] + this[4] * t[13] + this[8] * t[14] + this[12] * t[15]
-
-      this[1] = this[1] * t[0] + this[5] * t[1] + this[9] * t[2] + this[13] * t[3]
-      this[5] = this[1] * t[4] + this[5] * t[5] + this[9] * t[6] + this[13] * t[7]
-      this[9] = this[1] * t[8] + this[5] * t[9] + this[9] * t[10] + this[13] * t[11]
-      this[13] = this[1] * t[12] + this[5] * t[13] + this[9] * t[14] + this[13] * t[15]
-
-      this[2] = this[2] * t[0] + this[6] * t[1] + this[10] * t[2] + this[14] * t[3]
-      this[6] = this[2] * t[4] + this[6] * t[5] + this[10] * t[6] + this[14] * t[7]
-      this[10] = this[2] * t[8] + this[6] * t[9] + this[10] * t[10] + this[14] * t[11]
-      this[14] = this[2] * t[12] + this[6] * t[13] + this[10] * t[14] + this[14] * t[15]
-
-      this[3] = this[3] * t[0] + this[7] * t[1] + this[11] * t[2] + this[15] * t[3]
-      this[7] = this[3] * t[4] + this[7] * t[5] + this[11] * t[6] + this[15] * t[7]
-      this[11] = this[3] * t[8] + this[7] * t[9] + this[11] * t[10] + this[15] * t[11]
-      this[15] = this[3] * t[12] + this[7] * t[13] + this[11] * t[14] + this[15] * t[15]
+      this.set(
+        this[0] * t[0] + this[4] * t[1] + this[8] * t[2] + this[12] * t[3],
+        this[1] * t[0] + this[5] * t[1] + this[9] * t[2] + this[13] * t[3],
+        this[2] * t[0] + this[6] * t[1] + this[10] * t[2] + this[14] * t[3],
+        this[3] * t[0] + this[7] * t[1] + this[11] * t[2] + this[15] * t[3],
+        this[0] * t[4] + this[4] * t[5] + this[8] * t[6] + this[12] * t[7],
+        this[1] * t[4] + this[5] * t[5] + this[9] * t[6] + this[13] * t[7],
+        this[2] * t[4] + this[6] * t[5] + this[10] * t[6] + this[14] * t[7],
+        this[3] * t[4] + this[7] * t[5] + this[11] * t[6] + this[15] * t[7],
+        this[0] * t[8] + this[4] * t[9] + this[8] * t[10] + this[12] * t[11],
+        this[1] * t[8] + this[5] * t[9] + this[9] * t[10] + this[13] * t[11],
+        this[2] * t[8] + this[6] * t[9] + this[10] * t[10] + this[14] * t[11],
+        this[3] * t[8] + this[7] * t[9] + this[11] * t[10] + this[15] * t[11],
+        this[0] * t[12] + this[4] * t[13] + this[8] * t[14] + this[12] * t[15],
+        this[1] * t[12] + this[5] * t[13] + this[9] * t[14] + this[13] * t[15],
+        this[2] * t[12] + this[6] * t[13] + this[10] * t[14] + this[14] * t[15],
+        this[3] * t[12] + this[7] * t[13] + this[11] * t[14] + this[15] * t[15],
+      )
     }
 
     return this
@@ -212,6 +211,9 @@ export class Matrix4 extends Float32Array {
   }
 
   perspective(fov: number, aspect: number, near: number, far: number) {
+    // Degrees to radians
+    fov *= Math.PI / 180
+
     const f = 1 / Math.tan(fov / 2)
     const depth = 1 / (near - far)
 
