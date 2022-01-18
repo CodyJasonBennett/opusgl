@@ -340,7 +340,7 @@ export class WebGPURenderer extends Renderer {
         })
 
       // Update camera built-ins
-      if (camera) child.modelViewMatrix.multiply(camera.inverseMatrix)
+      if (camera) child.modelViewMatrix.copy(child.modelMatrix).multiply(camera.viewMatrix)
 
       // Update uniforms & attributes
       this.updateUniforms(child)

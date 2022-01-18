@@ -10,7 +10,6 @@ export class Object3D {
   readonly isObject3D = true
   readonly id: number
   readonly localMatrix = new Matrix4()
-  readonly inverseMatrix = new Matrix4()
   readonly normalMatrix = new Matrix3()
   readonly modelMatrix = new Matrix4()
   readonly modelViewMatrix = new Matrix4()
@@ -50,9 +49,6 @@ export class Object3D {
 
     this.modelMatrix.copy(this.localMatrix)
     if (this.parent) this.modelMatrix.multiply(this.parent.modelMatrix)
-
-    this.inverseMatrix.copy(this.modelMatrix).invert()
-    this.modelViewMatrix.copy(this.modelMatrix)
   }
 
   add(child: Object3D) {

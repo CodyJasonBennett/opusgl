@@ -49,7 +49,6 @@ export interface WebGLRendererOptions {
 }
 
 interface CompiledMesh {
-  shaders: Map<string, WebGLShader>
   uniforms: Map<string, { value: any; location: WebGLUniformLocation }>
   attributes: Map<string, { buffer: WebGLBuffer; location: number }>
   VAO: WebGLVertexArrayObject
@@ -158,7 +157,7 @@ export class WebGLRenderer extends Renderer {
     return shader
   }
 
-  private compileProgram(shaders: CompiledMesh['shaders']) {
+  private compileProgram(...shaders: WebGLShader[]) {
     const program = this.gl.createProgram()!
 
     shaders.forEach((shader) => {
@@ -170,6 +169,11 @@ export class WebGLRenderer extends Renderer {
       const error = this.gl.getProgramInfoLog(program)
       throw `Error creating program: ${error}`
     }
+
+    shaders.forEach((shader) => {
+      this.gl.detachShader(program, shader)
+      this.gl.deleteShader(shader)
+    })
 
     return program
   }
@@ -242,7 +246,6 @@ export class WebGLRenderer extends Renderer {
   }
 
   private compileMesh(mesh: Mesh, camera?: Camera) {
-    const shaders = new Map()
     const uniforms = new Map()
     const attributes = new Map()
 
@@ -252,13 +255,10 @@ export class WebGLRenderer extends Renderer {
 
     // Compile shaders
     const vertexShader = this.compileShader('vertex', mesh.material.vertex)
-    shaders.set('vertex', vertexShader)
-
     const fragmentShader = this.compileShader('fragment', mesh.material.fragment)
-    shaders.set('fragment', fragmentShader)
 
     // Create program and compile it
-    const program = this.compileProgram(shaders)
+    const program = this.compileProgram(vertexShader, fragmentShader)
     this.gl.useProgram(program)
 
     // Add built-ins
@@ -267,6 +267,7 @@ export class WebGLRenderer extends Renderer {
 
     if (camera) {
       mesh.material.uniforms.modelViewMatrix = mesh.modelViewMatrix
+      mesh.material.uniforms.viewMatrix = camera.viewMatrix
       mesh.material.uniforms.projectionMatrix = camera.projectionMatrix
     }
 
@@ -278,7 +279,6 @@ export class WebGLRenderer extends Renderer {
 
     // Save compiled mesh
     this._compiled.set(mesh.id, {
-      shaders,
       uniforms,
       attributes,
       VAO,
@@ -352,7 +352,7 @@ export class WebGLRenderer extends Renderer {
       this.gl.bindVertexArray(compiled.VAO)
 
       // Update camera built-ins
-      if (camera) child.modelViewMatrix.multiply(camera.inverseMatrix)
+      if (camera) child.modelViewMatrix.copy(child.modelMatrix).multiply(camera.viewMatrix)
 
       // Update program uniforms and attributes
       this.updateUniforms(child, compiled)
@@ -395,10 +395,6 @@ export class WebGLRenderer extends Renderer {
       compiled.attributes.forEach(({ location, buffer }) => {
         this.gl.disableVertexAttribArray(location)
         this.gl.deleteBuffer(buffer)
-      })
-
-      compiled.shaders.forEach((shader) => {
-        this.gl.detachShader(compiled.program, shader)
       })
 
       this.gl.deleteProgram(compiled.program)
