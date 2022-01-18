@@ -291,11 +291,11 @@ export class WebGLRenderer extends Renderer {
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null)
   }
 
-  private updateUniforms(child: Mesh, compiled: CompiledMesh) {
+  private updateUniforms(mesh: Mesh, compiled: CompiledMesh) {
     const uniformsLength = this.gl.getProgramParameter(compiled.program, this.gl.ACTIVE_UNIFORMS)
     for (let i = 0; i < uniformsLength; i++) {
       const { name, type } = this.gl.getActiveUniform(compiled.program, i)!
-      const value = child.material.uniforms[name]
+      const value = mesh.material.uniforms[name]
       if (value === undefined) throw `Uniform not found for ${name}!`
 
       // TODO: automatically flag for updates in material w/setters
@@ -304,8 +304,8 @@ export class WebGLRenderer extends Renderer {
     }
   }
 
-  private updateAttributes(child: Mesh, compiled: CompiledMesh) {
-    Object.entries(child.geometry.attributes).forEach(([name, attribute]) => {
+  private updateAttributes(mesh: Mesh, compiled: CompiledMesh) {
+    Object.entries(mesh.geometry.attributes).forEach(([name, attribute]) => {
       // TODO: automatically flag for updates in material w/setters
       if (!attribute.needsUpdate) return
 
@@ -315,7 +315,7 @@ export class WebGLRenderer extends Renderer {
       this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, attribute.data as unknown as BufferSource)
       this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null)
 
-      child.geometry.attributes[name].needsUpdate = false
+      mesh.geometry.attributes[name].needsUpdate = false
     })
   }
 
@@ -335,31 +335,31 @@ export class WebGLRenderer extends Renderer {
 
     // Render children
     const renderList = scene.children as Mesh[]
-    renderList.forEach((child) => {
-      child.updateMatrixWorld()
+    renderList.forEach((mesh) => {
+      mesh.updateMatrixWorld()
 
       // Don't render invisible objects
       // TODO: filter out occluded meshes
-      if (!child.isMesh || !child.visible) return
+      if (!mesh.isMesh || !mesh.visible) return
 
       // Compile on first render
-      const isCompiled = this._compiled.has(child.id)
-      if (!isCompiled) this.compileMesh(child, camera)
+      const isCompiled = this._compiled.has(mesh.id)
+      if (!isCompiled) this.compileMesh(mesh, camera)
 
       // Bind
-      const compiled = this._compiled.get(child.id)!
+      const compiled = this._compiled.get(mesh.id)!
       this.gl.useProgram(compiled.program)
       this.gl.bindVertexArray(compiled.VAO)
 
       // Update camera built-ins
-      if (camera) child.modelViewMatrix.copy(child.modelMatrix).multiply(camera.viewMatrix)
+      if (camera) mesh.modelViewMatrix.copy(mesh.modelMatrix).multiply(camera.viewMatrix)
 
       // Update program uniforms and attributes
-      this.updateUniforms(child, compiled)
-      this.updateAttributes(child, compiled)
+      this.updateUniforms(mesh, compiled)
+      this.updateAttributes(mesh, compiled)
 
       // Update material state
-      const { side, depthTest, depthWrite, transparent } = child.material
+      const { side, depthTest, depthWrite, transparent } = mesh.material
 
       this.setCullFace(side)
       this.setDepthTest(depthTest)
@@ -376,8 +376,8 @@ export class WebGLRenderer extends Renderer {
       }
 
       // Alternate drawing for indexed and non-indexed meshes
-      const { index, position } = child.geometry.attributes
-      const mode = GL_DRAW_MODES[child.mode] ?? GL_DRAW_MODES.triangles
+      const { index, position } = mesh.geometry.attributes
+      const mode = GL_DRAW_MODES[mesh.mode] ?? GL_DRAW_MODES.triangles
       if (index) {
         this.gl.drawElements(mode, index.data.length / index.size, this.gl.UNSIGNED_SHORT, 0)
       } else {

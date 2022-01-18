@@ -135,17 +135,20 @@ export class WebGPURenderer extends Renderer {
     return buffer
   }
 
-  private compileUniformLayout(child: Mesh, camera?: Camera) {
-    // Add camera built-ins
+  private compileUniformLayout(mesh: Mesh, camera?: Camera) {
+    // Add built-ins
+    mesh.material.uniforms.modelMatrix = mesh.modelMatrix
+    mesh.material.uniforms.normalMatrix = mesh.normalMatrix
+
     if (camera) {
-      child.material.uniforms.modelMatrix = child.modelMatrix
-      child.material.uniforms.normalMatrix = child.normalMatrix
-      child.material.uniforms.projectionMatrix = camera.projectionMatrix
+      mesh.material.uniforms.modelViewMatrix = mesh.modelViewMatrix
+      mesh.material.uniforms.viewMatrix = camera.viewMatrix
+      mesh.material.uniforms.projectionMatrix = camera.projectionMatrix
     }
 
     // Create uniform buffers to bind
     const uniforms = new Map()
-    const entries = Object.entries(child.material.uniforms).map(([name, value], index) => {
+    const entries = Object.entries(mesh.material.uniforms).map(([name, value], index) => {
       // Cache initial uniform
       const buffer = this.createBuffer(value, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST)
       uniforms.set(name, buffer)
@@ -176,9 +179,9 @@ export class WebGPURenderer extends Renderer {
     return { uniforms, uniformBindGroup, layout }
   }
 
-  private compileShaders(child: Mesh) {
+  private compileShaders(mesh: Mesh) {
     // Allocate non-index buffer attributes
-    const vertexBuffers = Object.entries(child.geometry.attributes)
+    const vertexBuffers = Object.entries(mesh.geometry.attributes)
       .filter(([name]) => name !== 'index')
       .map(
         ([_, { size }], index) =>
@@ -197,7 +200,7 @@ export class WebGPURenderer extends Renderer {
 
     const vertex: GPUVertexState = {
       module: this._device.createShaderModule({
-        code: child.material.vertex,
+        code: mesh.material.vertex,
       }),
       entryPoint: 'main',
       buffers: vertexBuffers,
@@ -205,7 +208,7 @@ export class WebGPURenderer extends Renderer {
 
     const fragment: GPUFragmentState = {
       module: this._device.createShaderModule({
-        code: child.material.fragment,
+        code: mesh.material.fragment,
       }),
       entryPoint: 'main',
       targets: [
@@ -218,10 +221,10 @@ export class WebGPURenderer extends Renderer {
     return { vertex, fragment }
   }
 
-  private compileMesh(child: Mesh, camera?: Camera) {
+  private compileMesh(mesh: Mesh, camera?: Camera) {
     // Compile shaders and their uniforms
-    const { uniforms, uniformBindGroup, layout } = this.compileUniformLayout(child, camera)
-    const { vertex, fragment } = this.compileShaders(child)
+    const { uniforms, uniformBindGroup, layout } = this.compileUniformLayout(mesh, camera)
+    const { vertex, fragment } = this.compileShaders(mesh)
 
     // Create mesh rendering pipeline from program
     const multisample = this._params.antialias ? { count: 4 } : undefined
@@ -231,8 +234,8 @@ export class WebGPURenderer extends Renderer {
       fragment,
       primitive: {
         frontFace: 'ccw',
-        cullMode: GPU_CULL_SIDES[child.material.side] ?? GPU_CULL_SIDES.back,
-        topology: GPU_DRAW_MODES[child.mode] ?? GPU_DRAW_MODES.triangles,
+        cullMode: GPU_CULL_SIDES[mesh.material.side] ?? GPU_CULL_SIDES.back,
+        topology: GPU_DRAW_MODES[mesh.mode] ?? GPU_DRAW_MODES.triangles,
       },
       depthStencil: {
         depthWriteEnabled: true,
@@ -244,28 +247,28 @@ export class WebGPURenderer extends Renderer {
 
     // Create buffer attributes
     const buffers = new Map<string, GPUBuffer>()
-    Object.entries(child.geometry.attributes).forEach(([name, attribute]) => {
+    Object.entries(mesh.geometry.attributes).forEach(([name, attribute]) => {
       const usage = name === 'index' ? GPUBufferUsage.INDEX : GPUBufferUsage.VERTEX
       const buffer = this.createBuffer(attribute.data, usage)
       buffers.set(name, buffer)
     })
 
-    this._compiled.set(child.id, { uniforms, uniformBindGroup, pipeline, buffers })
+    this._compiled.set(mesh.id, { uniforms, uniformBindGroup, pipeline, buffers })
   }
 
-  private updateUniforms(child: Mesh) {
-    const compiled = this._compiled.get(child.id)!
+  private updateUniforms(mesh: Mesh) {
+    const compiled = this._compiled.get(mesh.id)!
 
-    Object.entries(child.material.uniforms).forEach(([name, value]) => {
+    Object.entries(mesh.material.uniforms).forEach(([name, value]) => {
       const buffer = compiled.uniforms.get(name)!
       this._device.queue.writeBuffer(buffer, value.byteOffset, value)
     })
   }
 
-  private updateAttributes(child: Mesh) {
-    const compiled = this._compiled.get(child.id)!
+  private updateAttributes(mesh: Mesh) {
+    const compiled = this._compiled.get(mesh.id)!
 
-    Object.entries(child.geometry.attributes).forEach(([name, attribute]) => {
+    Object.entries(mesh.geometry.attributes).forEach(([name, attribute]) => {
       if (!attribute.needsUpdate) return
 
       // Update attribute buffer
@@ -318,39 +321,39 @@ export class WebGPURenderer extends Renderer {
 
     // Render children
     const renderList = scene.children as Mesh[]
-    renderList.forEach((child) => {
-      child.updateMatrixWorld()
+    renderList.forEach((mesh) => {
+      mesh.updateMatrixWorld()
 
       // Don't render invisible objects
       // TODO: filter out occluded meshes
-      if (!child.isMesh || !child.visible) return
+      if (!mesh.isMesh || !mesh.visible) return
 
       // Compile on first render
-      const isCompiled = this._compiled.has(child.id)
-      if (!isCompiled) this.compileMesh(child, camera)
+      const isCompiled = this._compiled.has(mesh.id)
+      if (!isCompiled) this.compileMesh(mesh, camera)
 
       // Bind
-      const compiled = this._compiled.get(child.id)!
+      const compiled = this._compiled.get(mesh.id)!
       passEncoder.setPipeline(compiled.pipeline)
       passEncoder.setBindGroup(0, compiled.uniformBindGroup)
-      Object.keys(child.geometry.attributes)
+      Object.keys(mesh.geometry.attributes)
         .filter((name) => name !== 'index')
         .forEach((name, slot) => {
           passEncoder.setVertexBuffer(slot, compiled.buffers.get(name)!)
         })
 
       // Update camera built-ins
-      if (camera) child.modelViewMatrix.copy(child.modelMatrix).multiply(camera.viewMatrix)
+      if (camera) mesh.modelViewMatrix.copy(mesh.modelMatrix).multiply(camera.viewMatrix)
 
       // Update uniforms & attributes
-      this.updateUniforms(child)
-      this.updateAttributes(child)
+      this.updateUniforms(mesh)
+      this.updateAttributes(mesh)
 
       // TODO: Update material state
 
       // Alternate drawing for indexed and non-indexed meshes
-      const { index, position } = child.geometry.attributes
-      if (child.geometry.attributes.index) {
+      const { index, position } = mesh.geometry.attributes
+      if (mesh.geometry.attributes.index) {
         passEncoder.setIndexBuffer(compiled.buffers.get('index')!, 'uint16')
         passEncoder.drawIndexed(index.data.length / index.size)
       } else {
