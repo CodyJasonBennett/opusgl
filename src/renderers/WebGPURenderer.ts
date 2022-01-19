@@ -53,7 +53,7 @@ export class WebGPURenderer extends Renderer {
   private _colorTextureView!: GPUTextureView
   private _depthTexture!: GPUTexture
   private _depthTextureView!: GPUTextureView
-  private _compiled = new Map<Mesh['id'], CompiledMesh>()
+  private _compiled = new Map<Mesh['uuid'], CompiledMesh>()
 
   constructor({
     canvas = document.createElement('canvas'),
@@ -253,11 +253,11 @@ export class WebGPURenderer extends Renderer {
       buffers.set(name, buffer)
     })
 
-    this._compiled.set(mesh.id, { uniforms, uniformBindGroup, pipeline, buffers })
+    this._compiled.set(mesh.uuid, { uniforms, uniformBindGroup, pipeline, buffers })
   }
 
   private updateUniforms(mesh: Mesh) {
-    const compiled = this._compiled.get(mesh.id)!
+    const compiled = this._compiled.get(mesh.uuid)!
 
     Object.entries(mesh.material.uniforms).forEach(([name, value]) => {
       const buffer = compiled.uniforms.get(name)!
@@ -266,7 +266,7 @@ export class WebGPURenderer extends Renderer {
   }
 
   private updateAttributes(mesh: Mesh) {
-    const compiled = this._compiled.get(mesh.id)!
+    const compiled = this._compiled.get(mesh.uuid)!
 
     Object.entries(mesh.geometry.attributes).forEach(([name, attribute]) => {
       if (!attribute.needsUpdate) return
@@ -329,11 +329,11 @@ export class WebGPURenderer extends Renderer {
       if (!mesh.isMesh || !mesh.visible) return
 
       // Compile on first render
-      const isCompiled = this._compiled.has(mesh.id)
+      const isCompiled = this._compiled.has(mesh.uuid)
       if (!isCompiled) this.compileMesh(mesh, camera)
 
       // Bind
-      const compiled = this._compiled.get(mesh.id)!
+      const compiled = this._compiled.get(mesh.uuid)!
       passEncoder.setPipeline(compiled.pipeline)
       passEncoder.setBindGroup(0, compiled.uniformBindGroup)
       Object.keys(mesh.geometry.attributes)

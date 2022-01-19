@@ -1,6 +1,5 @@
+import { uuid, dispose } from '../utils'
 import { GL_CULL_SIDES } from '../constants'
-
-let id = 0
 
 export interface MaterialOptions {
   vertex: string
@@ -14,7 +13,7 @@ export interface MaterialOptions {
 
 export class Material implements MaterialOptions {
   readonly isMaterial = true
-  readonly id: number
+  readonly uuid: string
   public vertex!: string
   public fragment!: string
   readonly uniforms: { [name: string]: any } = {}
@@ -24,7 +23,7 @@ export class Material implements MaterialOptions {
   public depthWrite = true
 
   constructor(options?: MaterialOptions) {
-    this.id = id++
+    this.uuid = uuid()
 
     if (options) Object.assign(this, options)
   }

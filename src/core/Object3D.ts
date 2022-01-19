@@ -2,12 +2,11 @@ import { Matrix4 } from '../math/Matrix4'
 import { Vector3 } from '../math/Vector3'
 import { Euler } from '../math/Euler'
 import { Quaternion } from '../math/Quaternion'
-
-let id = 0
+import { uuid } from '../utils'
 
 export class Object3D {
   readonly isObject3D = true
-  readonly id: number
+  readonly uuid: string
   readonly matrix = new Matrix4()
   readonly worldMatrix = new Matrix4()
   readonly position = new Vector3()
@@ -22,7 +21,7 @@ export class Object3D {
   public name?: string
 
   constructor() {
-    this.id = id++
+    this.uuid = uuid()
   }
 
   lookAt(x: Vector3 | number, y?: number, z?: number) {

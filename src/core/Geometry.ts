@@ -1,4 +1,4 @@
-let id = 0
+import { uuid, dispose } from '../utils'
 
 export interface GeometryAttribute {
   data: Float32Array | Uint16Array
@@ -12,11 +12,11 @@ export interface GeometryOptions {
 
 export class Geometry {
   readonly isGeometry = true
-  readonly id: number
+  readonly uuid: string
   readonly attributes: { [name: string]: GeometryAttribute } = {}
 
   constructor(options?: GeometryOptions) {
-    this.id = id++
+    this.uuid = uuid()
 
     if (options) {
       Object.entries(options).forEach(([name, attribute]) => {
