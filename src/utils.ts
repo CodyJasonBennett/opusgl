@@ -6,7 +6,7 @@ export const uuid = () =>
     (((Math.random() + ~~Number(s)) * 0x10000) >> Number(s)).toString(16).padStart(4, '0'),
   )
 
-export const compiled = new Map<string, any & { dispose: Function }>()
+export const compiled = new Map<string, any & { dispose: () => void }>()
 
 /**
  * Disposes of an object by uuid.
