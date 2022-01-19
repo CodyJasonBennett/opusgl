@@ -27,4 +27,8 @@ export class Material implements MaterialOptions {
 
     if (options) Object.assign(this, options)
   }
+
+  dispose() {
+    dispose(this.uuid)
+  }
 }

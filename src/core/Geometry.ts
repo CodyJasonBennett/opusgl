@@ -37,4 +37,8 @@ export class Geometry {
     attribute.needsUpdate = this.hasAttribute(name)
     this.attributes[name] = attribute
   }
+
+  dispose() {
+    dispose(this.uuid)
+  }
 }

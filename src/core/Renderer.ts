@@ -54,6 +54,4 @@ export abstract class Renderer {
   }
 
   abstract render(scene: Scene, camera?: Camera): void
-
-  abstract dispose(): void
 }
