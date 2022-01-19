@@ -1,8 +1,10 @@
 import { Renderer } from '../core/Renderer'
-import type { GeometryAttribute } from '../core/Geometry'
+import type { Material } from '../core/Material'
+import type { Geometry, GeometryAttribute } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Scene } from '../core/Scene'
 import type { Camera } from '../core/Camera'
+import { compiled } from '../utils'
 import { GL_SHADER_TEMPLATES, GL_CULL_SIDES, GL_DRAW_MODES } from '../constants'
 
 export interface WebGLRendererOptions {
@@ -48,20 +50,12 @@ export interface WebGLRendererOptions {
   powerPreference: 'default' | 'high-performance' | 'low-power'
 }
 
-interface CompiledMesh {
-  uniforms: Map<string, { value: any; location: WebGLUniformLocation }>
-  attributes: Map<string, { buffer: WebGLBuffer; location: number }>
-  VAO: WebGLVertexArrayObject
-  program: WebGLProgram
-}
-
 export class WebGLRenderer extends Renderer {
   readonly canvas: HTMLCanvasElement
   readonly gl: WebGL2RenderingContext
   public autoClear = true
 
   private _params: Partial<Omit<WebGLRendererOptions, 'canvas' | 'context'>>
-  private _compiled = new Map<Mesh['id'], CompiledMesh>()
 
   constructor({
     canvas = document.createElement('canvas'),
@@ -141,45 +135,8 @@ export class WebGLRenderer extends Renderer {
     this.gl.depthMask(enabled)
   }
 
-  private compileShader(name: 'vertex' | 'fragment', source: string) {
-    const type = name === 'vertex' ? this.gl.VERTEX_SHADER : this.gl.FRAGMENT_SHADER
-    const shader = this.gl.createShader(type)!
-
-    const template = GL_SHADER_TEMPLATES[name]
-    this.gl.shaderSource(shader, template + source)
-
-    this.gl.compileShader(shader)
-    if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-      const error = this.gl.getShaderInfoLog(shader)
-      throw `Error compiling ${name} shader: ${error}`
-    }
-
-    return shader
-  }
-
-  private compileProgram(...shaders: WebGLShader[]) {
-    const program = this.gl.createProgram()!
-
-    shaders.forEach((shader) => {
-      this.gl.attachShader(program, shader)
-    })
-
-    this.gl.linkProgram(program)
-    if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
-      const error = this.gl.getProgramInfoLog(program)
-      throw `Error creating program: ${error}`
-    }
-
-    shaders.forEach((shader) => {
-      this.gl.detachShader(program, shader)
-      this.gl.deleteShader(shader)
-    })
-
-    return program
-  }
-
-  private setUniform(name: string, type: number, value: any, program: CompiledMesh['program']) {
-    const location = this.gl.getUniformLocation(program, name)!
+  private setUniform(name: string, type: number, value: any, program: WebGLProgram) {
+    const location = this.gl.getUniformLocation(program, name)
 
     switch (type) {
       case this.gl.FLOAT:
@@ -222,11 +179,9 @@ export class WebGLRenderer extends Renderer {
         this.gl.uniformMatrix4fv(location, false, value)
         break
     }
-
-    return { location }
   }
 
-  private setAttribute(name: string, attribute: GeometryAttribute, program: CompiledMesh['program']) {
+  private setAttribute(name: string, attribute: GeometryAttribute, program: WebGLProgram) {
     // Create attribute buffer
     const buffer = this.gl.createBuffer()
 
@@ -245,23 +200,136 @@ export class WebGLRenderer extends Renderer {
     return { buffer, location }
   }
 
-  private compileMesh(mesh: Mesh, camera?: Camera) {
-    const uniforms = new Map()
-    const attributes = new Map()
+  private compileShader(name: 'vertex' | 'fragment', source: string) {
+    const type = name === 'vertex' ? this.gl.VERTEX_SHADER : this.gl.FRAGMENT_SHADER
+    const shader = this.gl.createShader(type)!
 
-    // Create VAO. This will let us bind the mesh in a single call
-    const VAO = this.gl.createVertexArray()!
-    this.gl.bindVertexArray(VAO)
+    const template = GL_SHADER_TEMPLATES[name]
+    this.gl.shaderSource(shader, template + source)
 
-    // Compile shaders
-    const vertexShader = this.compileShader('vertex', mesh.material.vertex)
-    const fragmentShader = this.compileShader('fragment', mesh.material.fragment)
+    this.gl.compileShader(shader)
+    if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+      const error = this.gl.getShaderInfoLog(shader)
+      throw `Error compiling ${name} shader: ${error}`
+    }
 
-    // Create program and compile it
-    const program = this.compileProgram(vertexShader, fragmentShader)
+    return shader
+  }
+
+  private updateUniforms(material: Material) {
+    const { program } = compiled.get(material.uuid)
+
+    const uniformsLength = this.gl.getProgramParameter(program, this.gl.ACTIVE_UNIFORMS)
+    for (let i = 0; i < uniformsLength; i++) {
+      const { name, type } = this.gl.getActiveUniform(program, i)!
+      const value = material.uniforms[name]
+      if (value === undefined) throw `Uniform not found for ${name}!`
+
+      // TODO: automatically flag for updates in material w/setters
+      this.setUniform(name, type, value, program)
+    }
+  }
+
+  private updateMaterial(material: Material) {
+    let program: WebGLProgram
+
+    // Compile program on first bind
+    if (compiled.has(material.uuid)) {
+      program = compiled.get(material.uuid).program
+    } else {
+      // Compile shaders
+      const vertexShader = this.compileShader('vertex', material.vertex)
+      const fragmentShader = this.compileShader('fragment', material.fragment)
+      const shaders = [vertexShader, fragmentShader]
+
+      // Create program and compile it
+      program = this.gl.createProgram()!
+
+      shaders.forEach((shader) => {
+        this.gl.attachShader(program, shader)
+      })
+
+      this.gl.linkProgram(program)
+      if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
+        const error = this.gl.getProgramInfoLog(program)
+        throw `Error creating program: ${error}`
+      }
+
+      shaders.forEach((shader) => {
+        this.gl.detachShader(program, shader)
+        this.gl.deleteShader(shader)
+      })
+
+      compiled.set(material.uuid, {
+        program,
+        dispose: () => {
+          this.gl.deleteProgram(program)
+        },
+      })
+    }
+
+    // Bind program and update uniforms
     this.gl.useProgram(program)
+    this.updateUniforms(material)
 
-    // Add built-ins
+    // Update material state
+    const { side, depthTest, depthWrite, transparent } = material
+
+    this.setCullFace(side)
+    this.setDepthTest(depthTest)
+    this.setDepthMask(depthWrite)
+
+    if (transparent) {
+      this.gl.enable(this.gl.BLEND)
+      this.gl.blendFunc(this._params.premultipliedAlpha ? this.gl.ONE : this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA)
+    } else {
+      this.gl.disable(this.gl.BLEND)
+    }
+
+    return program
+  }
+
+  private updateAttributes(geometry: Geometry) {
+    const { attributes } = compiled.get(geometry.uuid)
+
+    Object.entries(geometry.attributes).forEach(([name, attribute]) => {
+      // TODO: automatically flag for updates in geometry w/setters
+      if (!attribute.needsUpdate) return
+
+      const { buffer } = attributes.get(name)
+
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer)
+      this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, attribute.data as unknown as BufferSource)
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null)
+
+      geometry.attributes[name].needsUpdate = false
+    })
+  }
+
+  private updateGeometry(geometry: Geometry, program: WebGLProgram) {
+    // If compiled, only update attributes
+    if (compiled.has(geometry.uuid)) return this.updateAttributes(geometry)
+
+    // Otherwise, create and bind buffer attributes
+    const attributes = new Map()
+    Object.entries(geometry.attributes).forEach(([name, attribute]) => {
+      const { buffer, location } = this.setAttribute(name, attribute, program)
+      attributes.set(name, { buffer, location })
+    })
+
+    compiled.set(geometry.uuid, {
+      attributes,
+      dispose: () => {
+        attributes.forEach(({ location, buffer }) => {
+          this.gl.disableVertexAttribArray(location)
+          this.gl.deleteBuffer(buffer)
+        })
+      },
+    })
+  }
+
+  private updateMesh(mesh: Mesh, camera?: Camera) {
+    // Update built-ins
     mesh.material.uniforms.modelMatrix = mesh.worldMatrix
 
     if (camera) {
@@ -271,52 +339,28 @@ export class WebGLRenderer extends Renderer {
       mesh.material.uniforms.projectionMatrix = camera.projectionMatrix
     }
 
-    // Allocate and set geometry attributes
-    Object.entries(mesh.geometry.attributes).forEach(([name, attribute]) => {
-      const { buffer, location } = this.setAttribute(name, attribute, program)
-      attributes.set(name, { buffer, location })
-    })
+    let VAO: WebGLVertexArrayObject
 
-    // Save compiled mesh
-    this._compiled.set(mesh.id, {
-      uniforms,
-      attributes,
-      VAO,
-      program,
-    })
+    // Create VAO on first bind
+    if (compiled.has(mesh.uuid)) {
+      VAO = compiled.get(mesh.uuid).VAO
+    } else {
+      VAO = this.gl.createVertexArray()!
 
-    // Cleanup
-    this.gl.bindVertexArray(null)
-    this.gl.useProgram(null)
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null)
-  }
-
-  private updateUniforms(mesh: Mesh, compiled: CompiledMesh) {
-    const uniformsLength = this.gl.getProgramParameter(compiled.program, this.gl.ACTIVE_UNIFORMS)
-    for (let i = 0; i < uniformsLength; i++) {
-      const { name, type } = this.gl.getActiveUniform(compiled.program, i)!
-      const value = mesh.material.uniforms[name]
-      if (value === undefined) throw `Uniform not found for ${name}!`
-
-      // TODO: automatically flag for updates in material w/setters
-      const { location } = this.setUniform(name, type, value, compiled.program)
-      compiled.uniforms.set(name, { value, location })
+      compiled.set(mesh.uuid, {
+        VAO,
+        dispose: () => {
+          this.gl.deleteVertexArray(VAO)
+        },
+      })
     }
-  }
 
-  private updateAttributes(mesh: Mesh, compiled: CompiledMesh) {
-    Object.entries(mesh.geometry.attributes).forEach(([name, attribute]) => {
-      // TODO: automatically flag for updates in material w/setters
-      if (!attribute.needsUpdate) return
+    // Bind
+    this.gl.bindVertexArray(VAO)
 
-      const { buffer } = compiled.attributes.get(name)!
-
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer)
-      this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, attribute.data as unknown as BufferSource)
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null)
-
-      mesh.geometry.attributes[name].needsUpdate = false
-    })
+    // Update material/geometry
+    const program = this.updateMaterial(mesh.material)
+    this.updateGeometry(mesh.geometry, program)
   }
 
   render(scene: Scene, camera?: Camera) {
@@ -342,35 +386,8 @@ export class WebGLRenderer extends Renderer {
       // TODO: filter out occluded meshes
       if (!mesh.isMesh || !mesh.visible) return
 
-      // Compile on first render
-      const isCompiled = this._compiled.has(mesh.id)
-      if (!isCompiled) this.compileMesh(mesh, camera)
-
-      // Bind
-      const compiled = this._compiled.get(mesh.id)!
-      this.gl.useProgram(compiled.program)
-      this.gl.bindVertexArray(compiled.VAO)
-
-      // Update program uniforms and attributes
-      this.updateUniforms(mesh, compiled)
-      this.updateAttributes(mesh, compiled)
-
-      // Update material state
-      const { side, depthTest, depthWrite, transparent } = mesh.material
-
-      this.setCullFace(side)
-      this.setDepthTest(depthTest)
-      this.setDepthMask(depthWrite)
-
-      if (transparent) {
-        this.gl.enable(this.gl.BLEND)
-        this.gl.blendFunc(
-          this._params.premultipliedAlpha ? this.gl.ONE : this.gl.SRC_ALPHA,
-          this.gl.ONE_MINUS_SRC_ALPHA,
-        )
-      } else {
-        this.gl.disable(this.gl.BLEND)
-      }
+      // Compile on first render, otherwise update
+      this.updateMesh(mesh, camera)
 
       // Alternate drawing for indexed and non-indexed meshes
       const { index, position } = mesh.geometry.attributes
@@ -384,19 +401,7 @@ export class WebGLRenderer extends Renderer {
       // Unbind
       this.gl.useProgram(null)
       this.gl.bindVertexArray(null)
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null)
     })
-  }
-
-  dispose() {
-    this._compiled.forEach((compiled) => {
-      compiled.attributes.forEach(({ location, buffer }) => {
-        this.gl.disableVertexAttribArray(location)
-        this.gl.deleteBuffer(buffer)
-      })
-
-      this.gl.deleteProgram(compiled.program)
-      this.gl.deleteVertexArray(compiled.VAO)
-    })
-    this._compiled.clear()
   }
 }
