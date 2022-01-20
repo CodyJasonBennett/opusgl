@@ -1,13 +1,13 @@
 export const GL_CULL_SIDES = {
-  front: 0x0404,
-  back: 0x0405,
-  none: 0,
+  front: 0x0405,
+  back: 0x0404,
+  both: 0,
 } as const
 
 export const GPU_CULL_SIDES = {
-  front: 'front',
-  back: 'back',
-  none: 'none',
+  front: 'back',
+  back: 'front',
+  both: 'none',
 } as const
 
 export const GL_DRAW_MODES = {

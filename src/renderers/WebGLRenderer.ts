@@ -51,8 +51,13 @@ export interface WebGLRendererOptions {
 }
 
 export class WebGLRenderer extends Renderer {
-  readonly canvas: HTMLCanvasElement
+  /**
+   * Internal WebGL2 context to draw with.
+   */
   readonly gl: WebGL2RenderingContext
+  /**
+   * Whether to clear the drawing buffer between renders. Default is `true`.
+   */
   public autoClear = true
 
   private _params: Partial<Omit<WebGLRendererOptions, 'canvas' | 'context'>>
@@ -105,6 +110,9 @@ export class WebGLRenderer extends Renderer {
     this.gl.scissor(x, y, width, height)
   }
 
+  /**
+   * Enables scissor test. Useful for toggling rendering in certain regions.
+   */
   setScissorTest(enabled: boolean) {
     if (enabled) {
       this.gl.enable(this.gl.SCISSOR_TEST)
@@ -113,8 +121,10 @@ export class WebGLRenderer extends Renderer {
     }
   }
 
-  setCullFace(side: keyof typeof GL_CULL_SIDES) {
-    const cullMode = GL_CULL_SIDES[side] ?? GL_CULL_SIDES.back
+  /**
+   * Sets cull face mode. Useful for
+   */
+  setCullFace(cullMode: typeof GL_CULL_SIDES[keyof typeof GL_CULL_SIDES]) {
     if (cullMode) {
       this.gl.enable(this.gl.CULL_FACE)
       this.gl.cullFace(cullMode)
@@ -123,6 +133,9 @@ export class WebGLRenderer extends Renderer {
     }
   }
 
+  /**
+   * Enables depth test. Useful for controlling occlusion behavior.
+   */
   setDepthTest(enabled: boolean) {
     if (enabled) {
       this.gl.enable(this.gl.DEPTH_TEST)
@@ -131,6 +144,9 @@ export class WebGLRenderer extends Renderer {
     }
   }
 
+  /**
+   * Toggles depthmask. Useful for controlling objects can occlude others.
+   */
   setDepthMask(enabled: boolean) {
     this.gl.depthMask(enabled)
   }
@@ -200,24 +216,28 @@ export class WebGLRenderer extends Renderer {
     return { buffer, location }
   }
 
-  private compileShader(name: 'vertex' | 'fragment', source: string) {
-    const type = name === 'vertex' ? this.gl.VERTEX_SHADER : this.gl.FRAGMENT_SHADER
-    const shader = this.gl.createShader(type)!
+  private compileShaders(material: Material) {
+    const shaders = Object.entries(GL_SHADER_TEMPLATES).map(([name, template]) => {
+      const type = name === 'vertex' ? this.gl.VERTEX_SHADER : this.gl.FRAGMENT_SHADER
+      const shader = this.gl.createShader(type)!
 
-    const template = GL_SHADER_TEMPLATES[name]
-    this.gl.shaderSource(shader, template + source)
+      const source = material[name as keyof typeof GL_SHADER_TEMPLATES]
+      this.gl.shaderSource(shader, template + source)
 
-    this.gl.compileShader(shader)
-    if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-      const error = this.gl.getShaderInfoLog(shader)
-      throw `Error compiling ${name} shader: ${error}`
-    }
+      this.gl.compileShader(shader)
+      if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+        const error = this.gl.getShaderInfoLog(shader)
+        throw `Error compiling ${name} shader: ${error}`
+      }
 
-    return shader
+      return shader
+    })
+
+    return shaders
   }
 
   private updateUniforms(material: Material) {
-    const { program } = compiled.get(material.uuid)
+    const { program } = compiled.get(material.uuid)!
 
     const uniformsLength = this.gl.getProgramParameter(program, this.gl.ACTIVE_UNIFORMS)
     for (let i = 0; i < uniformsLength; i++) {
@@ -235,16 +255,13 @@ export class WebGLRenderer extends Renderer {
 
     // Compile program on first bind
     if (compiled.has(material.uuid)) {
-      program = compiled.get(material.uuid).program
+      program = compiled.get(material.uuid)!.program
     } else {
-      // Compile shaders
-      const vertexShader = this.compileShader('vertex', material.vertex)
-      const fragmentShader = this.compileShader('fragment', material.fragment)
-      const shaders = [vertexShader, fragmentShader]
-
       // Create program and compile it
       program = this.gl.createProgram()!
 
+      // Compile shaders and attach them
+      const shaders = this.compileShaders(material)
       shaders.forEach((shader) => {
         this.gl.attachShader(program, shader)
       })
@@ -255,6 +272,7 @@ export class WebGLRenderer extends Renderer {
         throw `Error creating program: ${error}`
       }
 
+      // Cleanup shaders
       shaders.forEach((shader) => {
         this.gl.detachShader(program, shader)
         this.gl.deleteShader(shader)
@@ -275,7 +293,7 @@ export class WebGLRenderer extends Renderer {
     // Update material state
     const { side, depthTest, depthWrite, transparent } = material
 
-    this.setCullFace(side)
+    this.setCullFace(GL_CULL_SIDES[side] ?? GL_CULL_SIDES.front)
     this.setDepthTest(depthTest)
     this.setDepthMask(depthWrite)
 
@@ -290,7 +308,7 @@ export class WebGLRenderer extends Renderer {
   }
 
   private updateAttributes(geometry: Geometry) {
-    const { attributes } = compiled.get(geometry.uuid)
+    const { attributes } = compiled.get(geometry.uuid)!
 
     Object.entries(geometry.attributes).forEach(([name, attribute]) => {
       // TODO: automatically flag for updates in geometry w/setters
@@ -339,11 +357,10 @@ export class WebGLRenderer extends Renderer {
       mesh.material.uniforms.projectionMatrix = camera.projectionMatrix
     }
 
-    let VAO: WebGLVertexArrayObject
-
     // Create VAO on first bind
+    let VAO: WebGLVertexArrayObject
     if (compiled.has(mesh.uuid)) {
-      VAO = compiled.get(mesh.uuid).VAO
+      VAO = compiled.get(mesh.uuid)!.VAO
     } else {
       VAO = this.gl.createVertexArray()!
 
@@ -371,7 +388,7 @@ export class WebGLRenderer extends Renderer {
     }
 
     // Update camera matrices
-    if (camera) camera.updateMatrixWorld()
+    if (camera) camera.updateMatrix()
     if (camera?.needsUpdate) {
       camera.updateProjectionMatrix()
       camera.needsUpdate = false
@@ -380,7 +397,7 @@ export class WebGLRenderer extends Renderer {
     // Render children
     const renderList = scene.children as Mesh[]
     renderList.forEach((mesh) => {
-      mesh.updateMatrixWorld(camera)
+      mesh.updateMatrix(camera)
 
       // Don't render invisible objects
       // TODO: filter out occluded meshes

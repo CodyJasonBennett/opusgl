@@ -14,7 +14,6 @@ export class Mesh extends Object3D {
   readonly normalMatrix = new Matrix3()
   readonly modelViewMatrix = new Matrix4()
   public mode: keyof typeof GL_DRAW_MODES = 'triangles'
-  public visible = true
 
   constructor(geometry: Geometry, material: Material) {
     super()
@@ -23,8 +22,8 @@ export class Mesh extends Object3D {
     this.material = material
   }
 
-  updateMatrixWorld(camera?: Camera) {
-    super.updateMatrixWorld()
+  updateMatrix(camera?: Camera) {
+    super.updateMatrix()
 
     if (camera) {
       this.modelViewMatrix.copy(camera.viewMatrix).multiply(this.worldMatrix)
@@ -32,6 +31,9 @@ export class Mesh extends Object3D {
     }
   }
 
+  /**
+   * Disposes mesh from GPU memory.
+   */
   dispose() {
     dispose(this.uuid)
   }
