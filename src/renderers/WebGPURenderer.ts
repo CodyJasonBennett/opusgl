@@ -1,5 +1,6 @@
 import { Matrix4 } from '../math/Matrix4'
 import { Renderer } from '../core/Renderer'
+import type { Disposable } from '../utils'
 import type { Material } from '../core/Material'
 import type { Geometry } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
@@ -7,6 +8,15 @@ import type { Scene } from '../core/Scene'
 import type { Camera } from '../core/Camera'
 import { compiled } from '../utils'
 import { GPU_CULL_SIDES, GPU_DRAW_MODES } from '../constants'
+
+export type WebGPUUniform = GPUBindGroupEntry & { resource: { buffer: GPUBuffer } }
+export type WebGPUUniformMap = Map<string, WebGPUUniform>
+export type WebGPUMaterial = Disposable & { uniforms: WebGPUUniformMap; uniformBindGroup: GPUBindGroup }
+
+export type WebGPUAttributeMap = Map<string, { buffer: GPUBuffer; slot: number }>
+export type WebGPUGeometry = Disposable & { attributes: WebGPUAttributeMap }
+
+export type WebGPUMesh = Disposable & GPURenderPipelineDescriptor & { pipeline: GPURenderPipeline }
 
 // Converts WebGL NDC space (-1 to 1) to WebGPU (0 to 1, normalized)
 const NDCConversionMatrix = new Matrix4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0.5, 0.5, 0, 0, 0, 1)
@@ -36,15 +46,6 @@ export interface WebGPURendererOptions {
    * Will fail device initialization if a limit is not met.
    */
   requiredLimits: Record<string, GPUSize64>
-}
-
-type GPUUniformBuffer = GPUBindGroupEntry & { resource: { buffer: GPUBuffer } }
-
-interface CompiledMesh {
-  uniforms: Map<string, GPUUniformBuffer>
-  uniformBindGroup: GPUBindGroup
-  pipeline: GPURenderPipeline
-  buffers: Map<string, GPUBuffer>
 }
 
 export class WebGPURenderer extends Renderer {
@@ -206,14 +207,16 @@ export class WebGPURenderer extends Renderer {
 
     // Flag for updates on param change
     let needsUpdate: boolean
-    if (compiled.has(mesh.uuid)) {
-      const { primitive, depthStencil } = compiled.get(mesh.uuid)!
+
+    const compiledMesh = compiled.get(mesh.uuid) as WebGPUMesh | undefined
+    if (compiledMesh) {
+      const { primitive, depthStencil } = compiledMesh
 
       needsUpdate =
-        primitive.cullMode !== cullMode ||
-        primitive.topology !== topology ||
-        depthStencil.depthWriteEnabled !== depthWriteEnabled ||
-        depthStencil.depthCompare !== depthCompare
+        primitive?.cullMode !== cullMode ||
+        primitive?.topology !== topology ||
+        depthStencil?.depthWriteEnabled !== depthWriteEnabled ||
+        depthStencil?.depthCompare !== depthCompare
     } else {
       needsUpdate = true
     }
@@ -245,11 +248,11 @@ export class WebGPURenderer extends Renderer {
         ...pipelineDesc,
         pipeline,
         dispose: () => {},
-      })
+      } as WebGPUMesh)
     }
 
     // Bind pipeline
-    const pipeline = compiled.get(mesh.uuid)!.pipeline
+    const pipeline: GPURenderPipeline = compiled.get(mesh.uuid)!.pipeline
     this._passEncoder.setPipeline(pipeline)
 
     return pipeline
@@ -257,24 +260,25 @@ export class WebGPURenderer extends Renderer {
 
   private updateMaterial(material: Material, pipeline: GPURenderPipeline) {
     // Create uniform layout on first run, otherwise update uniforms
-    if (!compiled.has(material.uuid)) {
+    const compiledMaterial = compiled.get(material.uuid) as WebGPUMaterial | undefined
+    if (!compiledMaterial) {
       // Create uniform buffers to bind
-      const uniforms = Object.entries(material.uniforms).reduce((acc, [name, value], binding) => {
+      const uniforms: WebGPUUniformMap = Object.entries(material.uniforms).reduce((acc, [name, value], binding) => {
         const buffer = this.createBuffer(value, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST)
         const uniform = { binding, resource: { buffer } }
         acc.set(name, uniform)
 
         return acc
-      }, new Map<string, GPUUniformBuffer>())
+      }, new Map())
 
       // Create uniform layout
       const entries = Array.from(uniforms.values())
       const layout = pipeline.getBindGroupLayout(0)
       const uniformBindGroup = this._device.createBindGroup({ entries, layout })
 
-      compiled.set(material.uuid, { uniforms, uniformBindGroup, dispose: () => {} })
+      compiled.set(material.uuid, { uniforms, uniformBindGroup, dispose: () => {} } as WebGPUMaterial)
     } else {
-      const { uniforms } = compiled.get(material.uuid)!
+      const { uniforms } = compiledMaterial
 
       Object.entries(material.uniforms).forEach(([name, value]) => {
         const { buffer } = uniforms.get(name)!.resource
@@ -283,46 +287,46 @@ export class WebGPURenderer extends Renderer {
     }
 
     // Update uniforms & attributes
-    const { uniformBindGroup } = compiled.get(material.uuid)!
+    const { uniformBindGroup } = compiled.get(material.uuid)! as WebGPUMaterial
     this._passEncoder.setBindGroup(0, uniformBindGroup)
   }
 
   private updateGeometry(geometry: Geometry) {
     // Create buffer attributes on first run, otherwise update them
     if (!compiled.has(geometry.uuid)) {
-      const buffers = new Map<string, GPUBuffer>()
+      const attributes: WebGPUAttributeMap = new Map()
 
-      Object.entries(geometry.attributes).forEach(([name, attribute]) => {
+      Object.entries(geometry.attributes).forEach(([name, attribute], slot) => {
         const usage = name === 'index' ? GPUBufferUsage.INDEX : GPUBufferUsage.VERTEX
         const buffer = this.createBuffer(attribute.data, usage)
-        buffers.set(name, buffer)
+        attributes.set(name, { buffer, slot })
 
         compiled.set(geometry.uuid, {
-          buffers,
+          attributes,
           dispose: () => {
-            buffers.forEach((buffer) => buffer.destroy())
+            attributes.forEach((attribute) => attribute.buffer.destroy())
           },
-        })
+        } as WebGPUGeometry)
       })
     } else {
-      const { buffers } = compiled.get(geometry.uuid)!
+      const { attributes } = compiled.get(geometry.uuid)! as WebGPUGeometry
 
       Object.entries(geometry.attributes).forEach(([name, attribute]) => {
         if (!attribute.needsUpdate) return
 
         // Update attribute buffer
-        const buffer = buffers.get(name)!
+        const { buffer } = attributes.get(name)!
         this._device.queue.writeBuffer(buffer, attribute.data.byteOffset, attribute.data)
       })
     }
 
     // Bind attributes
-    const { buffers } = compiled.get(geometry.uuid)!
-    Object.keys(geometry.attributes).forEach((name, slot) => {
+    const { attributes } = compiled.get(geometry.uuid)! as WebGPUGeometry
+    attributes.forEach((attribute, name) => {
       if (name === 'index') {
-        this._passEncoder.setIndexBuffer(buffers.get(name)!, 'uint16')
+        this._passEncoder.setIndexBuffer(attribute.buffer, 'uint16')
       } else {
-        this._passEncoder.setVertexBuffer(slot, buffers.get(name)!)
+        this._passEncoder.setVertexBuffer(attribute.slot, attribute.buffer)
       }
     })
   }
