@@ -6,6 +6,7 @@ const terser = require('terser')
 const zlib = require('zlib')
 const recursiveReaddir = require('recursive-readdir')
 
+const DIST_DIR = path.resolve(process.cwd(), 'dist')
 const UNITS = ['B', 'KB', 'MB', 'GB', 'TB']
 
 const blue = (text) => `\x1b[34m${text}\x1b[39m`
@@ -35,22 +36,34 @@ const minify = async (filePath) => {
   return minified.code
 }
 
-recursiveReaddir(path.resolve(process.cwd(), 'dist')).then((paths) => {
-  ;['index.esm.js', 'index.cjs.js', 'index.d.ts'].forEach(async (name) => {
-    let size = 0
-    let gzip = 0
+recursiveReaddir(DIST_DIR).then(async (paths) => {
+  const exts = ['.esm.js', '.cjs.js', '.d.ts']
+  const bundles = exts.reduce((acc, ext) => ({ ...acc, [ext]: { name: `index${ext}`, size: 0 } }), {})
 
-    const ext = name.replace('index', '')
-    await Promise.all(
-      paths.map(async (filePath) => {
-        if (filePath.endsWith(ext)) {
-          const code = await minify(filePath)
-          size += code.length
-          gzip += zlib.gzipSync(code, { level: 9 }).length
-        }
-      }),
-    )
+  const files = await Promise.all(
+    paths.map(async (filePath) => {
+      const ext = exts.find((ext) => filePath.endsWith(ext))
+      if (!ext) return
 
-    console.log(`Created bundle ${blue(name)}: ${green(measure(size))} → ${green(measure(gzip))} (gzipped)`)
+      const code = await minify(filePath)
+
+      const name = filePath.replace(DIST_DIR, 'src').replace(ext, '.ts')
+      const size = zlib.gzipSync(code, { level: 9 }).length
+
+      bundles[ext].size += size
+
+      return { ext, name, size }
+    }),
+  )
+
+  files
+    .filter((file) => file?.ext === '.esm.js')
+    .sort((a, b) => b.size - a.size)
+    .forEach((file) => {
+      console.log(`${blue(file.name)}: ${green(measure(file.size))}`)
+    })
+
+  Object.values(bundles).forEach((bundle) => {
+    console.log(`Created bundle ${blue(bundle.name)}: ${green(measure(bundle.size))}`)
   })
 })
