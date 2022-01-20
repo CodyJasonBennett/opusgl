@@ -1,8 +1,11 @@
 import { Matrix4 } from '../math/Matrix4'
 import { Renderer } from '../core/Renderer'
+import type { Material } from '../core/Material'
+import type { Geometry } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Scene } from '../core/Scene'
 import type { Camera } from '../core/Camera'
+import { compiled } from '../utils'
 import { GPU_CULL_SIDES, GPU_DRAW_MODES } from '../constants'
 
 // Converts WebGL NDC space (-1 to 1) to WebGPU (0 to 1, normalized)
@@ -35,8 +38,10 @@ export interface WebGPURendererOptions {
   requiredLimits: Record<string, GPUSize64>
 }
 
+type GPUUniformBuffer = GPUBindGroupEntry & { resource: { buffer: GPUBuffer } }
+
 interface CompiledMesh {
-  uniforms: Map<string, GPUBuffer>
+  uniforms: Map<string, GPUUniformBuffer>
   uniformBindGroup: GPUBindGroup
   pipeline: GPURenderPipeline
   buffers: Map<string, GPUBuffer>
@@ -53,7 +58,7 @@ export class WebGPURenderer extends Renderer {
   private _colorTextureView!: GPUTextureView
   private _depthTexture!: GPUTexture
   private _depthTextureView!: GPUTextureView
-  private _compiled = new Map<Mesh['uuid'], CompiledMesh>()
+  private _passEncoder!: GPURenderPassEncoder
 
   constructor({
     canvas = document.createElement('canvas'),
@@ -122,8 +127,8 @@ export class WebGPURenderer extends Renderer {
 
   private createBuffer(data: Uint16Array | Float32Array, usage: GPUBufferUsageFlags) {
     const buffer = this._device.createBuffer({
-      size: data.byteLength,
-      usage,
+      size: (data.byteLength + 3) & ~3, // align to 4 bytes
+      usage: usage | GPUBufferUsage.COPY_SRC,
       mappedAtCreation: true,
     })
 
@@ -135,68 +140,24 @@ export class WebGPURenderer extends Renderer {
     return buffer
   }
 
-  private compileUniformLayout(mesh: Mesh, camera?: Camera) {
-    // Add built-ins
-    mesh.material.uniforms.modelMatrix = mesh.worldMatrix
-
-    if (camera) {
-      mesh.material.uniforms.modelViewMatrix = mesh.modelViewMatrix
-      mesh.material.uniforms.normalMatrix = mesh.normalMatrix
-      mesh.material.uniforms.viewMatrix = camera.viewMatrix
-      mesh.material.uniforms.projectionMatrix = camera.projectionMatrix
-    }
-
-    // Create uniform buffers to bind
-    const uniforms = new Map()
-    const entries = Object.entries(mesh.material.uniforms).map(([name, value], index) => {
-      // Cache initial uniform
-      const buffer = this.createBuffer(value, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST)
-      uniforms.set(name, buffer)
+  private compileShaders(mesh: Mesh) {
+    // Allocate buffer attributes
+    const vertexBuffers = Object.entries(mesh.geometry.attributes).map(([name, { size, data }], index) => {
+      const type = name === 'index' ? 'uint16' : 'float32'
+      const suffix = size === 1 ? '' : `x${size}`
 
       return {
-        binding: index,
-        visibility: GPUShaderStage.VERTEX,
-        buffer: {
-          type: 'uniform',
-        },
-        resource: {
-          buffer,
-        },
-      }
+        attributes: [
+          {
+            shaderLocation: index,
+            offset: data.byteOffset,
+            format: `${type}${suffix}`,
+          },
+        ],
+        arrayStride: size * data.BYTES_PER_ELEMENT,
+        stepMode: name === 'index' ? 'instance' : 'vertex',
+      } as GPUVertexBufferLayout
     })
-
-    // Create program bind, layout
-    // @ts-expect-error WebGPU buffer type is incorrect
-    const uniformBindGroupLayout = this._device.createBindGroupLayout({ entries })
-    const uniformBindGroup = this._device.createBindGroup({
-      layout: uniformBindGroupLayout,
-      entries,
-    })
-    const layout = this._device.createPipelineLayout({
-      bindGroupLayouts: [uniformBindGroupLayout],
-    })
-
-    return { uniforms, uniformBindGroup, layout }
-  }
-
-  private compileShaders(mesh: Mesh) {
-    // Allocate non-index buffer attributes
-    const vertexBuffers = Object.entries(mesh.geometry.attributes)
-      .filter(([name]) => name !== 'index')
-      .map(
-        ([_, { size }], index) =>
-          ({
-            attributes: [
-              {
-                shaderLocation: index,
-                offset: 0,
-                format: `float32x${size}`,
-              },
-            ],
-            arrayStride: 4 * size,
-            stepMode: 'vertex',
-          } as GPUVertexBufferLayout),
-      )
 
     const vertex: GPUVertexState = {
       module: this._device.createShaderModule({
@@ -214,6 +175,21 @@ export class WebGPURenderer extends Renderer {
       targets: [
         {
           format: this._presentationFormat,
+          blend: mesh.material.transparent
+            ? {
+                alpha: {
+                  srcFactor: 'one',
+                  dstFactor: 'one-minus-src-alpha',
+                  operation: 'add',
+                },
+                color: {
+                  srcFactor: 'src-alpha',
+                  dstFactor: 'one-minus-src-alpha',
+                  operation: 'add',
+                },
+              }
+            : undefined,
+          writeMask: 0xf,
         },
       ],
     }
@@ -221,60 +197,150 @@ export class WebGPURenderer extends Renderer {
     return { vertex, fragment }
   }
 
-  private compileMesh(mesh: Mesh, camera?: Camera) {
-    // Compile shaders and their uniforms
-    const { uniforms, uniformBindGroup, layout } = this.compileUniformLayout(mesh, camera)
-    const { vertex, fragment } = this.compileShaders(mesh)
+  private updatePipeline(mesh: Mesh): GPURenderPipeline {
+    // Get material state
+    const cullMode = GPU_CULL_SIDES[mesh.material.side] ?? GPU_CULL_SIDES.front
+    const topology = GPU_DRAW_MODES[mesh.mode] ?? GPU_DRAW_MODES.triangles
+    const depthWriteEnabled = mesh.material.depthWrite
+    const depthCompare = mesh.material.depthTest ? 'always' : 'less'
 
-    // Create mesh rendering pipeline from program
-    const multisample = this._params.antialias ? { count: 4 } : undefined
-    const pipeline = this._device.createRenderPipeline({
-      layout,
-      vertex,
-      fragment,
-      primitive: {
-        frontFace: 'ccw',
-        cullMode: GPU_CULL_SIDES[mesh.material.side] ?? GPU_CULL_SIDES.back,
-        topology: GPU_DRAW_MODES[mesh.mode] ?? GPU_DRAW_MODES.triangles,
-      },
-      depthStencil: {
-        depthWriteEnabled: true,
-        depthCompare: 'less',
-        format: 'depth24plus-stencil8',
-      },
-      multisample,
-    })
+    // Flag for updates on param change
+    let needsUpdate: boolean
+    if (compiled.has(mesh.uuid)) {
+      const { primitive, depthStencil } = compiled.get(mesh.uuid)!
 
-    // Create buffer attributes
-    const buffers = new Map<string, GPUBuffer>()
-    Object.entries(mesh.geometry.attributes).forEach(([name, attribute]) => {
-      const usage = name === 'index' ? GPUBufferUsage.INDEX : GPUBufferUsage.VERTEX
-      const buffer = this.createBuffer(attribute.data, usage)
-      buffers.set(name, buffer)
-    })
+      needsUpdate =
+        primitive.cullMode !== cullMode ||
+        primitive.topology !== topology ||
+        depthStencil.depthWriteEnabled !== depthWriteEnabled ||
+        depthStencil.depthCompare !== depthCompare
+    } else {
+      needsUpdate = true
+    }
 
-    this._compiled.set(mesh.uuid, { uniforms, uniformBindGroup, pipeline, buffers })
+    // Create pipeline on first bind or when updated
+    if (needsUpdate) {
+      // Compile shaders
+      const { vertex, fragment } = this.compileShaders(mesh)
+
+      // Create mesh rendering pipeline from program
+      const pipelineDesc: GPURenderPipelineDescriptor = {
+        vertex,
+        fragment,
+        primitive: {
+          frontFace: 'ccw',
+          cullMode,
+          topology,
+        },
+        depthStencil: {
+          depthWriteEnabled,
+          depthCompare,
+          format: 'depth24plus-stencil8',
+        },
+        multisample: { count: 4 },
+      }
+      const pipeline = this._device.createRenderPipeline(pipelineDesc)
+
+      compiled.set(mesh.uuid, {
+        ...pipelineDesc,
+        pipeline,
+        dispose: () => {},
+      })
+    }
+
+    // Bind pipeline
+    const pipeline = compiled.get(mesh.uuid)!.pipeline
+    this._passEncoder.setPipeline(pipeline)
+
+    return pipeline
   }
 
-  private updateUniforms(mesh: Mesh) {
-    const compiled = this._compiled.get(mesh.uuid)!
+  private updateMaterial(material: Material, pipeline: GPURenderPipeline) {
+    // Create uniform layout on first run, otherwise update uniforms
+    if (!compiled.has(material.uuid)) {
+      // Create uniform buffers to bind
+      const uniforms = Object.entries(material.uniforms).reduce((acc, [name, value], binding) => {
+        const buffer = this.createBuffer(value, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST)
+        const uniform = { binding, resource: { buffer } }
+        acc.set(name, uniform)
 
-    Object.entries(mesh.material.uniforms).forEach(([name, value]) => {
-      const buffer = compiled.uniforms.get(name)!
-      this._device.queue.writeBuffer(buffer, value.byteOffset, value)
+        return acc
+      }, new Map<string, GPUUniformBuffer>())
+
+      // Create uniform layout
+      const entries = Array.from(uniforms.values())
+      const layout = pipeline.getBindGroupLayout(0)
+      const uniformBindGroup = this._device.createBindGroup({ entries, layout })
+
+      compiled.set(material.uuid, { uniforms, uniformBindGroup, dispose: () => {} })
+    } else {
+      const { uniforms } = compiled.get(material.uuid)!
+
+      Object.entries(material.uniforms).forEach(([name, value]) => {
+        const { buffer } = uniforms.get(name)!.resource
+        this._device.queue.writeBuffer(buffer, value.byteOffset, value)
+      })
+    }
+
+    // Update uniforms & attributes
+    const { uniformBindGroup } = compiled.get(material.uuid)!
+    this._passEncoder.setBindGroup(0, uniformBindGroup)
+  }
+
+  private updateGeometry(geometry: Geometry) {
+    // Create buffer attributes on first run, otherwise update them
+    if (!compiled.has(geometry.uuid)) {
+      const buffers = new Map<string, GPUBuffer>()
+
+      Object.entries(geometry.attributes).forEach(([name, attribute]) => {
+        const usage = name === 'index' ? GPUBufferUsage.INDEX : GPUBufferUsage.VERTEX
+        const buffer = this.createBuffer(attribute.data, usage)
+        buffers.set(name, buffer)
+
+        compiled.set(geometry.uuid, {
+          buffers,
+          dispose: () => {
+            buffers.forEach((buffer) => buffer.destroy())
+          },
+        })
+      })
+    } else {
+      const { buffers } = compiled.get(geometry.uuid)!
+
+      Object.entries(geometry.attributes).forEach(([name, attribute]) => {
+        if (!attribute.needsUpdate) return
+
+        // Update attribute buffer
+        const buffer = buffers.get(name)!
+        this._device.queue.writeBuffer(buffer, attribute.data.byteOffset, attribute.data)
+      })
+    }
+
+    // Bind attributes
+    const { buffers } = compiled.get(geometry.uuid)!
+    Object.keys(geometry.attributes).forEach((name, slot) => {
+      if (name === 'index') {
+        this._passEncoder.setIndexBuffer(buffers.get(name)!, 'uint16')
+      } else {
+        this._passEncoder.setVertexBuffer(slot, buffers.get(name)!)
+      }
     })
   }
 
-  private updateAttributes(mesh: Mesh) {
-    const compiled = this._compiled.get(mesh.uuid)!
+  private updateMesh(mesh: Mesh, camera?: Camera) {
+    // Update built-ins
+    mesh.material.uniforms.modelMatrix = mesh.worldMatrix
 
-    Object.entries(mesh.geometry.attributes).forEach(([name, attribute]) => {
-      if (!attribute.needsUpdate) return
+    if (camera) {
+      mesh.material.uniforms.modelViewMatrix = mesh.modelViewMatrix
+      mesh.material.uniforms.normalMatrix = mesh.normalMatrix
+      mesh.material.uniforms.viewMatrix = camera.viewMatrix
+      mesh.material.uniforms.projectionMatrix = camera.projectionMatrix
+    }
 
-      // Update attribute buffer
-      const buffer = compiled.buffers.get(name)!
-      this._device.queue.writeBuffer(buffer, attribute.data.byteOffset, attribute.data)
-    })
+    const pipeline = this.updatePipeline(mesh)
+    this.updateMaterial(mesh.material, pipeline)
+    this.updateGeometry(mesh.geometry)
   }
 
   render(scene: Scene, camera?: Camera) {
@@ -289,7 +355,7 @@ export class WebGPURenderer extends Renderer {
 
     // Create frame
     const resolveTarget = this._params.antialias ? this.gl.getCurrentTexture().createView() : undefined
-    const passEncoder = commandEncoder.beginRenderPass({
+    this._passEncoder = commandEncoder.beginRenderPass({
       colorAttachments: [
         {
           view: this._colorTextureView,
@@ -308,11 +374,11 @@ export class WebGPURenderer extends Renderer {
     })
 
     // Update drawing area
-    passEncoder.setViewport(this.viewport.x, this.viewport.y, this.viewport.width, this.viewport.height, 0, 1)
-    passEncoder.setScissorRect(this.scissor.x, this.scissor.y, this.scissor.width, this.scissor.height)
+    this._passEncoder.setViewport(this.viewport.x, this.viewport.y, this.viewport.width, this.viewport.height, 0, 1)
+    this._passEncoder.setScissorRect(this.scissor.x, this.scissor.y, this.scissor.width, this.scissor.height)
 
     // Update camera matrices
-    if (camera) camera.updateMatrixWorld()
+    if (camera) camera.updateMatrix()
     if (camera?.needsUpdate) {
       camera.updateProjectionMatrix()
       camera.projectionMatrix.multiply(NDCConversionMatrix)
@@ -322,56 +388,32 @@ export class WebGPURenderer extends Renderer {
     // Render children
     const renderList = scene.children as Mesh[]
     renderList.forEach((mesh) => {
-      mesh.updateMatrixWorld(camera)
+      mesh.updateMatrix(camera)
 
       // Don't render invisible objects
       // TODO: filter out occluded meshes
       if (!mesh.isMesh || !mesh.visible) return
 
-      // Compile on first render
-      const isCompiled = this._compiled.has(mesh.uuid)
-      if (!isCompiled) this.compileMesh(mesh, camera)
-
-      // Bind
-      const compiled = this._compiled.get(mesh.uuid)!
-      passEncoder.setPipeline(compiled.pipeline)
-      passEncoder.setBindGroup(0, compiled.uniformBindGroup)
-      Object.keys(mesh.geometry.attributes)
-        .filter((name) => name !== 'index')
-        .forEach((name, slot) => {
-          passEncoder.setVertexBuffer(slot, compiled.buffers.get(name)!)
-        })
-
-      // Update uniforms & attributes
-      this.updateUniforms(mesh)
-      this.updateAttributes(mesh)
-
-      // TODO: Update material state
+      // Compile on first render, otherwise update
+      this.updateMesh(mesh, camera)
 
       // Alternate drawing for indexed and non-indexed meshes
       const { index, position } = mesh.geometry.attributes
       if (mesh.geometry.attributes.index) {
-        passEncoder.setIndexBuffer(compiled.buffers.get('index')!, 'uint16')
-        passEncoder.drawIndexed(index.data.length / index.size)
+        this._passEncoder.drawIndexed(index.data.length / index.size)
       } else {
-        passEncoder.draw(position.data.length / position.size)
+        this._passEncoder.draw(position.data.length / position.size)
       }
     })
 
     // Cleanup frame, submit GL commands
-    passEncoder.endPass()
+    this._passEncoder.endPass()
     this._device.queue.submit([commandEncoder.finish()])
   }
 
   dispose() {
-    this._compiled.forEach(({ buffers }) => {
-      buffers.forEach((buffer) => buffer.destroy())
-    })
-    this._compiled.clear()
-
     this._depthTexture.destroy()
     this._colorTexture.destroy()
-
     this._device.destroy()
   }
 }
