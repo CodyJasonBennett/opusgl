@@ -2,47 +2,38 @@
 
 const path = require('path')
 const fs = require('fs')
-const prettyBytes = require('pretty-bytes')
-const gzipSize = require('gzip-size')
+const zlib = require('zlib')
 const recursiveReaddir = require('recursive-readdir')
 
-const args = process.argv.slice(2)
-const verbose = args.includes('--verbose')
+const UNITS = ['B', 'KB', 'MB', 'GB', 'TB']
 
-const DIST_DIR = path.resolve(process.cwd(), 'dist')
-
-const green = (text) => `\x1b[32m${text}\x1b[39m`
 const blue = (text) => `\x1b[34m${text}\x1b[39m`
+const green = (text) => `\x1b[32m${text}\x1b[39m`
 
-const format = (name, size, gzip) =>
-  `${blue(name)}: ${green(prettyBytes(size))} → ${green(prettyBytes(gzip))} (gzipped)`
+const measure = (bytes) => {
+  const unitIndex = Math.min(Math.floor(Math.log10(bytes) / 3), UNITS.length - 1)
+  bytes /= 1000 ** unitIndex
 
-const measureBundle = (ext, paths) =>
-  paths.reduce(
-    (acc, filePath) => {
+  const size = new Intl.NumberFormat().format(bytes.toFixed(2))
+  const unit = UNITS[unitIndex]
+
+  return `${size} ${unit}`
+}
+
+recursiveReaddir(path.resolve(process.cwd(), 'dist')).then((paths) => {
+  ;['index.esm.js', 'index.cjs.js', 'index.d.ts'].forEach((name) => {
+    let size = 0
+    let gzip = 0
+
+    const ext = name.replace('index', '')
+    paths.forEach((filePath) => {
       if (filePath.endsWith(ext)) {
         const code = fs.readFileSync(filePath)
-        const size = code.length
-        const gzip = gzipSize.sync(code)
-
-        acc.size += size
-        acc.gzip += gzip
-
-        if (verbose) {
-          const name = filePath.replace(DIST_DIR, 'dist')
-          console.log(format(name, size, gzip))
-        }
+        size += code.length
+        gzip += zlib.gzipSync(code, { level: 9 }).length
       }
+    })
 
-      return acc
-    },
-    { size: 0, gzip: 0 },
-  )
-
-recursiveReaddir(DIST_DIR).then((paths) => {
-  ;['index.esm.js', 'index.cjs.js', 'index.d.ts'].forEach((name) => {
-    const ext = name.replace('index', '')
-    const { size, gzip } = measureBundle(ext, paths)
-    console.log(`Created bundle ${format(name, size, gzip)}`)
+    console.log(`Created bundle ${blue(name)}: ${green(measure(size))} → ${green(measure(gzip))} (gzipped)`)
   })
 })
