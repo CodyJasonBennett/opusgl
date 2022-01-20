@@ -1,5 +1,15 @@
+import type { Color } from '../math/Color'
+import type { Euler } from '../math/Euler'
+import type { Matrix3 } from '../math/Matrix3'
+import type { Matrix4 } from '../math/Matrix4'
+import type { Quaternion } from '../math/Quaternion'
+import type { Vector2 } from '../math/Vector2'
+import type { Vector3 } from '../math/Vector3'
+import type { Vector4 } from '../math/Vector4'
 import { uuid, dispose } from '../utils'
 import { GL_CULL_SIDES } from '../constants'
+
+export type Uniform = number | Color | Euler | Matrix3 | Matrix4 | Quaternion | Vector2 | Vector3 | Vector4
 
 /**
  * Material constructor parameters. Accepts shaders, their uniforms, and various blend & culling options.
@@ -16,7 +26,7 @@ export interface MaterialOptions {
   /**
    * An object of program uniforms. Can accept numbers or built-in math classes.
    */
-  uniforms?: { [name: string]: any }
+  uniforms?: { [name: string]: Uniform }
   /**
    * Which sides of faces should be rendered. Default is `front`.
    */
@@ -43,7 +53,7 @@ export class Material implements MaterialOptions {
   readonly uuid: string
   public vertex!: string
   public fragment!: string
-  readonly uniforms: { [name: string]: any } = {}
+  readonly uniforms: { [name: string]: Uniform } = {}
   public side: keyof typeof GL_CULL_SIDES = 'front'
   public transparent = false
   public depthTest = true

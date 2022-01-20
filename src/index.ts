@@ -22,3 +22,4 @@ export * from './renderers/WebGLRenderer'
 export * from './renderers/WebGPURenderer'
 
 export * from './constants'
+export * from './utils'

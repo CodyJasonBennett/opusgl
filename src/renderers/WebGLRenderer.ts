@@ -1,17 +1,17 @@
 import { Renderer } from '../core/Renderer'
 import type { Disposable } from '../utils'
-import type { Material } from '../core/Material'
+import type { Uniform, Material } from '../core/Material'
 import type { Geometry, GeometryAttribute } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Scene } from '../core/Scene'
 import type { Camera } from '../core/Camera'
-import { compiled } from '../utils'
+import { compiled, compareUniforms } from '../utils'
 import { GL_SHADER_TEMPLATES, GL_CULL_SIDES, GL_DRAW_MODES } from '../constants'
 
 export type WebGLAttribute = { buffer: WebGLBuffer; location: number }
 export type WebGLAttributeMap = Map<string, WebGLAttribute>
 
-export type WebGLMaterial = Disposable & { program: WebGLProgram }
+export type WebGLMaterial = Disposable & { program: WebGLProgram; uniforms: Map<string, Uniform> }
 export type WebGLGeometry = Disposable & { attributes: WebGLAttributeMap }
 
 export type WebGLMesh = Disposable & { VAO: WebGLVertexArrayObject }
@@ -246,7 +246,7 @@ export class WebGLRenderer extends Renderer {
   }
 
   private updateUniforms(material: Material) {
-    const { program } = compiled.get(material.uuid)! as WebGLMaterial
+    const { program, uniforms } = compiled.get(material.uuid)! as WebGLMaterial
 
     const uniformsLength = this.gl.getProgramParameter(program, this.gl.ACTIVE_UNIFORMS)
     for (let i = 0; i < uniformsLength; i++) {
@@ -254,8 +254,12 @@ export class WebGLRenderer extends Renderer {
       const value = material.uniforms[name]
       if (value === undefined) throw `Uniform not found for ${name}!`
 
-      // TODO: automatically flag for updates in material w/setters
-      this.setUniform(name, type, value, program)
+      const prevUniform = uniforms.get(name)!
+      const needsUpdate = !compareUniforms(prevUniform, value)
+
+      if (needsUpdate) this.setUniform(name, type, value, program)
+      // @ts-expect-error
+      if (prevUniform === undefined) uniforms.set(name, value?.clone() ?? value)
     }
   }
 
@@ -290,6 +294,7 @@ export class WebGLRenderer extends Renderer {
 
       compiled.set(material.uuid, {
         program,
+        uniforms: new Map(),
         dispose: () => {
           this.gl.deleteProgram(program)
         },
@@ -321,7 +326,6 @@ export class WebGLRenderer extends Renderer {
     const { attributes } = compiled.get(geometry.uuid)! as WebGLGeometry
 
     Object.entries(geometry.attributes).forEach(([name, attribute]) => {
-      // TODO: automatically flag for updates in geometry w/setters
       if (!attribute.needsUpdate) return
 
       const { buffer } = attributes.get(name)!

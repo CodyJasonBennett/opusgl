@@ -1,15 +1,15 @@
 import { Matrix4 } from '../math/Matrix4'
 import { Renderer } from '../core/Renderer'
 import type { Disposable } from '../utils'
-import type { Material } from '../core/Material'
+import type { Uniform, Material } from '../core/Material'
 import type { Geometry } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Scene } from '../core/Scene'
 import type { Camera } from '../core/Camera'
-import { compiled } from '../utils'
+import { compiled, compareUniforms } from '../utils'
 import { GPU_CULL_SIDES, GPU_DRAW_MODES } from '../constants'
 
-export type WebGPUUniform = GPUBindGroupEntry & { resource: { buffer: GPUBuffer } }
+export type WebGPUUniform = GPUBindGroupEntry & { resource: { buffer: GPUBuffer; value?: Uniform } }
 export type WebGPUUniformMap = Map<string, WebGPUUniform>
 export type WebGPUMaterial = Disposable & { uniforms: WebGPUUniformMap; uniformBindGroup: GPUBindGroup }
 
@@ -264,7 +264,11 @@ export class WebGPURenderer extends Renderer {
     if (!compiledMaterial) {
       // Create uniform buffers to bind
       const uniforms: WebGPUUniformMap = Object.entries(material.uniforms).reduce((acc, [name, value], binding) => {
-        const buffer = this.createBuffer(value, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST)
+        const buffer = this.createBuffer(
+          // wrap number uniforms
+          (typeof value === 'number' ? new Float32Array([value]) : value) as Float32Array | Uint16Array,
+          GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        )
         const uniform = { binding, resource: { buffer } }
         acc.set(name, uniform)
 
@@ -281,8 +285,22 @@ export class WebGPURenderer extends Renderer {
       const { uniforms } = compiledMaterial
 
       Object.entries(material.uniforms).forEach(([name, value]) => {
-        const { buffer } = uniforms.get(name)!.resource
-        this._device.queue.writeBuffer(buffer, value.byteOffset, value)
+        const uniform = uniforms.get(name)!
+
+        const prevUniform = uniform.resource.value!
+        const needsUpdate = !compareUniforms(prevUniform, value)
+
+        if (needsUpdate) {
+          this._device.queue.writeBuffer(
+            uniform.resource.buffer,
+            0,
+            // wrap number uniforms
+            typeof value === 'number' ? new Float32Array([value]) : value,
+          )
+        }
+
+        // @ts-expect-error
+        if (prevUniform === undefined) uniform.resource.value = value?.clone() ?? value
       })
     }
 

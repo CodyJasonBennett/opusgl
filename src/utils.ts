@@ -1,3 +1,5 @@
+import type { Uniform } from './core/Material'
+
 /**
  * Generates a random UUID. Useful for tracking unique objects.
  */
@@ -21,4 +23,13 @@ export const dispose = (uuid: string) => {
 
   compiled.get(uuid)!.dispose?.()
   compiled.delete(uuid)
+}
+
+/**
+ * Compares two uniforms, preferring to use math `equals` methods if available.
+ */
+export const compareUniforms = (a: Uniform, b: Uniform) => {
+  // @ts-expect-error
+  if (a?.constructor === b?.constructor && typeof b?.equals === 'function') return b.equals(a)
+  return a === b
 }
