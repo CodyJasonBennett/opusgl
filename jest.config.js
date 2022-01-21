@@ -1,8 +1,8 @@
 module.exports = {
   transform: {
-    '^.+\\.(ts|js)$': '@swc/jest',
+    '^.+\\.ts$': '@swc/jest',
   },
-  testMatch: ['<rootDir>/tests/**/*.test.{js,ts}'],
+  testMatch: ['<rootDir>/tests/**/*.test.ts'],
   testEnvironment: 'jsdom',
   moduleFileExtensions: ['js', 'ts'],
   verbose: true,

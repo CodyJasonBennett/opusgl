@@ -64,6 +64,6 @@ recursiveReaddir(DIST_DIR).then(async (paths) => {
     })
 
   Object.values(bundles).forEach((bundle) => {
-    console.log(`Created bundle ${blue(bundle.name)}: ${green(measure(bundle.size))}`)
+    console.log(`Created bundle ${blue(`dist${path.sep}${bundle.name}`)}: ${green(measure(bundle.size))}`)
   })
 })
