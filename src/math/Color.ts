@@ -2,21 +2,6 @@ import { COLORS } from '../constants'
 
 export type ColorRepresentation = keyof typeof COLORS | number
 
-/**
- * Converts a CSS string name or hexadecimal to RGB (0-1)
- */
-export const toRGB = (c: ColorRepresentation) => {
-  // Convert string to hexadecimal
-  if (typeof c === 'string') c = COLORS[c] ?? 0xffffff
-
-  // Convert hexadecimal to RGB
-  const r = (((c as number) >> 16) & 255) / 255
-  const g = (((c as number) >> 8) & 255) / 255
-  const b = (c as number & 255) / 255
-
-  return { r, g, b }
-}
-
 export class Color extends Float32Array {
   readonly isColor = true
 
@@ -55,12 +40,10 @@ export class Color extends Float32Array {
       this.r = r
       this.g = g
       this.b = b
+    } else if (typeof r === 'string') {
+      this.fromString(r)
     } else {
-      // Convert string or hexadecimal to RGB
-      const color = toRGB(r)
-      this.r = color.r
-      this.g = color.g
-      this.b = color.b
+      this.fromHex(r)
     }
 
     return this
@@ -85,5 +68,50 @@ export class Color extends Float32Array {
       this.g === c.g &&
       this.b === c.b
     )
+  }
+
+  /**
+   * Sets color from a CSS color name.
+   */
+  fromString(s: keyof typeof COLORS) {
+    const hex = COLORS[s] ?? 0xffffff
+    return this.fromHex(hex)
+  }
+
+  /**
+   * Sets color from a hexadecimal.
+   */
+  fromHex(h: number) {
+    const r = ((h >> 16) & 255) / 255
+    const g = ((h >> 8) & 255) / 255
+    const b = (h & 255) / 255
+
+    return this.set(r, g, b)
+  }
+
+  /**
+   * Converts from linear to sRGB color space.
+   */
+  toSRGB() {
+    const [r, g, b] = Array.from(this).map((n) => {
+      if (n <= 0) return 0
+      if (n >= 1) return 1
+      if (n < 0.0031308) return 12.92 * n
+      return 1.055 * Math.pow(n, 1 / 2.4) - 0.055
+    })
+
+    return this.set(r, g, b)
+  }
+
+  /**
+   * Converts from sRGB to linear color space.
+   */
+  toLinear() {
+    const [r, g, b] = Array.from(this).map((n) => {
+      if (n <= 0.04045) return n / 12.92
+      return Math.pow((n + 0.055) / 1.055, 2.4)
+    })
+
+    return this.set(r, g, b)
   }
 }
