@@ -160,12 +160,26 @@ export class WebGLRenderer extends Renderer {
     this.gl.depthMask(enabled)
   }
 
-  private setUniform(name: string, type: number, value: any, program: WebGLProgram) {
-    const location = this.gl.getUniformLocation(program, name)
+  /**
+   * Sets a program's active uniform by name.
+   */
+  setUniform(name: string, value: any, program: WebGLProgram) {
+    let uniform!: WebGLActiveInfo | null
 
-    switch (type) {
+    // Query for active uniform by name
+    const uniformsLength = this.gl.getProgramParameter(program, this.gl.ACTIVE_UNIFORMS)
+    for (let i = 0; i < uniformsLength; i++) {
+      const activeUniform = this.gl.getActiveUniform(program, i)
+      if (activeUniform?.name === name) uniform = activeUniform
+    }
+
+    // Don't set unused uniforms
+    if (!uniform) return
+
+    const location = this.gl.getUniformLocation(program, uniform.name)!
+    switch (uniform.type) {
       case this.gl.FLOAT:
-        value.length ? this.gl.uniform1fv(location, value) : this.gl.uniform1f(location, value)
+        value?.length ? this.gl.uniform1fv(location, value) : this.gl.uniform1f(location, value)
         break
       case this.gl.FLOAT_VEC2:
         this.gl.uniform2fv(location, value)
@@ -180,7 +194,7 @@ export class WebGLRenderer extends Renderer {
       case this.gl.INT:
       case this.gl.SAMPLER_2D:
       case this.gl.SAMPLER_CUBE:
-        value.length ? this.gl.uniform1iv(location, value) : this.gl.uniform1i(location, value)
+        value?.length ? this.gl.uniform1iv(location, value) : this.gl.uniform1i(location, value)
         break
       case this.gl.BOOL_VEC2:
       case this.gl.INT_VEC2:
@@ -204,28 +218,35 @@ export class WebGLRenderer extends Renderer {
         this.gl.uniformMatrix4fv(location, false, value)
         break
     }
+
+    return uniform
   }
 
-  private setAttribute(name: string, attribute: GeometryAttribute, program: WebGLProgram): WebGLAttribute {
-    // Create attribute buffer
+  /**
+   * Creates and enables a program's vertex attribute by name.
+   */
+  createBuffer(data: Float32Array | Uint16Array, type = this.gl.ARRAY_BUFFER, usage = this.gl.STATIC_DRAW) {
     const buffer = this.gl.createBuffer()!
+    this.gl.bindBuffer(type, buffer)
+    this.gl.bufferData(type, data, usage)
 
-    // Bind it
-    const bufferType = name === 'index' ? this.gl.ELEMENT_ARRAY_BUFFER : this.gl.ARRAY_BUFFER
-    this.gl.bindBuffer(bufferType, buffer)
-    this.gl.bufferData(bufferType, attribute.data as unknown as BufferSource, this.gl.STATIC_DRAW)
-
-    // Save attribute with pointer for VAO
-    const location = this.gl.getAttribLocation(program, name)
-    if (location !== -1) {
-      this.gl.enableVertexAttribArray(location)
-      this.gl.vertexAttribPointer(location, attribute.size, this.gl.FLOAT, false, 0, 0)
-    }
-
-    return { buffer, location }
+    return buffer
   }
 
-  private compileShaders(material: Material) {
+  /**
+   * Updates a program's vertex attribute buffer.
+   */
+  writeBuffer(buffer: WebGLBuffer, data: Float32Array | Uint16Array, type = this.gl.ARRAY_BUFFER) {
+    this.gl.bindBuffer(type, buffer)
+    this.gl.bufferSubData(type, 0, data)
+
+    return buffer
+  }
+
+  /**
+   * Compiles a material's vertex and fragment shaders.
+   */
+  compileShaders(material: Material) {
     const shaders = Object.entries(GL_SHADER_TEMPLATES).map(([name, template]) => {
       const type = name === 'vertex' ? this.gl.VERTEX_SHADER : this.gl.FRAGMENT_SHADER
       const shader = this.gl.createShader(type)!
@@ -245,25 +266,31 @@ export class WebGLRenderer extends Renderer {
     return shaders
   }
 
-  private updateUniforms(material: Material) {
+  /**
+   * Sets or updates a material's program uniforms.
+   */
+  updateUniforms(material: Material) {
     const { program, uniforms } = compiled.get(material.uuid)! as WebGLMaterial
 
-    const uniformsLength = this.gl.getProgramParameter(program, this.gl.ACTIVE_UNIFORMS)
-    for (let i = 0; i < uniformsLength; i++) {
-      const { name, type } = this.gl.getActiveUniform(program, i)!
-      const value = material.uniforms[name]
-      if (value === undefined) throw `Uniform not found for ${name}!`
-
+    Object.entries(material.uniforms).forEach(([name, value]) => {
       const prevUniform = uniforms.get(name)!
       const needsUpdate = !compareUniforms(prevUniform, value)
 
-      if (needsUpdate) this.setUniform(name, type, value, program)
-      // @ts-expect-error
-      if (prevUniform === undefined) uniforms.set(name, value?.clone() ?? value)
-    }
+      if (needsUpdate) {
+        this.setUniform(name, value, program)
+
+        // @ts-expect-error
+        uniforms.set(name, value?.clone() ?? value)
+      }
+    })
+
+    return uniforms
   }
 
-  private updateMaterial(material: Material) {
+  /**
+   * Compiles or updates a material's program, shaders, uniforms, and state.
+   */
+  compileMaterial(material: Material) {
     let program: WebGLProgram
 
     // Compile program on first bind
@@ -322,30 +349,43 @@ export class WebGLRenderer extends Renderer {
     return program
   }
 
-  private updateAttributes(geometry: Geometry) {
+  /**
+   * Updates a geometry's buffer attributes.
+   */
+  updateAttributes(geometry: Geometry) {
     const { attributes } = compiled.get(geometry.uuid)! as WebGLGeometry
 
     Object.entries(geometry.attributes).forEach(([name, attribute]) => {
       if (!attribute.needsUpdate) return
 
       const { buffer } = attributes.get(name)!
-
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer)
-      this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, attribute.data as unknown as BufferSource)
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null)
-
-      geometry.attributes[name].needsUpdate = false
+      this.writeBuffer(buffer, attribute.data)
     })
+
+    return attributes
   }
 
-  private updateGeometry(geometry: Geometry, program: WebGLProgram) {
+  /**
+   * Compiles or updates a geometry's attributes and binds them to a program.
+   */
+  compileGeometry(geometry: Geometry, program: WebGLProgram) {
     // If compiled, only update attributes
     if (compiled.has(geometry.uuid)) return this.updateAttributes(geometry)
 
     // Otherwise, create and bind buffer attributes
     const attributes: WebGLAttributeMap = new Map()
     Object.entries(geometry.attributes).forEach(([name, attribute]) => {
-      const { buffer, location } = this.setAttribute(name, attribute, program)
+      // Create buffer
+      const type = name === 'index' ? this.gl.ELEMENT_ARRAY_BUFFER : this.gl.ARRAY_BUFFER
+      const buffer = this.createBuffer(attribute.data, type)
+
+      // Save attribute with pointer for VAO
+      const location = this.gl.getAttribLocation(program, name)
+      if (location !== -1) {
+        this.gl.enableVertexAttribArray(location)
+        this.gl.vertexAttribPointer(location, attribute.size, this.gl.FLOAT, false, 0, 0)
+      }
+
       attributes.set(name, { buffer, location })
     })
 
@@ -358,9 +398,14 @@ export class WebGLRenderer extends Renderer {
         })
       },
     } as WebGLGeometry)
+
+    return attributes
   }
 
-  private updateMesh(mesh: Mesh, camera?: Camera) {
+  /**
+   * Compiles or updates a mesh and its geometry & uniforms.
+   */
+  compileMesh(mesh: Mesh, camera?: Camera) {
     // Update built-ins
     mesh.material.uniforms.modelMatrix = mesh.worldMatrix
 
@@ -392,8 +437,13 @@ export class WebGLRenderer extends Renderer {
     this.gl.bindVertexArray(VAO)
 
     // Update material/geometry
-    const program = this.updateMaterial(mesh.material)
-    this.updateGeometry(mesh.geometry, program)
+    const program = this.compileMaterial(mesh.material)
+    this.compileGeometry(mesh.geometry, program)
+
+    // Unbind
+    this.gl.bindVertexArray(null)
+
+    return VAO
   }
 
   render(scene: Scene, camera?: Camera) {
@@ -420,7 +470,10 @@ export class WebGLRenderer extends Renderer {
       if (!mesh.isMesh || !mesh.visible) return
 
       // Compile on first render, otherwise update
-      this.updateMesh(mesh, camera)
+      const VAO = this.compileMesh(mesh, camera)
+
+      // Bind
+      this.gl.bindVertexArray(VAO)
 
       // Alternate drawing for indexed and non-indexed meshes
       const { index, position } = mesh.geometry.attributes
@@ -432,9 +485,7 @@ export class WebGLRenderer extends Renderer {
       }
 
       // Unbind
-      this.gl.useProgram(null)
       this.gl.bindVertexArray(null)
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null)
     })
   }
 }
