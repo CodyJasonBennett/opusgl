@@ -1,7 +1,7 @@
 import { Renderer } from '../core/Renderer'
 import type { Disposable } from '../utils'
 import type { Uniform, Material } from '../core/Material'
-import type { Geometry, GeometryAttribute } from '../core/Geometry'
+import type { Geometry } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Scene } from '../core/Scene'
 import type { Camera } from '../core/Camera'
@@ -223,7 +223,7 @@ export class WebGLRenderer extends Renderer {
   }
 
   /**
-   * Creates and enables a program's vertex attribute by name.
+   * Creates buffer and initializes it.
    */
   createBuffer(data: Float32Array | Uint16Array, type = this.gl.ARRAY_BUFFER, usage = this.gl.STATIC_DRAW) {
     const buffer = this.gl.createBuffer()!
@@ -234,7 +234,7 @@ export class WebGLRenderer extends Renderer {
   }
 
   /**
-   * Updates a program's vertex attribute buffer.
+   * Updates a buffer.
    */
   writeBuffer(buffer: WebGLBuffer, data: Float32Array | Uint16Array, type = this.gl.ARRAY_BUFFER) {
     this.gl.bindBuffer(type, buffer)
@@ -403,7 +403,7 @@ export class WebGLRenderer extends Renderer {
   }
 
   /**
-   * Compiles or updates a mesh and its geometry & uniforms.
+   * Compiles or updates a mesh and its geometry & material.
    */
   compileMesh(mesh: Mesh, camera?: Camera) {
     // Update built-ins
