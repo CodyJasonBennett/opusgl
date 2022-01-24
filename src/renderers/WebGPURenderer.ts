@@ -300,6 +300,9 @@ export class WebGPURenderer extends Renderer {
       mesh.material.uniforms.normalMatrix = mesh.normalMatrix
       mesh.material.uniforms.viewMatrix = camera.viewMatrix
       mesh.material.uniforms.projectionMatrix = camera.projectionMatrix
+
+      mesh.modelViewMatrix.copy(camera.viewMatrix).multiply(mesh.worldMatrix)
+      mesh.normalMatrix.getNormalMatrix(mesh.modelViewMatrix)
     }
 
     // Get material state
@@ -414,6 +417,9 @@ export class WebGPURenderer extends Renderer {
     passEncoder.setViewport(this.viewport.x, this.viewport.y, this.viewport.width, this.viewport.height, 0, 1)
     passEncoder.setScissorRect(this.scissor.x, this.scissor.y, this.scissor.width, this.scissor.height)
 
+    // Update scene matrices
+    scene.updateMatrix()
+
     // Update camera matrices
     if (camera) camera.updateMatrix()
     if (camera?.needsUpdate) {
@@ -423,13 +429,7 @@ export class WebGPURenderer extends Renderer {
     }
 
     // Render children
-    ;([scene, ...scene.children] as Mesh[]).forEach((mesh) => {
-      mesh.updateMatrix(camera)
-
-      // Don't render invisible objects
-      // TODO: filter out occluded meshes
-      if (!mesh.isMesh || !mesh.visible) return
-
+    this.sort(scene, camera).forEach((mesh) => {
       // Compile on first render, otherwise update
       const { pipeline, uniformBindGroup, attributes } = this.compileMesh(mesh, camera)
 

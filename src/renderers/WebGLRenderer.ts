@@ -414,6 +414,9 @@ export class WebGLRenderer extends Renderer {
       mesh.material.uniforms.normalMatrix = mesh.normalMatrix
       mesh.material.uniforms.viewMatrix = camera.viewMatrix
       mesh.material.uniforms.projectionMatrix = camera.projectionMatrix
+
+      mesh.modelViewMatrix.copy(camera.viewMatrix).multiply(mesh.worldMatrix)
+      mesh.normalMatrix.getNormalMatrix(mesh.modelViewMatrix)
     }
 
     // Create VAO on first bind
@@ -453,6 +456,9 @@ export class WebGLRenderer extends Renderer {
       this.gl.clearColor(this.clearColor.r, this.clearColor.g, this.clearColor.b, this.clearAlpha)
     }
 
+    // Update scene matrices
+    scene.updateMatrix()
+
     // Update camera matrices
     if (camera) camera.updateMatrix()
     if (camera?.needsUpdate) {
@@ -461,13 +467,7 @@ export class WebGLRenderer extends Renderer {
     }
 
     // Render children
-    ;([scene, ...scene.children] as Mesh[]).forEach((mesh) => {
-      mesh.updateMatrix(camera)
-
-      // Don't render invisible objects
-      // TODO: filter out occluded meshes
-      if (!mesh.isMesh || !mesh.visible) return
-
+    this.sort(scene, camera).forEach((mesh) => {
       // Compile on first render, otherwise update
       const VAO = this.compileMesh(mesh, camera)
 
