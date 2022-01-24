@@ -1,5 +1,5 @@
 import { Color } from '../math/Color'
-import type { Scene } from '../core/Scene'
+import type { Object3D } from '../core/Object3D'
 import type { Camera } from '../core/Camera'
 
 /**
@@ -89,5 +89,5 @@ export abstract class Renderer {
   /**
    * Renders a scene of objects with an optional camera.
    */
-  abstract render(scene: Scene, camera?: Camera): void
+  abstract render(scene: Object3D, camera?: Camera): void
 }

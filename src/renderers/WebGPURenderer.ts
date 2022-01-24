@@ -4,7 +4,7 @@ import type { Disposable } from '../utils'
 import type { Uniform, Material } from '../core/Material'
 import type { Geometry } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
-import type { Scene } from '../core/Scene'
+import type { Object3D } from '../core/Object3D'
 import type { Camera } from '../core/Camera'
 import { compiled, compareUniforms } from '../utils'
 import { GPU_CULL_SIDES, GPU_DRAW_MODES } from '../constants'
@@ -380,7 +380,7 @@ export class WebGPURenderer extends Renderer {
     return { pipeline, uniformBindGroup, attributes }
   }
 
-  render(scene: Scene, camera?: Camera) {
+  render(scene: Object3D, camera?: Camera) {
     // Begin recording GL commands
     const commandEncoder = this._device.createCommandEncoder()
 
@@ -423,8 +423,7 @@ export class WebGPURenderer extends Renderer {
     }
 
     // Render children
-    const renderList = scene.children as Mesh[]
-    renderList.forEach((mesh) => {
+    ;([scene, ...scene.children] as Mesh[]).forEach((mesh) => {
       mesh.updateMatrix(camera)
 
       // Don't render invisible objects

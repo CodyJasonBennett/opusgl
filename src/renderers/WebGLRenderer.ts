@@ -3,7 +3,7 @@ import type { Disposable } from '../utils'
 import type { Uniform, Material } from '../core/Material'
 import type { Geometry } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
-import type { Scene } from '../core/Scene'
+import type { Object3D } from '../core/Object3D'
 import type { Camera } from '../core/Camera'
 import { compiled, compareUniforms } from '../utils'
 import { GL_SHADER_TEMPLATES, GL_CULL_SIDES, GL_DRAW_MODES } from '../constants'
@@ -446,7 +446,7 @@ export class WebGLRenderer extends Renderer {
     return VAO
   }
 
-  render(scene: Scene, camera?: Camera) {
+  render(scene: Object3D, camera?: Camera) {
     // Clear screen
     if (this.autoClear) {
       this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT)
@@ -461,8 +461,7 @@ export class WebGLRenderer extends Renderer {
     }
 
     // Render children
-    const renderList = scene.children as Mesh[]
-    renderList.forEach((mesh) => {
+    ;([scene, ...scene.children] as Mesh[]).forEach((mesh) => {
       mesh.updateMatrix(camera)
 
       // Don't render invisible objects
