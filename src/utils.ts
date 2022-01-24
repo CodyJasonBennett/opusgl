@@ -30,6 +30,6 @@ export const dispose = (uuid: string) => {
  */
 export const compareUniforms = (a: Uniform, b: Uniform) => {
   // @ts-expect-error
-  if (a?.constructor === b?.constructor && typeof b?.equals === 'function') return b.equals(a)
+  if (a?.constructor === b?.constructor && typeof b?.equals === 'function') return b.equals(a) as boolean
   return a === b
 }

@@ -1,6 +1,10 @@
 import { Color } from '../math/Color'
-import type { Object3D } from '../core/Object3D'
-import type { Camera } from '../core/Camera'
+import type { Object3D } from './Object3D'
+import type { Camera } from './Camera'
+import type { Mesh } from './Mesh'
+
+export type Viewport = { x: number; y: number; width: number; height: number }
+export type Scissor = { x: number; y: number; width: number; height: number }
 
 /**
  * Constructs a renderer object. Can be extended to draw to a canvas.
@@ -20,8 +24,8 @@ export abstract class Renderer {
   public clearAlpha = 0
 
   private _pixelRatio = 1
-  private _viewport!: { x: number; y: number; width: number; height: number }
-  private _scissor!: { x: number; y: number; width: number; height: number }
+  private _viewport!: Viewport
+  private _scissor!: Scissor
 
   /**
    * Sets the canvas size. Will reset viewport and scissor state.
@@ -84,6 +88,23 @@ export abstract class Renderer {
    */
   setScissor(x: number, y: number, width: number, height: number) {
     this._scissor = { x, y, width, height }
+  }
+
+  /**
+   * Returns a list of visible meshes. Will frustum cull and depth-sort with a camera if available.
+   */
+  sort(scene: Object3D, camera?: Camera) {
+    const meshes: Mesh[] = []
+
+    if ((scene as Mesh).isMesh) meshes.push(scene as Mesh)
+    scene.traverse((node) => {
+      if (!node.visible) return true
+      if ((node as Mesh).isMesh) meshes.push(node as Mesh)
+    })
+
+    // TODO: handle frustum culling and depth sorting
+
+    return meshes
   }
 
   /**
