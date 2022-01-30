@@ -96,10 +96,13 @@ export abstract class Renderer {
   sort(scene: Object3D, camera?: Camera) {
     const meshes: Mesh[] = []
 
-    if ((scene as Mesh).isMesh) meshes.push(scene as Mesh)
     scene.traverse((node) => {
       if (!node.visible) return true
-      if ((node as Mesh).isMesh) meshes.push(node as Mesh)
+
+      const mesh = node as Mesh
+      if (!mesh.isMesh) return
+
+      meshes.push(mesh)
     })
 
     // TODO: handle frustum culling and depth sorting

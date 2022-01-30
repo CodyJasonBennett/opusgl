@@ -1,6 +1,6 @@
 export const GL_CULL_SIDES = {
-  front: 0x0405,
-  back: 0x0404,
+  front: 1029,
+  back: 1028,
   both: 0,
 } as const
 
@@ -11,11 +11,11 @@ export const GPU_CULL_SIDES = {
 } as const
 
 export const GL_DRAW_MODES = {
-  points: 0x0000,
-  lines: 0x0001,
-  lineStrip: 0x0003,
-  triangles: 0x0004,
-  triangleStrip: 0x0005,
+  points: 0,
+  lines: 1,
+  lineStrip: 3,
+  triangles: 4,
+  triangleStrip: 5,
 } as const
 
 export const GPU_DRAW_MODES = {
