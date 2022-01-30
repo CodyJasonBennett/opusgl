@@ -48,7 +48,7 @@ recursiveReaddir(DIST_DIR).then(async (paths) => {
       const code = await minify(filePath)
 
       const name = filePath.replace(DIST_DIR, 'src').replace(ext, '.ts')
-      const size = zlib.gzipSync(code, { level: 9 }).length
+      const size = zlib.brotliCompressSync(code).length
 
       bundles[ext].size += size
 
