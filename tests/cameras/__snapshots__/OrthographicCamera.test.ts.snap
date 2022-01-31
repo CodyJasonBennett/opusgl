@@ -1,0 +1,22 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`cameras/OrthgraphicCamera can calculate an orthogonal projection matrix 1`] = `
+Array [
+  1,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  -0.0020002000965178013,
+  0,
+  -0,
+  -0,
+  -1.0002000331878662,
+  1,
+]
+`;
