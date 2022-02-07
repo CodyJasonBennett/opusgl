@@ -54,7 +54,7 @@ export class Material implements MaterialOptions {
   public vertex!: string
   public fragment!: string
   readonly uniforms: { [name: string]: Uniform } = {}
-  public side: keyof typeof GL_CULL_SIDES = 'front'
+  public side: keyof typeof GL_CULL_SIDES = 'both'
   public transparent = false
   public depthTest = true
   public depthWrite = true

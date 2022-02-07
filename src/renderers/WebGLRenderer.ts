@@ -225,7 +225,7 @@ export class WebGLRenderer extends Renderer {
   /**
    * Creates buffer and initializes it.
    */
-  createBuffer(data: Float32Array | Uint16Array, type = this.gl.ARRAY_BUFFER, usage = this.gl.STATIC_DRAW) {
+  createBuffer(data: Float32Array | Uint32Array, type = this.gl.ARRAY_BUFFER, usage = this.gl.STATIC_DRAW) {
     const buffer = this.gl.createBuffer()!
     this.gl.bindBuffer(type, buffer)
     this.gl.bufferData(type, data, usage)
@@ -236,7 +236,7 @@ export class WebGLRenderer extends Renderer {
   /**
    * Updates a buffer.
    */
-  writeBuffer(buffer: WebGLBuffer, data: Float32Array | Uint16Array, type = this.gl.ARRAY_BUFFER) {
+  writeBuffer(buffer: WebGLBuffer, data: Float32Array | Uint32Array, type = this.gl.ARRAY_BUFFER) {
     this.gl.bindBuffer(type, buffer)
     this.gl.bufferSubData(type, 0, data)
 
@@ -335,7 +335,7 @@ export class WebGLRenderer extends Renderer {
     // Update material state
     const { side, depthTest, depthWrite, transparent } = material
 
-    this.setCullFace(GL_CULL_SIDES[side] ?? GL_CULL_SIDES.front)
+    this.setCullFace(GL_CULL_SIDES[side] ?? GL_CULL_SIDES.both)
     this.setDepthTest(depthTest)
     this.setDepthMask(depthWrite)
 
@@ -410,10 +410,9 @@ export class WebGLRenderer extends Renderer {
     mesh.material.uniforms.modelMatrix = mesh.worldMatrix
 
     if (camera) {
-      mesh.material.uniforms.modelViewMatrix = mesh.modelViewMatrix
-      mesh.material.uniforms.normalMatrix = mesh.normalMatrix
-      mesh.material.uniforms.viewMatrix = camera.viewMatrix
       mesh.material.uniforms.projectionMatrix = camera.projectionMatrix
+      mesh.material.uniforms.viewMatrix = camera.viewMatrix
+      mesh.material.uniforms.normalMatrix = mesh.normalMatrix
 
       mesh.modelViewMatrix.copy(camera.viewMatrix).multiply(mesh.worldMatrix)
       mesh.normalMatrix.getNormalMatrix(mesh.modelViewMatrix)

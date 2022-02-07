@@ -7,7 +7,7 @@ export interface GeometryAttribute {
   /**
    * Attribute data.
    */
-  data: Float32Array | Uint16Array
+  data: Float32Array | Uint32Array
   /**
    * The size (per vertex) of the data array. Used to allocate data to each vertex.
    */
