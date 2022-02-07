@@ -14,10 +14,6 @@ export abstract class Camera extends Object3D {
    * A world inverse matrix. Useful for aligning transforms with the camera.
    */
   readonly viewMatrix = new Matrix4()
-  /**
-   * Used to track updates to projection matrix properties.
-   */
-  public needsUpdate = true
 
   updateMatrix() {
     super.updateMatrix()

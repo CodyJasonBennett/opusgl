@@ -391,10 +391,9 @@ export class WebGPURenderer extends Renderer {
     scene.updateMatrix()
 
     // Update camera matrices
-    if (camera) camera.updateMatrix()
-    if (camera?.needsUpdate) {
+    if (camera) {
+      camera.updateMatrix()
       camera.updateProjectionMatrix()
-      camera.needsUpdate = false
     }
 
     // Render children
