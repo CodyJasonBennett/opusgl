@@ -367,18 +367,23 @@ export class WebGPURenderer extends Renderer {
   render(scene: Scene, camera: Camera) {
     const commandEncoder = this.device.createCommandEncoder()
     const passEncoder = commandEncoder.beginRenderPass({
+      // @ts-expect-error WGPU types didn't remove deprecated keys
       colorAttachments: [
         {
           view: this.context.getCurrentTexture().createView(),
-          loadValue: { r: this.clearColor.r, g: this.clearColor.g, b: this.clearColor.b, a: this.clearAlpha },
+          clearValue: { r: this.clearColor.r, g: this.clearColor.g, b: this.clearColor.b, a: this.clearAlpha },
+          loadOp: 'clear',
           storeOp: 'store',
         },
       ],
+      // @ts-expect-error WGPU types didn't remove deprecated keys
       depthStencilAttachment: {
         view: this._depthTextureView,
-        depthLoadValue: 1,
+        depthClearValue: 1,
+        depthLoadOp: 'clear',
         depthStoreOp: 'store',
-        stencilLoadValue: 0,
+        stencilClearValue: 0,
+        stencilLoadOp: 'clear',
         stencilStoreOp: 'store',
       },
     })
@@ -422,7 +427,7 @@ export class WebGPURenderer extends Renderer {
     })
 
     // Cleanup frame, submit GL commands
-    passEncoder.endPass()
+    passEncoder.end()
     this.device.queue.submit([commandEncoder.finish()])
   }
 
