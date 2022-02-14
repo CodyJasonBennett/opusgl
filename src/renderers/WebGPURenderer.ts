@@ -86,6 +86,36 @@ export class WebGPURenderer extends Renderer {
     this.setSize(canvas.width, canvas.height)
   }
 
+  setSize(width: number, height: number) {
+    super.setSize(width, height)
+
+    // Resize swap chain after init
+    if (this.device) {
+      this.context.configure({
+        device: this.device,
+        format: this.format,
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        size: {
+          width: this.viewport.width,
+          height: this.viewport.height,
+          depthOrArrayLayers: 1,
+        },
+      })
+
+      if (this._depthTexture) this._depthTexture.destroy()
+      this._depthTexture = this.device.createTexture({
+        size: {
+          width: this.viewport.width,
+          height: this.viewport.height,
+          depthOrArrayLayers: 1,
+        },
+        format: 'depth24plus-stencil8',
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+      })
+      this._depthTextureView = this._depthTexture.createView()
+    }
+  }
+
   /**
    * Initializes the internal WebGPU context and swapchain.
    */
@@ -101,19 +131,9 @@ export class WebGPURenderer extends Renderer {
     // Init GL
     this.context = this.canvas.getContext('webgpu')!
     this.format = this.context.getPreferredFormat(this.adapter)
-    this.context.configure({ device: this.device, format: this.format })
 
-    // Init depth
-    this._depthTexture = this.device.createTexture({
-      size: {
-        width: this.viewport.width,
-        height: this.viewport.height,
-        depthOrArrayLayers: 1,
-      },
-      format: 'depth24plus-stencil8',
-      usage: GPUTextureUsage.RENDER_ATTACHMENT,
-    })
-    this._depthTextureView = this._depthTexture.createView()
+    // Resize swapchain
+    this.setSize(this.canvas.width, this.canvas.height)
 
     return this
   }
