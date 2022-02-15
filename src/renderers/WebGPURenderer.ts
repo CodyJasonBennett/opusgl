@@ -387,7 +387,6 @@ export class WebGPURenderer extends Renderer {
   render(scene: Scene, camera: Camera) {
     const commandEncoder = this.device.createCommandEncoder()
     const passEncoder = commandEncoder.beginRenderPass({
-      // @ts-expect-error WGPU types didn't remove deprecated keys
       colorAttachments: [
         {
           view: this.context.getCurrentTexture().createView(),
@@ -396,7 +395,6 @@ export class WebGPURenderer extends Renderer {
           storeOp: 'store',
         },
       ],
-      // @ts-expect-error WGPU types didn't remove deprecated keys
       depthStencilAttachment: {
         view: this._depthTextureView,
         depthClearValue: 1,
