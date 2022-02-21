@@ -35,7 +35,7 @@
     "prebuild": "rimraf dist",
     "build": "tsc && node bin/build",
     "postbuild": "npm run analyze",
-    "test": "vitest run --reporter verbose",
+    "test": "vitest run",
     "lint": "eslint src/**/*.ts && prettier src/**/*.ts --check",
     "lint-fix": "prettier src/**/*.ts --write && eslint --fix src/**/*.ts",
     "analyze": "node bin/analyze"

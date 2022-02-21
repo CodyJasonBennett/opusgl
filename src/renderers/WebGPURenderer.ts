@@ -58,7 +58,6 @@ export interface WebGPURendererOptions {
 export class WebGPURenderer extends Renderer {
   public adapter!: GPUAdapter
   public device!: GPUDevice
-  public canvas!: HTMLCanvasElement
   public context!: GPUCanvasContext
   public format!: GPUTextureFormat
 
