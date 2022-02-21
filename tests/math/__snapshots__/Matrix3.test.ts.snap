@@ -1,7 +1,7 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Vitest Snapshot v1
 
-exports[`math/Matrix3 can accept args 1`] = `
-Array [
+exports[`math/Matrix3 > can accept args 1`] = `
+[
   0,
   1,
   2,
@@ -14,8 +14,8 @@ Array [
 ]
 `;
 
-exports[`math/Matrix3 can clone itself 1`] = `
-Array [
+exports[`math/Matrix3 > can clone itself 1`] = `
+[
   0,
   1,
   2,
@@ -28,8 +28,8 @@ Array [
 ]
 `;
 
-exports[`math/Matrix3 can copy a matrix 1`] = `
-Array [
+exports[`math/Matrix3 > can copy a matrix 1`] = `
+[
   0,
   1,
   2,
@@ -42,8 +42,8 @@ Array [
 ]
 `;
 
-exports[`math/Matrix3 can multiply a matrix 1`] = `
-Array [
+exports[`math/Matrix3 > can multiply a matrix 1`] = `
+[
   12,
   12,
   12,
@@ -56,8 +56,8 @@ Array [
 ]
 `;
 
-exports[`math/Matrix3 can multiply a scalar 1`] = `
-Array [
+exports[`math/Matrix3 > can multiply a scalar 1`] = `
+[
   4,
   4,
   4,

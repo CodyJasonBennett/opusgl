@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import { Euler, Matrix4, Quaternion, Vector3 } from '../../src'
 
 const instance = new Array(16).fill(null).map((_, i) => i)

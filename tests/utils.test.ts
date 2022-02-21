@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import { compareUniforms, Vector2 } from '../src'
 
 describe('utils#compareUniforms', () => {

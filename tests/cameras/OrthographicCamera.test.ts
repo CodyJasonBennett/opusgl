@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import { OrthographicCamera } from '../../src'
 
 describe('cameras/OrthgraphicCamera', () => {

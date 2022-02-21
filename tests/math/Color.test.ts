@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import { Color } from '../../src'
 
 describe('math/Color', () => {

@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import { Euler, Quaternion, Vector3 } from '../../src'
 
 describe('math/Quaternion', () => {

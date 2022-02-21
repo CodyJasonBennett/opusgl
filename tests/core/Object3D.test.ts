@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import { Object3D, Vector3 } from '../../src'
 
 describe('core/Object3D', () => {

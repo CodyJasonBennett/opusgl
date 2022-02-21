@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import { Matrix3 } from '../../src'
 
 const instance = new Array(9).fill(null).map((_, i) => i)

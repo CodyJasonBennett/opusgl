@@ -1,7 +1,7 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Vitest Snapshot v1
 
-exports[`math/Quaternion can be set from a Euler 1`] = `
-Array [
+exports[`math/Quaternion > can be set from a Euler 1`] = `
+[
   0,
   0.7071067690849304,
   0,
