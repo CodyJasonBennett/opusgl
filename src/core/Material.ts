@@ -6,7 +6,7 @@ import type { Quaternion } from '../math/Quaternion'
 import type { Vector2 } from '../math/Vector2'
 import type { Vector3 } from '../math/Vector3'
 import type { Vector4 } from '../math/Vector4'
-import { uuid, dispose } from '../utils'
+import { uuid } from '../utils'
 import { GL_CULL_SIDES } from '../constants'
 
 export type Uniform = number | Color | Euler | Matrix3 | Matrix4 | Quaternion | Vector2 | Vector3 | Vector4
@@ -69,6 +69,6 @@ export class Material implements MaterialOptions {
    * Disposes material from GPU memory.
    */
   dispose() {
-    dispose(this.uuid)
+    // Implemented by renderer
   }
 }

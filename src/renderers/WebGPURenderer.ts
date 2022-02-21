@@ -1,11 +1,9 @@
-import { Renderer } from '../core/Renderer'
-import type { Disposable } from '../utils'
+import { Disposable, Renderer } from '../core/Renderer'
 import type { Material, Uniform } from '../core/Material'
 import type { Geometry } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Camera } from '../core/Camera'
 import type { Scene } from '../core/Scene'
-import { compiled, compareUniforms } from '../utils'
 import { GPU_CULL_SIDES, GPU_DRAW_MODES } from '../constants'
 
 export type WebGPUMaterial = Disposable & {
@@ -163,7 +161,7 @@ export class WebGPURenderer extends Renderer {
   }
 
   updateAttributes(geometry: Geometry) {
-    const { attributes } = compiled.get(geometry.uuid)! as WebGPUGeometry
+    const { attributes } = this._compiled.get(geometry)! as WebGPUGeometry
 
     attributes.forEach(({ buffer }, name) => {
       if (name === 'index') return
@@ -180,7 +178,7 @@ export class WebGPURenderer extends Renderer {
   updateGeometry(geometry: Geometry) {
     let attributes: WebGPUAttributeMap
 
-    if (compiled.has(geometry.uuid)) {
+    if (this._compiled.has(geometry)) {
       attributes = this.updateAttributes(geometry)
     } else {
       attributes = new Map()
@@ -210,7 +208,7 @@ export class WebGPURenderer extends Renderer {
         }
       })
 
-      compiled.set(geometry.uuid, {
+      this._compiled.set(geometry, {
         attributes,
         dispose: () => {
           attributes.forEach(({ buffer }) => buffer.destroy())
@@ -223,7 +221,7 @@ export class WebGPURenderer extends Renderer {
   }
 
   updatePipeline(attributes: WebGPUAttributeMap, mesh: Mesh) {
-    let pipeline = compiled.get(mesh.uuid)?.pipeline as GPURenderPipeline
+    let pipeline = (this._compiled.get(mesh) as WebGPUMesh)?.pipeline
 
     const pipelineState = {
       transparent: mesh.material.transparent,
@@ -233,9 +231,10 @@ export class WebGPURenderer extends Renderer {
       depthCompare: (mesh.material.depthTest ? 'less' : 'always') as GPUCompareFunction,
     }
 
-    const compiledMesh = compiled.get(mesh.uuid) as WebGPUMesh | undefined
+    const compiledMesh = this._compiled.get(mesh) as WebGPUMesh | undefined
     const needsUpdate =
-      !compiledMesh || Object.entries(pipelineState).some(([key, value]) => compiledMesh?.[key] !== value)
+      !compiledMesh ||
+      Object.entries(pipelineState).some(([key, value]) => compiledMesh?.[key as keyof typeof pipelineState] !== value)
 
     if (needsUpdate) {
       const buffers: WebGPUAttribute[] = []
@@ -286,7 +285,7 @@ export class WebGPURenderer extends Renderer {
         },
       })
 
-      compiled.set(mesh.uuid, {
+      this._compiled.set(mesh, {
         ...pipelineState,
         pipeline,
         dispose: () => {},
@@ -297,16 +296,16 @@ export class WebGPURenderer extends Renderer {
   }
 
   updateUniforms(pipeline: GPURenderPipeline, material: Material) {
-    let uniformBindGroup = compiled.get(material.uuid)?.uniformBindGroup as GPUBindGroup
+    let uniformBindGroup = (this._compiled.get(material) as WebGPUMaterial)?.uniformBindGroup
 
-    if (compiled.has(material.uuid)) {
-      const { uniforms, uniformData, uniformBuffer } = compiled.get(material.uuid)!
+    if (this._compiled.has(material)) {
+      const { uniforms, uniformData, uniformBuffer } = this._compiled.get(material) as WebGPUMaterial
 
       // Update uniforms
       let modified = 0
       let offset = 0
       Object.values(material.uniforms).forEach((uniform, i) => {
-        const needsUpdate = !compareUniforms(uniforms[i], uniform)
+        const needsUpdate = !this.uniformsEqual(uniforms[i], uniform)
 
         if (typeof uniform === 'number') {
           if (needsUpdate) uniformData[offset] = uniform
@@ -351,7 +350,7 @@ export class WebGPURenderer extends Renderer {
         ],
       })
 
-      compiled.set(material.uuid, {
+      this._compiled.set(material, {
         uniforms,
         uniformData,
         uniformBuffer,

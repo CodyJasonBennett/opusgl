@@ -1,10 +1,30 @@
 import { Color } from '../math/Color'
+import type { Geometry } from '../core/Geometry'
+import type { Material, Uniform } from '../core/Material'
+import type { Mesh } from './Mesh'
 import type { Object3D } from './Object3D'
 import type { Camera } from './Camera'
-import type { Mesh } from './Mesh'
+
+export type Disposable = { dispose: () => void }
+export type Compilable = Geometry | Material | Mesh
 
 export type Viewport = { x: number; y: number; width: number; height: number }
 export type Scissor = { x: number; y: number; width: number; height: number }
+
+class Compiled extends Map<Compilable, Disposable> {
+  // @ts-expect-error
+  set(object: Compilable, compiled: Disposable) {
+    super.set(object, compiled)
+
+    const dispose = object.dispose.bind(object)
+    object.dispose = () => {
+      dispose()
+
+      compiled.dispose?.()
+      object.dispose = dispose
+    }
+  }
+}
 
 /**
  * Constructs a renderer object. Can be extended to draw to a canvas.
@@ -26,6 +46,7 @@ export abstract class Renderer {
   private _pixelRatio = 1
   private _viewport!: Viewport
   private _scissor!: Scissor
+  protected _compiled = new Compiled()
 
   /**
    * Sets the canvas size. Will reset viewport and scissor state.
@@ -108,6 +129,15 @@ export abstract class Renderer {
     // TODO: handle frustum culling and depth sorting
 
     return meshes
+  }
+
+  /**
+   * Compares two uniforms, preferring to use math `equals` methods if available.
+   */
+  uniformsEqual(a: Uniform, b: Uniform) {
+    // @ts-expect-error
+    if (a?.constructor === b?.constructor && typeof b?.equals === 'function') return b.equals(a) as boolean
+    return a === b
   }
 
   /**

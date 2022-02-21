@@ -1,11 +1,9 @@
-import { Renderer } from '../core/Renderer'
-import type { Disposable } from '../utils'
+import { Disposable, Renderer } from '../core/Renderer'
 import type { Uniform, Material } from '../core/Material'
 import type { Geometry } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Object3D } from '../core/Object3D'
 import type { Camera } from '../core/Camera'
-import { compiled, compareUniforms } from '../utils'
 import { GL_SHADER_TEMPLATES, GL_CULL_SIDES, GL_DRAW_MODES } from '../constants'
 
 export type WebGLAttribute = { buffer: WebGLBuffer; location: number }
@@ -270,11 +268,11 @@ export class WebGLRenderer extends Renderer {
    * Sets or updates a material's program uniforms.
    */
   updateUniforms(material: Material) {
-    const { program, uniforms } = compiled.get(material.uuid)! as WebGLMaterial
+    const { program, uniforms } = this._compiled.get(material)! as WebGLMaterial
 
     Object.entries(material.uniforms).forEach(([name, value]) => {
       const prevUniform = uniforms.get(name)!
-      const needsUpdate = !compareUniforms(prevUniform, value)
+      const needsUpdate = !this.uniformsEqual(prevUniform, value)
 
       if (needsUpdate) {
         this.setUniform(name, value, program)
@@ -294,7 +292,7 @@ export class WebGLRenderer extends Renderer {
     let program: WebGLProgram
 
     // Compile program on first bind
-    const compiledMaterial = compiled.get(material.uuid) as WebGLMaterial | undefined
+    const compiledMaterial = this._compiled.get(material) as WebGLMaterial | undefined
     if (compiledMaterial) {
       program = compiledMaterial.program
     } else {
@@ -319,7 +317,7 @@ export class WebGLRenderer extends Renderer {
         this.gl.deleteShader(shader)
       })
 
-      compiled.set(material.uuid, {
+      this._compiled.set(material, {
         program,
         uniforms: new Map(),
         dispose: () => {
@@ -353,7 +351,7 @@ export class WebGLRenderer extends Renderer {
    * Updates a geometry's buffer attributes.
    */
   updateAttributes(geometry: Geometry) {
-    const { attributes } = compiled.get(geometry.uuid)! as WebGLGeometry
+    const { attributes } = this._compiled.get(geometry)! as WebGLGeometry
 
     Object.entries(geometry.attributes).forEach(([name, attribute]) => {
       if (!attribute.needsUpdate) return
@@ -370,7 +368,7 @@ export class WebGLRenderer extends Renderer {
    */
   compileGeometry(geometry: Geometry, program: WebGLProgram) {
     // If compiled, only update attributes
-    if (compiled.has(geometry.uuid)) return this.updateAttributes(geometry)
+    if (this._compiled.has(geometry)) return this.updateAttributes(geometry)
 
     // Otherwise, create and bind buffer attributes
     const attributes: WebGLAttributeMap = new Map()
@@ -389,7 +387,7 @@ export class WebGLRenderer extends Renderer {
       attributes.set(name, { buffer, location })
     })
 
-    compiled.set(geometry.uuid, {
+    this._compiled.set(geometry, {
       attributes,
       dispose: () => {
         attributes.forEach(({ location, buffer }) => {
@@ -421,13 +419,13 @@ export class WebGLRenderer extends Renderer {
     // Create VAO on first bind
     let VAO: WebGLVertexArrayObject
 
-    const compiledMesh = compiled.get(mesh.uuid) as WebGLMesh | undefined
+    const compiledMesh = this._compiled.get(mesh) as WebGLMesh | undefined
     if (compiledMesh) {
       VAO = compiledMesh.VAO
     } else {
       VAO = this.gl.createVertexArray()!
 
-      compiled.set(mesh.uuid, {
+      this._compiled.set(mesh, {
         VAO,
         dispose: () => {
           this.gl.deleteVertexArray(VAO)

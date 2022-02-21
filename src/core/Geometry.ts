@@ -1,4 +1,4 @@
-import { uuid, dispose } from '../utils'
+import { uuid } from '../utils'
 
 /**
  * Represents a Geometry attribute. Passed as a buffer attribute to shader programs.
@@ -69,6 +69,6 @@ export class Geometry {
    * Disposes geometry from GPU memory.
    */
   dispose() {
-    dispose(this.uuid)
+    // Implemented by renderer
   }
 }
