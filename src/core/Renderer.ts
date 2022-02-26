@@ -1,15 +1,12 @@
 import { Color } from '../math/Color'
-import type { Geometry } from '../core/Geometry'
-import type { Material, Uniform } from '../core/Material'
+import type { Geometry } from './Geometry'
+import type { Material, Uniform } from './Material'
 import type { Mesh } from './Mesh'
 import type { Object3D } from './Object3D'
 import type { Camera } from './Camera'
 
 export type Disposable = { dispose: () => void }
 export type Compilable = Geometry | Material | Mesh
-
-export type Viewport = { x: number; y: number; width: number; height: number }
-export type Scissor = { x: number; y: number; width: number; height: number }
 
 class Compiled extends Map<Compilable, Disposable> {
   // @ts-expect-error
@@ -25,6 +22,9 @@ class Compiled extends Map<Compilable, Disposable> {
     }
   }
 }
+
+export type Viewport = { x: number; y: number; width: number; height: number }
+export type Scissor = { x: number; y: number; width: number; height: number }
 
 /**
  * Constructs a renderer object. Can be extended to draw to a canvas.
