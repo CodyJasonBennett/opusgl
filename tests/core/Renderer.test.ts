@@ -17,7 +17,7 @@ describe('core/Renderer', () => {
     expect(renderList.length).toBe(1)
   })
 
-  it('can compare initial uniforms', () => {
+  it('can compare uniforms', () => {
     const renderer = new RendererImpl()
 
     // Compares initial uniforms
