@@ -1,18 +1,21 @@
 import { Disposable, Renderer } from '../core/Renderer'
-import type { Uniform, Material } from '../core/Material'
+import type { Uniform } from '../core/Program'
+import type { Material } from '../core/Material'
 import type { Geometry } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Object3D } from '../core/Object3D'
 import type { Camera } from '../core/Camera'
 import { GL_SHADER_TEMPLATES, GL_CULL_SIDES, GL_DRAW_MODES } from '../constants'
 
-export type WebGLAttribute = { buffer: WebGLBuffer; location: number }
-export type WebGLAttributeMap = Map<string, WebGLAttribute>
+export type GLAttribute = { buffer: WebGLBuffer; location: number }
+export type GLAttributeMap = Map<string, GLAttribute>
 
-export type WebGLMaterial = Disposable & { program: WebGLProgram; uniforms: Map<string, Uniform> }
-export type WebGLGeometry = Disposable & { attributes: WebGLAttributeMap }
+export type GLMaterial = Disposable & { program: GLProgram; uniforms: Map<string, Uniform> }
+export type GLGeometry = Disposable & { attributes: GLAttributeMap }
 
-export type WebGLMesh = Disposable & { VAO: WebGLVertexArrayObject }
+export type GLMesh = Disposable & { VAO: WebGLVertexArrayObject }
+
+export type GLProgram = GLMaterial & GLGeometry & GLMesh
 
 export interface WebGLRendererOptions {
   /**
@@ -129,7 +132,7 @@ export class WebGLRenderer extends Renderer {
   }
 
   /**
-   * Sets cull face mode. Useful for
+   * Sets cull face mode. Useful for reducing drawn faces at runtime.
    */
   setCullFace(cullMode: typeof GL_CULL_SIDES[keyof typeof GL_CULL_SIDES]) {
     if (cullMode) {
@@ -268,7 +271,7 @@ export class WebGLRenderer extends Renderer {
    * Sets or updates a material's program uniforms.
    */
   updateUniforms(material: Material) {
-    const { program, uniforms } = this._compiled.get(material)! as WebGLMaterial
+    const { program, uniforms } = this._compiled.get(material)! as GLMaterial
 
     Object.entries(material.uniforms).forEach(([name, value]) => {
       const prevUniform = uniforms.get(name)!
@@ -292,7 +295,7 @@ export class WebGLRenderer extends Renderer {
     let program: WebGLProgram
 
     // Compile program on first bind
-    const compiledMaterial = this._compiled.get(material) as WebGLMaterial | undefined
+    const compiledMaterial = this._compiled.get(material) as GLMaterial | undefined
     if (compiledMaterial) {
       program = compiledMaterial.program
     } else {
@@ -323,7 +326,7 @@ export class WebGLRenderer extends Renderer {
         dispose: () => {
           this.gl.deleteProgram(program)
         },
-      } as WebGLMaterial)
+      } as GLMaterial)
     }
 
     // Bind program and update uniforms
@@ -351,7 +354,7 @@ export class WebGLRenderer extends Renderer {
    * Updates a geometry's buffer attributes.
    */
   updateAttributes(geometry: Geometry) {
-    const { attributes } = this._compiled.get(geometry)! as WebGLGeometry
+    const { attributes } = this._compiled.get(geometry)! as GLGeometry
 
     Object.entries(geometry.attributes).forEach(([name, attribute]) => {
       if (!attribute.needsUpdate) return
@@ -371,7 +374,7 @@ export class WebGLRenderer extends Renderer {
     if (this._compiled.has(geometry)) return this.updateAttributes(geometry)
 
     // Otherwise, create and bind buffer attributes
-    const attributes: WebGLAttributeMap = new Map()
+    const attributes: GLAttributeMap = new Map()
     Object.entries(geometry.attributes).forEach(([name, attribute]) => {
       // Create buffer
       const type = name === 'index' ? this.gl.ELEMENT_ARRAY_BUFFER : this.gl.ARRAY_BUFFER
@@ -395,7 +398,7 @@ export class WebGLRenderer extends Renderer {
           this.gl.deleteBuffer(buffer)
         })
       },
-    } as WebGLGeometry)
+    } as GLGeometry)
 
     return attributes
   }
@@ -419,7 +422,7 @@ export class WebGLRenderer extends Renderer {
     // Create VAO on first bind
     let VAO: WebGLVertexArrayObject
 
-    const compiledMesh = this._compiled.get(mesh) as WebGLMesh | undefined
+    const compiledMesh = this._compiled.get(mesh) as GLMesh | undefined
     if (compiledMesh) {
       VAO = compiledMesh.VAO
     } else {
@@ -430,7 +433,7 @@ export class WebGLRenderer extends Renderer {
         dispose: () => {
           this.gl.deleteVertexArray(VAO)
         },
-      } as WebGLMesh)
+      } as GLMesh)
     }
 
     // Bind

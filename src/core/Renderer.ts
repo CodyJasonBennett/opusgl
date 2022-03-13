@@ -1,9 +1,10 @@
 import { Color } from '../math/Color'
 import type { Geometry } from './Geometry'
-import type { Material, Uniform } from './Material'
+import type { Material } from './Material'
 import type { Mesh } from './Mesh'
 import type { Object3D } from './Object3D'
 import type { Camera } from './Camera'
+import type { Uniform } from './Program'
 
 export type Disposable = { dispose: () => void }
 export type Compilable = Geometry | Material | Mesh

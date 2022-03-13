@@ -3,6 +3,7 @@ export * from './core/Geometry'
 export * from './core/Material'
 export * from './core/Mesh'
 export * from './core/Object3D'
+export * from './core/Program'
 export * from './core/Renderer'
 export * from './core/Scene'
 

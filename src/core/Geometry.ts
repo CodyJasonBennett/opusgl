@@ -1,37 +1,20 @@
 import { uuid } from '../utils'
+import type { Attribute } from './Program'
 
 /**
- * Represents a Geometry attribute. Passed as a buffer attribute to shader programs.
- */
-export interface GeometryAttribute {
-  /**
-   * Attribute data.
-   */
-  data: Float32Array | Uint32Array
-  /**
-   * The size (per vertex) of the data array. Used to allocate data to each vertex.
-   */
-  size: 1 | 2 | 3 | 4
-  /**
-   * Used internally to mark attribute for updates.
-   */
-  needsUpdate?: boolean
-}
-
-/**
- * Geometry constructor parameters. Accepts an object of GeometryAttributes.
+ * Geometry constructor parameters. Accepts an object of program attributes.
  */
 export interface GeometryOptions {
-  [name: string]: GeometryAttribute
+  [name: string]: Attribute
 }
 
 /**
- * Constructs a geometry object. Used to store GeometryAttributes.
+ * Constructs a geometry object. Used to store program attributes.
  */
 export class Geometry {
   readonly isGeometry = true
   readonly uuid: string
-  readonly attributes: { [name: string]: GeometryAttribute } = {}
+  readonly attributes: { [name: string]: Attribute } = {}
 
   constructor(options?: GeometryOptions) {
     this.uuid = uuid()
@@ -60,7 +43,7 @@ export class Geometry {
   /**
    * Sets an attribute by name. Will update existing attributes.
    */
-  setAttribute(name: string, attribute: GeometryAttribute) {
+  setAttribute(name: string, attribute: Attribute) {
     attribute.needsUpdate = this.hasAttribute(name)
     this.attributes[name] = attribute
   }

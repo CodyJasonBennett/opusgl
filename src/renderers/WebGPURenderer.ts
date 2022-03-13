@@ -1,23 +1,24 @@
 import { Disposable, Renderer } from '../core/Renderer'
-import type { Material, Uniform } from '../core/Material'
+import type { Uniform } from '../core/Program'
+import type { Material } from '../core/Material'
 import type { Geometry } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Camera } from '../core/Camera'
 import type { Scene } from '../core/Scene'
 import { GPU_CULL_SIDES, GPU_DRAW_MODES } from '../constants'
 
-export type WebGPUMaterial = Disposable & {
+export type GPUMaterial = Disposable & {
   uniforms: Uniform[]
   uniformData: Float32Array
   uniformBuffer: GPUBuffer
   uniformBindGroup: GPUBindGroup
 }
 
-export type WebGPUAttribute = Partial<GPUVertexBufferLayout> & { slot?: number; buffer: GPUBuffer }
-export type WebGPUAttributeMap = Map<string, WebGPUAttribute>
-export type WebGPUGeometry = Disposable & { attributes: WebGPUAttributeMap }
+export type GPUAttribute = Partial<GPUVertexBufferLayout> & { slot?: number; buffer: GPUBuffer }
+export type GPUAttributeMap = Map<string, GPUAttribute>
+export type GPUGeometry = Disposable & { attributes: GPUAttributeMap }
 
-export type WebGPUMesh = Disposable & {
+export type GPUMesh = Disposable & {
   transparent: boolean
   cullMode: keyof typeof GPU_CULL_SIDES
   topology: keyof typeof GPU_DRAW_MODES
@@ -161,7 +162,7 @@ export class WebGPURenderer extends Renderer {
   }
 
   updateAttributes(geometry: Geometry) {
-    const { attributes } = this._compiled.get(geometry)! as WebGPUGeometry
+    const { attributes } = this._compiled.get(geometry)! as GPUGeometry
 
     attributes.forEach(({ buffer }, name) => {
       if (name === 'index') return
@@ -176,7 +177,7 @@ export class WebGPURenderer extends Renderer {
   }
 
   updateGeometry(geometry: Geometry) {
-    let attributes: WebGPUAttributeMap
+    let attributes: GPUAttributeMap
 
     if (this._compiled.has(geometry)) {
       attributes = this.updateAttributes(geometry)
@@ -204,7 +205,7 @@ export class WebGPURenderer extends Renderer {
                 format: `float32x${attribute.size}`,
               },
             ],
-          } as WebGPUAttribute)
+          } as GPUAttribute)
         }
       })
 
@@ -214,14 +215,14 @@ export class WebGPURenderer extends Renderer {
           attributes.forEach(({ buffer }) => buffer.destroy())
           attributes.clear()
         },
-      } as WebGPUGeometry)
+      } as GPUGeometry)
     }
 
     return attributes
   }
 
-  updatePipeline(attributes: WebGPUAttributeMap, mesh: Mesh) {
-    let pipeline = (this._compiled.get(mesh) as WebGPUMesh)?.pipeline
+  updatePipeline(attributes: GPUAttributeMap, mesh: Mesh) {
+    let pipeline = (this._compiled.get(mesh) as GPUMesh)?.pipeline
 
     const pipelineState = {
       transparent: mesh.material.transparent,
@@ -231,13 +232,13 @@ export class WebGPURenderer extends Renderer {
       depthCompare: (mesh.material.depthTest ? 'less' : 'always') as GPUCompareFunction,
     }
 
-    const compiledMesh = this._compiled.get(mesh) as WebGPUMesh | undefined
+    const compiledMesh = this._compiled.get(mesh) as GPUMesh | undefined
     const needsUpdate =
       !compiledMesh ||
       Object.entries(pipelineState).some(([key, value]) => compiledMesh?.[key as keyof typeof pipelineState] !== value)
 
     if (needsUpdate) {
-      const buffers: WebGPUAttribute[] = []
+      const buffers: GPUAttribute[] = []
       attributes.forEach((attribute, name) => {
         if (name === 'index') return
         buffers.push(attribute)
@@ -289,17 +290,17 @@ export class WebGPURenderer extends Renderer {
         ...pipelineState,
         pipeline,
         dispose: () => {},
-      } as unknown as WebGPUMesh)
+      } as unknown as GPUMesh)
     }
 
     return pipeline
   }
 
   updateUniforms(pipeline: GPURenderPipeline, material: Material) {
-    let uniformBindGroup = (this._compiled.get(material) as WebGPUMaterial)?.uniformBindGroup
+    let uniformBindGroup = (this._compiled.get(material) as GPUMaterial)?.uniformBindGroup
 
     if (this._compiled.has(material)) {
-      const { uniforms, uniformData, uniformBuffer } = this._compiled.get(material) as WebGPUMaterial
+      const { uniforms, uniformData, uniformBuffer } = this._compiled.get(material) as GPUMaterial
 
       // Update uniforms
       let modified = 0
@@ -356,7 +357,7 @@ export class WebGPURenderer extends Renderer {
         uniformBuffer,
         uniformBindGroup,
         dispose: () => {},
-      } as WebGPUMaterial)
+      } as GPUMaterial)
     }
 
     return uniformBindGroup
