@@ -90,7 +90,7 @@ export class Program implements ProgramOptions {
   public fragment!: string
   public compute!: string
   public mode: keyof typeof GL_DRAW_MODES = 'triangles'
-  public side: keyof typeof GL_CULL_SIDES = 'both'
+  public side: keyof typeof GL_CULL_SIDES = 'front'
   public transparent = false
   public depthTest = true
   public depthWrite = true
