@@ -1,17 +1,20 @@
 import { Color } from '../math/Color'
+import type { Program, Uniform } from './Program'
 import type { Geometry } from './Geometry'
 import type { Material } from './Material'
 import type { Mesh } from './Mesh'
 import type { Object3D } from './Object3D'
 import type { Camera } from './Camera'
-import type { Uniform } from './Program'
 
-export type Disposable = { dispose: () => void }
-export type Compilable = Geometry | Material | Mesh
+export interface Disposable {
+  dispose: () => void
+}
 
-class Compiled extends Map<Compilable, Disposable> {
+export type Compilable = Program | Geometry | Material | Mesh
+
+export class Compiled<Compiled extends Disposable> extends Map<Compilable, Compiled> {
   // @ts-expect-error
-  set(object: Compilable, compiled: Disposable) {
+  set(object: Compilable, compiled: Compiled) {
     super.set(object, compiled)
 
     const dispose = object.dispose.bind(object)
@@ -47,7 +50,6 @@ export abstract class Renderer {
   private _pixelRatio = 1
   private _viewport!: Viewport
   private _scissor!: Scissor
-  protected _compiled = new Compiled()
 
   /**
    * Sets the canvas size. Will reset viewport and scissor state.
@@ -144,5 +146,5 @@ export abstract class Renderer {
   /**
    * Renders a scene of objects with an optional camera.
    */
-  abstract render(scene: Object3D, camera?: Camera): void
+  abstract render(scene: Object3D | Program, camera?: Camera): void
 }
