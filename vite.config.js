@@ -2,6 +2,7 @@ import path from 'path'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
+  root: 'examples',
   resolve: {
     alias: {
       opusgl: path.resolve(process.cwd(), 'src'),

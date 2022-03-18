@@ -1,15 +1,16 @@
 {
   "name": "opusgl",
   "version": "0.0.0",
-  "description": "A minimal rendering library",
+  "description": "A minimal rendering library.",
   "keywords": [
     "3d",
     "rendering",
+    "compute",
     "webgl",
     "webxr",
     "shaders"
   ],
-  "author": "Cody Bennett (https://github.com/codyjasonbennett)",
+  "author": "Cody Bennett (https://github.com/CodyJasonBennett)",
   "homepage": "https://github.com/CodyJasonBennett/opusgl",
   "repository": "https://github.com/CodyJasonBennett/opusgl",
   "license": "MIT",
@@ -19,7 +20,7 @@
   "main": "dist/index.cjs.js",
   "module": "dist/index.es.js",
   "types": "dist/index.d.ts",
-  "private": true,
+  "sideEffects": false,
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.15.0",
     "@typescript-eslint/parser": "^5.15.0",
