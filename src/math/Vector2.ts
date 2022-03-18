@@ -10,12 +10,12 @@ export class Vector2 extends Float32Array {
     return this[0]
   }
 
-  get y() {
-    return this[1]
-  }
-
   set x(x) {
     this[0] = x
+  }
+
+  get y() {
+    return this[1]
   }
 
   set y(y) {

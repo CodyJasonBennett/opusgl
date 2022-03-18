@@ -10,28 +10,28 @@ export class Vector4 extends Float32Array {
     return this[0]
   }
 
-  get y() {
-    return this[1]
-  }
-
-  get z() {
-    return this[2]
-  }
-
-  get w() {
-    return this[3]
-  }
-
   set x(x) {
     this[0] = x
+  }
+
+  get y() {
+    return this[1]
   }
 
   set y(y) {
     this[1] = y
   }
 
+  get z() {
+    return this[2]
+  }
+
   set z(z) {
     this[2] = z
+  }
+
+  get w() {
+    return this[3]
   }
 
   set w(w) {

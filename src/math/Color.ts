@@ -14,20 +14,20 @@ export class Color extends Float32Array {
     return this[0]
   }
 
-  get g() {
-    return this[1]
-  }
-
-  get b() {
-    return this[2]
-  }
-
   set r(r) {
     this[0] = r
   }
 
+  get g() {
+    return this[1]
+  }
+
   set g(g) {
     this[1] = g
+  }
+
+  get b() {
+    return this[2]
   }
 
   set b(b) {

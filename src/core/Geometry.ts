@@ -34,17 +34,10 @@ export class Geometry {
   }
 
   /**
-   * Checks whether an attribute is defined.
-   */
-  hasAttribute(name: string) {
-    return this.attributes.hasOwnProperty(name)
-  }
-
-  /**
    * Sets an attribute by name. Will update existing attributes.
    */
   setAttribute(name: string, attribute: Attribute) {
-    attribute.needsUpdate = this.hasAttribute(name)
+    attribute.needsUpdate = !!this.attributes[name]
     this.attributes[name] = attribute
   }
 
