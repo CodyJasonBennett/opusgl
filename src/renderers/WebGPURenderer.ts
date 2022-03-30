@@ -226,7 +226,7 @@ export class WebGPURenderer extends Renderer {
 
     const pipelineState = {
       transparent: material.transparent,
-      cullMode: GPU_CULL_SIDES[material.side] ?? GPU_CULL_SIDES.both,
+      cullMode: GPU_CULL_SIDES[material.side] ?? GPU_CULL_SIDES.front,
       topology: GPU_DRAW_MODES[target.mode] ?? GPU_DRAW_MODES.triangles,
       depthWriteEnabled: material.depthWrite,
       depthCompare: (material.depthTest ? 'less' : 'always') as GPUCompareFunction,

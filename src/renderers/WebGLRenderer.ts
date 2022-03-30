@@ -36,7 +36,7 @@ export interface WebGLRendererOptions {
    */
   antialias: boolean
   /**
-   * Whether to create a depth buffer to depth test with. Useful for shadows. Default is `false`.
+   * Whether to create a depth buffer to depth test with. Default is `true`.
    */
   depth: boolean
   /**
@@ -79,7 +79,7 @@ export class WebGLRenderer extends Renderer {
     context,
     alpha = true,
     antialias = false,
-    depth = false,
+    depth = true,
     stencil = false,
     failIfMajorPerformanceCaveat = false,
     premultipliedAlpha = true,
@@ -335,7 +335,7 @@ export class WebGLRenderer extends Renderer {
     const uniforms = this.updateUniforms(material, program)
 
     // Update material state
-    this.setCullFace(GL_CULL_SIDES[material.side] ?? GL_CULL_SIDES.both)
+    this.setCullFace(GL_CULL_SIDES[material.side] ?? GL_CULL_SIDES.front)
     this.setDepthTest(material.depthTest)
     this.setDepthMask(material.depthWrite)
 

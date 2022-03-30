@@ -39,9 +39,9 @@ export abstract class Renderer {
    */
   public canvas!: HTMLCanvasElement
   /**
-   * Output background color. Default is `white`.
+   * Output background color. Default is `0, 0, 0`.
    */
-  public clearColor = new Color(1, 1, 1)
+  public clearColor = new Color(0, 0, 0)
   /**
    * Output background opacity. Default is `0`.
    */
