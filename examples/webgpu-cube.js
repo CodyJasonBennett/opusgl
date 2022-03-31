@@ -42,45 +42,46 @@ const geometry = new Geometry({
 
 const material = new Material({
   uniforms: {
-    uColor: new Color('hotpink'),
+    color: new Color('hotpink'),
   },
   vertex: `
     struct Uniforms {
-      color: vec3<f32>;
-      modelMatrix: mat4x4<f32>;
-      projectionMatrix: mat4x4<f32>;
-      viewMatrix: mat4x4<f32>;
-      normalMatrix: mat3x3<f32>;
+      color: vec3<f32>,
+      modelMatrix: mat4x4<f32>,
+      projectionMatrix: mat4x4<f32>,
+      viewMatrix: mat4x4<f32>,
+      normalMatrix: mat3x3<f32>,
     };
     @binding(0) @group(0) var<uniform> uniforms: Uniforms;
 
     struct VertexIn {
-      @location(0) position: vec3<f32>;
-      @location(1) normal: vec3<f32>;
+      @location(0) position: vec3<f32>,
+      @location(1) normal: vec3<f32>,
     };
 
     struct VertexOut {
-      @builtin(position) position: vec4<f32>;
-      @location(0) color: vec3<f32>;
-      @location(1) normal: vec3<f32>;
+      @builtin(position) position: vec4<f32>,
+      @location(0) color: vec3<f32>,
+      @location(1) normal: vec3<f32>,
     };
 
     @stage(vertex)
     fn main(input: VertexIn) -> VertexOut {
       var out: VertexOut;
       out.position = uniforms.projectionMatrix * uniforms.viewMatrix * uniforms.modelMatrix * vec4<f32>(input.position, 1.0);
+      out.color = uniforms.color;
       out.normal = normalize(uniforms.normalMatrix * input.normal).xyz;
       return out;
     }
   `,
   fragment: `
     struct FragmentIn {
-      @location(0) color: vec3<f32>;
-      @location(1) normal: vec3<f32>;
+      @location(0) color: vec3<f32>,
+      @location(1) normal: vec3<f32>,
     };
 
     struct FragmentOut {
-      @location(0) color: vec4<f32>;
+      @location(0) color: vec4<f32>,
     };
 
     @stage(fragment)

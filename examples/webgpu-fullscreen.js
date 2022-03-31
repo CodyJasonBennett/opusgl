@@ -10,39 +10,39 @@ const program = new Program({
     uv: { size: 2, data: new Float32Array([0, 0, 2, 0, 0, 2]) },
   },
   uniforms: {
-    uColor: new Float32Array([0.3, 0.2, 0.5, 0]),
+    color: new Float32Array([0.3, 0.2, 0.5, 0]),
   },
   vertex: `
     struct Uniforms {
-      uColor: vec4<f32>;
+      color: vec4<f32>,
     };
     @binding(0) @group(0) var<uniform> uniforms: Uniforms;
 
     struct VertexIn {
-      @location(0) position: vec3<f32>;
-      @location(1) uv: vec2<f32>;
+      @location(0) position: vec3<f32>,
+      @location(1) uv: vec2<f32>,
     };
 
     struct VertexOut {
-      @builtin(position) position: vec4<f32>;
-      @location(0) color: vec4<f32>;
+      @builtin(position) position: vec4<f32>,
+      @location(0) color: vec4<f32>,
     };
 
     @stage(vertex)
     fn main(input: VertexIn) -> VertexOut {
       var out: VertexOut;
-      out.color = vec4<f32>(0.5 + 0.3 * cos(vec3<f32>(input.uv, 0.0) + uniforms.uColor.w) + uniforms.uColor.xyz, 1.0);
+      out.color = vec4<f32>(0.5 + 0.3 * cos(vec3<f32>(input.uv, 0.0) + uniforms.color.w) + uniforms.color.xyz, 1.0);
       out.position = vec4<f32>(input.position, 1.0);
       return out;
     }
   `,
   fragment: `
     struct FragmentIn {
-      @location(0) color: vec4<f32>;
+      @location(0) color: vec4<f32>,
     };
 
     struct FragmentOut {
-      @location(0) color: vec4<f32>;
+      @location(0) color: vec4<f32>,
     };
 
     @stage(fragment)
@@ -60,7 +60,7 @@ window.addEventListener('resize', () => {
 
 const animate = (time) => {
   requestAnimationFrame(animate)
-  program.uniforms.uColor[3] = time / 1000
+  program.uniforms.color[3] = time / 1000
   renderer.render(program)
 }
 requestAnimationFrame(animate)

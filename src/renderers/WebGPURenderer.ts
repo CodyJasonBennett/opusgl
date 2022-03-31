@@ -94,6 +94,7 @@ export class WebGPURenderer extends Renderer {
           height: this.viewport.height,
           depthOrArrayLayers: 1,
         },
+        compositingAlphaMode: 'premultiplied',
       })
 
       if (this._depthTexture) this._depthTexture.destroy()
