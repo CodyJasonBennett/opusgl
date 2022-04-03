@@ -10,8 +10,8 @@ const program = new Program({
     uv: { size: 2, data: new Float32Array([0, 0, 2, 0, 0, 2]) },
   },
   uniforms: {
-    uTime: 0,
-    uColor: new Color(0x4c3380),
+    time: 0,
+    color: new Color(0x4c3380),
   },
   vertex: `
     in vec2 uv;
@@ -25,15 +25,16 @@ const program = new Program({
     }
   `,
   fragment: `       
-    uniform float uTime;
-    uniform vec3 uColor;
+    layout(std140) uniform Uniforms {
+      float time;
+      vec3 color;
+    };
 
     in vec2 vUv;
     out vec4 pc_fragColor;
 
     void main() {
-      pc_fragColor.rgb = 0.5 + 0.3 * cos(vUv.xyx + uTime) + uColor;
-      pc_fragColor.a = 1.0;
+      pc_fragColor = vec4(0.5 + 0.3 * cos(vUv.xyx + time) + color, 1.0);
     }
   `,
 })
@@ -44,7 +45,7 @@ window.addEventListener('resize', () => {
 
 const animate = (time) => {
   requestAnimationFrame(animate)
-  program.uniforms.uTime = time / 1000
+  program.uniforms.time = time / 1000
   renderer.render(program)
 }
 requestAnimationFrame(animate)

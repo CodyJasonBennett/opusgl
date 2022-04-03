@@ -44,35 +44,38 @@ const geometry = new Geometry({
 
 const material = new Material({
   uniforms: {
-    uColor: new Color('hotpink'),
+    color: new Color('hotpink'),
   },
   vertex: `
-    uniform mat3 normalMatrix;
-    uniform mat4 projectionMatrix;
-    uniform mat4 viewMatrix;
-    uniform mat4 modelMatrix;
+    layout(std140) uniform Uniforms {
+      vec3 color;
+      mat4 modelMatrix;
+      mat4 projectionMatrix;
+      mat4 viewMatrix;
+      mat3 normalMatrix;
+    };
 
     in vec3 position;
     in vec3 normal;
     out vec3 vNormal;
+    out vec3 vColor;
 
     void main() {
       vNormal = normalize(normalMatrix * normal);
+      vColor = color;
       gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
     }
   `,
   fragment: `
-    uniform vec3 uColor;
-
     in vec3 vNormal;
+    in vec3 vColor;
     out vec4 pc_fragColor;
 
     void main() {
       vec3 normal = normalize(vNormal);
       float lighting = dot(normal, normalize(vec3(10)));
 
-      pc_fragColor.rgb = uColor + lighting * 0.1;
-      pc_fragColor.a = 1.0;
+      pc_fragColor = vec4(vColor + lighting * 0.1, 1.0);
     }
   `,
 })

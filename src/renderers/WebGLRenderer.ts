@@ -7,6 +7,7 @@ import type { Mesh } from '../core/Mesh'
 import type { Object3D } from '../core/Object3D'
 import type { Camera } from '../core/Camera'
 import { GL_SHADER_TEMPLATES, GL_CULL_SIDES, GL_DRAW_MODES } from '../constants'
+import { std140 } from '../utils'
 
 export type GLAttribute = { buffer: WebGLBuffer; location: number }
 export type GLAttributeMap = Map<string, GLAttribute>
@@ -14,7 +15,8 @@ export type GLAttributeMap = Map<string, GLAttribute>
 export interface GLCompiled extends Disposable {
   VAO: WebGLVertexArrayObject
   program: WebGLProgram
-  uniforms: Map<string, Uniform>
+  UBO: { data: Float32Array; buffer: WebGLBuffer }
+  uniforms: Uniform[]
   attributes: GLAttributeMap
 }
 
@@ -164,68 +166,6 @@ export class WebGLRenderer extends Renderer {
   }
 
   /**
-   * Sets a program's active uniform by name.
-   */
-  setUniform(name: string, value: any, program: WebGLProgram) {
-    let uniform!: WebGLActiveInfo | null
-
-    // Query for active uniform by name
-    const uniformsLength = this.gl.getProgramParameter(program, this.gl.ACTIVE_UNIFORMS)
-    for (let i = 0; i < uniformsLength; i++) {
-      const activeUniform = this.gl.getActiveUniform(program, i)
-      if (activeUniform?.name === name) uniform = activeUniform
-    }
-
-    // Don't set unused uniforms
-    if (!uniform) return
-
-    const location = this.gl.getUniformLocation(program, uniform.name)!
-    switch (uniform.type) {
-      case this.gl.FLOAT:
-        value?.length ? this.gl.uniform1fv(location, value) : this.gl.uniform1f(location, value)
-        break
-      case this.gl.FLOAT_VEC2:
-        this.gl.uniform2fv(location, value)
-        break
-      case this.gl.FLOAT_VEC3:
-        this.gl.uniform3fv(location, value)
-        break
-      case this.gl.FLOAT_VEC4:
-        this.gl.uniform4fv(location, value)
-        break
-      case this.gl.BOOL:
-      case this.gl.INT:
-      case this.gl.SAMPLER_2D:
-      case this.gl.SAMPLER_CUBE:
-        value?.length ? this.gl.uniform1iv(location, value) : this.gl.uniform1i(location, value)
-        break
-      case this.gl.BOOL_VEC2:
-      case this.gl.INT_VEC2:
-        this.gl.uniform2iv(location, value)
-        break
-      case this.gl.BOOL_VEC3:
-      case this.gl.INT_VEC3:
-        this.gl.uniform3iv(location, value)
-        break
-      case this.gl.BOOL_VEC4:
-      case this.gl.INT_VEC4:
-        this.gl.uniform4iv(location, value)
-        break
-      case this.gl.FLOAT_MAT2:
-        this.gl.uniformMatrix2fv(location, false, value)
-        break
-      case this.gl.FLOAT_MAT3:
-        this.gl.uniformMatrix3fv(location, false, value)
-        break
-      case this.gl.FLOAT_MAT4:
-        this.gl.uniformMatrix4fv(location, false, value)
-        break
-    }
-
-    return uniform
-  }
-
-  /**
    * Creates buffer and initializes it.
    */
   createBuffer(data: Float32Array | Uint32Array, type = this.gl.ARRAY_BUFFER, usage = this.gl.STATIC_DRAW) {
@@ -273,21 +213,36 @@ export class WebGLRenderer extends Renderer {
    * Sets or updates a material's program uniforms.
    */
   updateUniforms(material: Material | Program, program: WebGLProgram) {
-    const uniforms = this._compiled.get(material)?.uniforms ?? new Map()
+    let uniforms = this._compiled.get(material)?.uniforms!
+    let UBO = this._compiled.get(material)?.UBO
 
-    Object.entries(material.uniforms).forEach(([name, value]) => {
-      const prevUniform = uniforms.get(name)!
-      const needsUpdate = !this.uniformsEqual(prevUniform, value)
+    if (UBO) {
+      // Check whether a uniform has changed
+      const needsUpdate = Object.values(material.uniforms).some(
+        (uniform, i) => !this.uniformsEqual(uniforms!?.[i], uniform),
+      )
 
+      // If a uniform changed, rebuild entire buffer
+      // TODO: expand writeBuffer to subdata at affected indices instead
       if (needsUpdate) {
-        this.setUniform(name, value, program)
-
-        // @ts-expect-error
-        uniforms.set(name, value?.clone?.() ?? value)
+        this.writeBuffer(UBO.buffer, std140(Object.values(material.uniforms), UBO.data), this.gl.UNIFORM_BUFFER)
       }
-    })
+    } else {
+      // @ts-expect-error
+      uniforms = Object.values(material.uniforms).map((uniform) => uniform?.clone?.() ?? uniform)
 
-    return uniforms
+      // Create UBO
+      const data = std140(uniforms)
+      const buffer = this.gl.createBuffer()!
+      UBO = { data, buffer }
+
+      // Bind it
+      this.gl.bindBufferBase(this.gl.UNIFORM_BUFFER, 0, buffer)
+      this.gl.bindBuffer(this.gl.UNIFORM_BUFFER, buffer)
+      this.gl.bufferData(this.gl.UNIFORM_BUFFER, data.byteLength, this.gl.DYNAMIC_DRAW)
+    }
+
+    return { uniforms, UBO }
   }
 
   /**
@@ -318,21 +273,11 @@ export class WebGLRenderer extends Renderer {
         this.gl.detachShader(program, shader)
         this.gl.deleteShader(shader)
       })
-
-      if (!(target instanceof Program)) {
-        this._compiled.set(material, {
-          program,
-          uniforms: new Map(),
-          dispose: () => {
-            this.gl.deleteProgram(program)
-          },
-        } as GLCompiled)
-      }
     }
 
     // Bind program and update uniforms
     this.gl.useProgram(program)
-    const uniforms = this.updateUniforms(material, program)
+    const { uniforms, UBO } = this.updateUniforms(material, program)
 
     // Update material state
     this.setCullFace(GL_CULL_SIDES[material.side] ?? GL_CULL_SIDES.front)
@@ -346,7 +291,18 @@ export class WebGLRenderer extends Renderer {
       this.gl.disable(this.gl.BLEND)
     }
 
-    return { program, uniforms }
+    if (!compiledMaterial && !(target instanceof Program)) {
+      this._compiled.set(material, {
+        program,
+        UBO,
+        dispose: () => {
+          this.gl.deleteProgram(program)
+          this.gl.deleteBuffer(UBO.buffer)
+        },
+      } as GLCompiled)
+    }
+
+    return { program, uniforms, UBO }
   }
 
   /**
@@ -429,7 +385,7 @@ export class WebGLRenderer extends Renderer {
     this.gl.bindVertexArray(VAO)
 
     // Update shaders, uniforms, attributes
-    const { program, uniforms } = this.compileMaterial(target)
+    const { program, uniforms, UBO } = this.compileMaterial(target)
     const attributes = this.compileGeometry(target, program)
 
     // Unbind
@@ -440,6 +396,7 @@ export class WebGLRenderer extends Renderer {
         VAO,
         program,
         uniforms,
+        UBO,
         attributes,
         dispose: () => {
           this.gl.deleteVertexArray(VAO)
