@@ -334,7 +334,7 @@ requestAnimationFrame(animate)
   <summary>Show WebGPU example</summary>
 
 ```js
-import { WebGPURenderer, Program } from 'opusgl'
+import { WebGPURenderer, Program, Color } from 'opusgl'
 
 const renderer = await new WebGPURenderer().init()
 renderer.setSize(window.innerWidth, window.innerHeight)
@@ -346,11 +346,13 @@ const program = new Program({
     uv: { size: 2, data: new Float32Array([0, 0, 2, 0, 0, 2]) },
   },
   uniforms: {
-    color: new Float32Array([0.3, 0.2, 0.5, 0]),
+    time: 0,
+    color: new Color(0x4c3380),
   },
   vertex: `
     struct Uniforms {
-      color: vec4<f32>,
+      time: f32,
+      color: vec3<f32>,
     };
     @binding(0) @group(0) var<uniform> uniforms: Uniforms;
 
@@ -367,7 +369,7 @@ const program = new Program({
     @stage(vertex)
     fn main(input: VertexIn) -> VertexOut {
       var out: VertexOut;
-      out.color = vec4<f32>(0.5 + 0.3 * cos(vec3<f32>(input.uv, 0.0) + uniforms.color.w) + uniforms.color.xyz, 1.0);
+      out.color = vec4<f32>(0.5 + 0.3 * cos(vec3<f32>(input.uv, 0.0) + uniforms.time) + uniforms.color, 1.0);
       out.position = vec4<f32>(input.position, 1.0);
       return out;
     }
@@ -396,7 +398,7 @@ window.addEventListener('resize', () => {
 
 const animate = (time) => {
   requestAnimationFrame(animate)
-  program.uniforms.color[3] = time / 1000
+  program.uniforms.time = time / 1000
   renderer.render(program)
 }
 requestAnimationFrame(animate)

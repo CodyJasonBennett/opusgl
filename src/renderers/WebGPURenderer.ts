@@ -6,6 +6,7 @@ import type { Mesh } from '../core/Mesh'
 import type { Camera } from '../core/Camera'
 import type { Object3D } from '../core/Object3D'
 import { GPU_CULL_SIDES, GPU_DRAW_MODES } from '../constants'
+import { std140 } from '../utils'
 
 export type GPUAttribute = Partial<GPUVertexBufferLayout> & { slot?: number; buffer: GPUBuffer }
 export type GPUAttributeMap = Map<string, GPUAttribute>
@@ -146,7 +147,7 @@ export class WebGPURenderer extends Renderer {
    */
   createBuffer(data: Float32Array | Uint32Array, usage: GPUBufferUsageFlags) {
     const buffer = this.device.createBuffer({
-      size: (data.byteLength + 3) & ~3, // align to 4 bytes
+      size: data.byteLength,
       usage: usage | GPUBufferUsage.COPY_DST,
       mappedAtCreation: true,
     })
@@ -309,39 +310,20 @@ export class WebGPURenderer extends Renderer {
     if (this._compiled.has(material)) {
       const { uniforms, UBO } = this._compiled.get(material)!
 
-      // Update uniforms
-      let modified = 0
-      let offset = 0
-      Object.values(material.uniforms).forEach((uniform, i) => {
-        const needsUpdate = !this.uniformsEqual(uniforms?.[i], uniform)
+      // Check whether a uniform has changed
+      const needsUpdate = Object.values(material.uniforms).some(
+        (uniform, i) => !this.uniformsEqual(uniforms?.[i], uniform),
+      )
 
-        if (typeof uniform === 'number') {
-          if (needsUpdate) UBO.data[offset] = uniform
-          offset += 1
-        } else {
-          if (needsUpdate) UBO.data.set(uniform, offset)
-          offset += uniform.length
-        }
-
-        if (needsUpdate) modified += 1
-      })
-      if (modified) this.writeBuffer(UBO.buffer, UBO.data)
+      // If a uniform changed, rebuild entire buffer
+      // TODO: expand writeBuffer to subdata at affected indices instead
+      if (needsUpdate) {
+        this.writeBuffer(UBO.buffer, std140(Object.values(material.uniforms), UBO.data))
+      }
     } else {
       // @ts-expect-error
-      const uniforms = Object.values(material.uniforms).map((uniform) => uniform?.clone?.() ?? uniform)
-      const length = uniforms.reduce((n, u) => n + (u.length ?? 1), 0) as number
-      const data = new Float32Array(length)
-
-      let location = 0
-      uniforms.forEach((uniform) => {
-        if (typeof uniform === 'number') {
-          data[location] = uniform
-          location += 1
-        } else {
-          data.set(uniform, location)
-          location += uniform.length
-        }
-      })
+      const uniforms: Uniform[] = Object.values(material.uniforms).map((uniform) => uniform?.clone?.() ?? uniform)
+      const data = std140(uniforms)
 
       const buffer = this.createBuffer(data, GPUBufferUsage.UNIFORM)
       this.writeBuffer(buffer, data)
