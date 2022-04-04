@@ -9,8 +9,8 @@ export const uuid = () =>
   )
 
 // Pad to 16 byte chunks of 2, 4 (std140 layout)
-const pad2 = (n: number) => n + (n <= 2 ? n % 2 : (4 - (n % 4)) % 4)
-const pad4 = (n: number) => (n < 4 ? 4 : pad2(n))
+const pad2 = (n: number) => n + (n % 2)
+const pad4 = (n: number) => n + ((4 - (n % 4)) % 4)
 
 /**
  * Packs uniforms into a std140 compliant array buffer.
@@ -18,7 +18,12 @@ const pad4 = (n: number) => (n < 4 ? 4 : pad2(n))
 export const std140 = (uniforms: Uniform[], buffer?: Float32Array) => {
   // Init buffer
   if (!buffer) {
-    const length = pad4(uniforms.reduce((n: number, u: Uniform) => n + pad2(typeof u === 'number' ? 1 : u.length), 0))
+    const length = pad4(
+      uniforms.reduce(
+        (n: number, u: Uniform) => n + (typeof u === 'number' ? 1 : u.length <= 2 ? pad2(u.length) : pad4(u.length)),
+        0,
+      ),
+    )
     buffer = new Float32Array(length)
   }
 
@@ -29,9 +34,10 @@ export const std140 = (uniforms: Uniform[], buffer?: Float32Array) => {
       buffer[offset] = uniform
       offset += 1 // leave empty space to stack primitives
     } else {
-      offset = pad2(offset) // fill in empty space
+      const pad = uniform.length <= 2 ? pad2 : pad4
+      offset = pad(offset) // fill in empty space
       buffer.set(uniform, offset)
-      offset += pad2(uniform.length)
+      offset += pad(uniform.length)
     }
   }
 
