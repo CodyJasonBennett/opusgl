@@ -189,7 +189,7 @@ export class WebGLRenderer extends Renderer {
   /**
    * Compiles a material's vertex and fragment shaders.
    */
-  compileShaders(material: Material | Program) {
+  protected compileShaders(material: Material | Program) {
     const shaders = Object.entries(GL_SHADER_TEMPLATES).map(([name, template]) => {
       const type = name === 'vertex' ? this.gl.VERTEX_SHADER : this.gl.FRAGMENT_SHADER
       const shader = this.gl.createShader(type)!
@@ -212,7 +212,7 @@ export class WebGLRenderer extends Renderer {
   /**
    * Sets or updates a material's program uniforms.
    */
-  updateUniforms(material: Material | Program, program: WebGLProgram) {
+  protected updateUniforms(material: Material | Program, program: WebGLProgram) {
     let uniforms = this._compiled.get(material)?.uniforms!
     let UBO = this._compiled.get(material)?.UBO
 
@@ -220,9 +220,9 @@ export class WebGLRenderer extends Renderer {
       // Check whether a uniform has changed
       let needsUpdate = false
       uniforms.forEach((value, name) => {
-        if (!this.uniformsEqual(value, material.uniforms[name])) {
-          // @ts-expect-error
-          uniforms.set(name, material.uniforms[name]?.clone?.() ?? material.uniforms[name])
+        const uniform = material.uniforms[name]
+        if (!this.uniformsEqual(value, uniform)) {
+          uniforms.set(name, this.cloneUniform(uniform))
           needsUpdate = true
         }
       })
@@ -237,8 +237,9 @@ export class WebGLRenderer extends Renderer {
 
       const parsed = this.parseUniforms(material.vertex, material.fragment)
       if (parsed) {
-        // @ts-expect-error
-        for (const name of parsed) uniforms.set(name, material.uniforms[name]?.clone?.() ?? material.uniforms[name])
+        for (const name of parsed) {
+          uniforms.set(name, this.cloneUniform(material.uniforms[name]))
+        }
 
         // Create UBO
         const data = std140(Array.from(uniforms.values()))
@@ -258,7 +259,7 @@ export class WebGLRenderer extends Renderer {
   /**
    * Compiles or updates a material's program, shaders, uniforms, and state.
    */
-  compileMaterial(target: Mesh | Program) {
+  protected compileMaterial(target: Mesh | Program) {
     const material = target instanceof Program ? target : target.material
 
     // Compile program on first bind
@@ -319,7 +320,7 @@ export class WebGLRenderer extends Renderer {
   /**
    * Updates a geometry's buffer attributes.
    */
-  updateAttributes(geometry: Geometry | Program) {
+  protected updateAttributes(geometry: Geometry | Program) {
     const { attributes } = this._compiled.get(geometry)!
 
     Object.entries(geometry.attributes).forEach(([name, attribute]) => {
@@ -335,7 +336,7 @@ export class WebGLRenderer extends Renderer {
   /**
    * Compiles or updates a geometry's attributes and binds them to a program.
    */
-  compileGeometry(target: Mesh | Program, program: WebGLProgram) {
+  protected compileGeometry(target: Mesh | Program, program: WebGLProgram) {
     const geometry = target instanceof Program ? target : target.geometry
     if (this._compiled.has(geometry)) return this.updateAttributes(geometry)
 

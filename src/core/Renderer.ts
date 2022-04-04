@@ -144,6 +144,14 @@ export abstract class Renderer {
   }
 
   /**
+   * Clones a uniform's value into memory.
+   */
+  cloneUniform(uniform: Uniform) {
+    // @ts-expect-error
+    return uniform?.clone?.() ?? uniform
+  }
+
+  /**
    * Returns a list of used uniforms from shader uniform structs.
    */
   parseUniforms(...shaders: string[]): string[] | undefined {
@@ -169,6 +177,8 @@ export abstract class Renderer {
 
     return names
   }
+
+  abstract compile(target: Mesh | Program, camera?: Camera): void
 
   /**
    * Renders a scene of objects with an optional camera.

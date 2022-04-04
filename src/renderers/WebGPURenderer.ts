@@ -159,7 +159,7 @@ export class WebGPURenderer extends Renderer {
     return buffer
   }
 
-  updateAttributes(geometry: Geometry | Program) {
+  protected updateAttributes(geometry: Geometry | Program) {
     const { attributes } = this._compiled.get(geometry)!
 
     attributes.forEach(({ buffer }, name) => {
@@ -174,7 +174,7 @@ export class WebGPURenderer extends Renderer {
     return attributes
   }
 
-  updateGeometry(target: Mesh | Program) {
+  protected updateGeometry(target: Mesh | Program) {
     const geometry = target instanceof Program ? target : target.geometry
 
     let attributes: GPUAttributeMap
@@ -223,7 +223,7 @@ export class WebGPURenderer extends Renderer {
     return attributes
   }
 
-  updatePipeline(target: Mesh | Program, attributes: GPUAttributeMap) {
+  protected updatePipeline(target: Mesh | Program, attributes: GPUAttributeMap) {
     const material = target instanceof Program ? target : target.material
 
     const pipelineState = {
@@ -302,7 +302,7 @@ export class WebGPURenderer extends Renderer {
     return pipeline
   }
 
-  updateUniforms(pipeline: GPURenderPipeline, target: Mesh | Program) {
+  protected updateUniforms(pipeline: GPURenderPipeline, target: Mesh | Program) {
     const material = target instanceof Program ? target : target.material
 
     let uniforms = this._compiled.get(material)?.uniforms!
@@ -312,9 +312,9 @@ export class WebGPURenderer extends Renderer {
       // Check whether a uniform has changed
       let needsUpdate = false
       uniforms.forEach((value, name) => {
-        if (!this.uniformsEqual(value, material.uniforms[name])) {
-          // @ts-expect-error
-          uniforms.set(name, material.uniforms[name]?.clone?.() ?? material.uniforms[name])
+        const uniform = material.uniforms[name]
+        if (!this.uniformsEqual(value, uniform)) {
+          uniforms.set(name, this.cloneUniform(uniform))
           needsUpdate = true
         }
       })
@@ -329,8 +329,9 @@ export class WebGPURenderer extends Renderer {
 
       const parsed = this.parseUniforms(material.vertex, material.fragment)
       if (parsed) {
-        // @ts-expect-error
-        for (const name of parsed) uniforms.set(name, material.uniforms[name]?.clone?.() ?? material.uniforms[name])
+        for (const name of parsed) {
+          uniforms.set(name, this.cloneUniform(material.uniforms[name]))
+        }
 
         const data = std140(Array.from(uniforms.values()))
         const buffer = this.createBuffer(data, GPUBufferUsage.UNIFORM)
