@@ -1,0 +1,15 @@
+// Vitest Snapshot v1
+
+exports[`core/Renderer > can parse uniform definitions from GLSL 1`] = `
+[
+  "time",
+  "color",
+]
+`;
+
+exports[`core/Renderer > can parse uniform definitions from WGSL 1`] = `
+[
+  "time",
+  "color",
+]
+`;

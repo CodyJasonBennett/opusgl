@@ -48,11 +48,11 @@ const material = new Material({
   },
   vertex: `
     layout(std140) uniform Uniforms {
-      vec3 color;
-      mat4 modelMatrix;
       mat4 projectionMatrix;
       mat4 viewMatrix;
+      mat4 modelMatrix;
       mat3 normalMatrix;
+      vec3 color;
     };
 
     in vec3 position;

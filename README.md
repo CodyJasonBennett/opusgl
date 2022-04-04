@@ -98,15 +98,15 @@ const geometry = new Geometry({
 
 const material = new Material({
   uniforms: {
-    uColor: new Color('hotpink'),
+    color: new Color('hotpink'),
   },
   vertex: `
     layout(std140) uniform Uniforms {
-      vec3 color;
-      mat4 modelMatrix;
       mat4 projectionMatrix;
       mat4 viewMatrix;
+      mat4 modelMatrix;
       mat3 normalMatrix;
+      vec3 color;
     };
 
     in vec3 position;
@@ -204,11 +204,11 @@ const material = new Material({
   },
   vertex: `
     struct Uniforms {
-      color: vec3<f32>,
-      modelMatrix: mat4x4<f32>,
       projectionMatrix: mat4x4<f32>,
+      modelMatrix: mat4x4<f32>,
       viewMatrix: mat4x4<f32>,
       normalMatrix: mat3x3<f32>,
+      color: vec3<f32>,
     };
     @binding(0) @group(0) var<uniform> uniforms: Uniforms;
 

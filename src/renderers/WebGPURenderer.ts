@@ -19,7 +19,7 @@ export interface GPUCompiled extends Disposable {
   depthCompare: GPUCompareFunction
   pipeline: GPURenderPipeline
   attributes: GPUAttributeMap
-  uniforms: Uniform[]
+  uniforms: Map<string, Uniform>
   UBO: { data: Float32Array; buffer: GPUBuffer; bindGroup: GPUBindGroup }
 }
 
@@ -305,48 +305,59 @@ export class WebGPURenderer extends Renderer {
   updateUniforms(pipeline: GPURenderPipeline, target: Mesh | Program) {
     const material = target instanceof Program ? target : target.material
 
+    let uniforms = this._compiled.get(material)?.uniforms!
     let UBO = this._compiled.get(material)?.UBO
 
-    if (this._compiled.has(material)) {
-      const { uniforms, UBO } = this._compiled.get(material)!
-
+    if (UBO) {
       // Check whether a uniform has changed
-      const needsUpdate = Object.values(material.uniforms).some(
-        (uniform, i) => !this.uniformsEqual(uniforms?.[i], uniform),
-      )
+      let needsUpdate = false
+      uniforms.forEach((value, name) => {
+        if (!this.uniformsEqual(value, material.uniforms[name])) {
+          // @ts-expect-error
+          uniforms.set(name, material.uniforms[name]?.clone?.() ?? material.uniforms[name])
+          needsUpdate = true
+        }
+      })
 
       // If a uniform changed, rebuild entire buffer
       // TODO: expand writeBuffer to subdata at affected indices instead
       if (needsUpdate) {
-        this.writeBuffer(UBO.buffer, std140(Object.values(material.uniforms), UBO.data))
+        this.writeBuffer(UBO.buffer, std140(Array.from(uniforms.values()), UBO.data))
       }
-    } else {
-      // @ts-expect-error
-      const uniforms: Uniform[] = Object.values(material.uniforms).map((uniform) => uniform?.clone?.() ?? uniform)
-      const data = std140(uniforms)
+    } else if (!uniforms) {
+      uniforms = new Map()
 
-      const buffer = this.createBuffer(data, GPUBufferUsage.UNIFORM)
-      this.writeBuffer(buffer, data)
+      const parsed = this.parseUniforms(material.vertex, material.fragment)
+      if (parsed) {
+        // @ts-expect-error
+        for (const name of parsed) uniforms.set(name, material.uniforms[name]?.clone?.() ?? material.uniforms[name])
 
-      const bindGroup = this.device.createBindGroup({
-        layout: pipeline.getBindGroupLayout(0),
-        entries: [
-          {
-            binding: 0,
-            resource: {
-              buffer,
+        const data = std140(Array.from(uniforms.values()))
+        const buffer = this.createBuffer(data, GPUBufferUsage.UNIFORM)
+        this.writeBuffer(buffer, data)
+
+        const bindGroup = this.device.createBindGroup({
+          layout: pipeline.getBindGroupLayout(0),
+          entries: [
+            {
+              binding: 0,
+              resource: {
+                buffer,
+              },
             },
-          },
-        ],
-      })
+          ],
+        })
 
-      UBO = { data, buffer, bindGroup }
+        UBO = { data, buffer, bindGroup }
+      }
 
       if (!(target instanceof Program)) {
         this._compiled.set(material, {
           uniforms,
           UBO,
-          dispose: () => {},
+          dispose: () => {
+            if (UBO) UBO.buffer.destroy()
+          },
         } as GPUCompiled)
       }
     }

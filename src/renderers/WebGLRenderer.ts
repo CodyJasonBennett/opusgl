@@ -15,8 +15,8 @@ export type GLAttributeMap = Map<string, GLAttribute>
 export interface GLCompiled extends Disposable {
   VAO: WebGLVertexArrayObject
   program: WebGLProgram
-  UBO: { data: Float32Array; buffer: WebGLBuffer }
-  uniforms: Uniform[]
+  UBO?: { data: Float32Array; buffer: WebGLBuffer }
+  uniforms: Map<string, Uniform>
   attributes: GLAttributeMap
 }
 
@@ -218,28 +218,38 @@ export class WebGLRenderer extends Renderer {
 
     if (UBO) {
       // Check whether a uniform has changed
-      const needsUpdate = Object.values(material.uniforms).some(
-        (uniform, i) => !this.uniformsEqual(uniforms!?.[i], uniform),
-      )
+      let needsUpdate = false
+      uniforms.forEach((value, name) => {
+        if (!this.uniformsEqual(value, material.uniforms[name])) {
+          // @ts-expect-error
+          uniforms.set(name, material.uniforms[name]?.clone?.() ?? material.uniforms[name])
+          needsUpdate = true
+        }
+      })
 
       // If a uniform changed, rebuild entire buffer
       // TODO: expand writeBuffer to subdata at affected indices instead
       if (needsUpdate) {
-        this.writeBuffer(UBO.buffer, std140(Object.values(material.uniforms), UBO.data), this.gl.UNIFORM_BUFFER)
+        this.writeBuffer(UBO.buffer, std140(Array.from(uniforms.values()), UBO.data), this.gl.UNIFORM_BUFFER)
       }
-    } else {
-      // @ts-expect-error
-      uniforms = Object.values(material.uniforms).map((uniform) => uniform?.clone?.() ?? uniform)
+    } else if (!uniforms) {
+      uniforms = new Map()
 
-      // Create UBO
-      const data = std140(uniforms)
-      const buffer = this.gl.createBuffer()!
-      UBO = { data, buffer }
+      const parsed = this.parseUniforms(material.vertex, material.fragment)
+      if (parsed) {
+        // @ts-expect-error
+        for (const name of parsed) uniforms.set(name, material.uniforms[name]?.clone?.() ?? material.uniforms[name])
 
-      // Bind it
-      this.gl.bindBufferBase(this.gl.UNIFORM_BUFFER, 0, buffer)
-      this.gl.bindBuffer(this.gl.UNIFORM_BUFFER, buffer)
-      this.gl.bufferData(this.gl.UNIFORM_BUFFER, data.byteLength, this.gl.DYNAMIC_DRAW)
+        // Create UBO
+        const data = std140(Array.from(uniforms.values()))
+        const buffer = this.gl.createBuffer()!
+        UBO = { data, buffer }
+
+        // Bind it
+        this.gl.bindBufferBase(this.gl.UNIFORM_BUFFER, 0, buffer)
+        this.gl.bindBuffer(this.gl.UNIFORM_BUFFER, buffer)
+        this.gl.bufferData(this.gl.UNIFORM_BUFFER, data.byteLength, this.gl.DYNAMIC_DRAW)
+      }
     }
 
     return { uniforms, UBO }
@@ -294,10 +304,11 @@ export class WebGLRenderer extends Renderer {
     if (!compiledMaterial && !(target instanceof Program)) {
       this._compiled.set(material, {
         program,
+        uniforms,
         UBO,
         dispose: () => {
           this.gl.deleteProgram(program)
-          this.gl.deleteBuffer(UBO.buffer)
+          if (UBO) this.gl.deleteBuffer(UBO.buffer)
         },
       } as GLCompiled)
     }

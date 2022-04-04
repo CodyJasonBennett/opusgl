@@ -32,4 +32,45 @@ describe('core/Renderer', () => {
     expect(renderer.uniformsEqual(1, 1)).toBe(true)
     expect(renderer.uniformsEqual(1, 2)).toBe(false)
   })
+
+  it('can parse uniform definitions from GLSL', () => {
+    const renderer = new RendererImpl()
+    const names = renderer.parseUniforms(
+      `
+      /*
+        layout(std140) uniform Uniforms {};
+      */
+
+      layout(std140) uniform Uniforms {
+        // bool test;
+        float time;
+        vec3 color;
+      };
+    `,
+      '',
+    )
+
+    expect(names).toMatchSnapshot()
+  })
+
+  it('can parse uniform definitions from WGSL', () => {
+    const renderer = new RendererImpl()
+    const names = renderer.parseUniforms(
+      `
+      /*
+        @binding(0) @group(0) var<uniform> uniforms: Foo;
+      */
+
+      struct Uniforms {
+        // bool test,
+        time: f32,
+        color: vec3<f32>
+      };
+      @binding(0) @group(0) var<uniform> uniforms: Uniforms;
+    `,
+      '',
+    )
+
+    expect(names).toMatchSnapshot()
+  })
 })

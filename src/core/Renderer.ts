@@ -144,6 +144,33 @@ export abstract class Renderer {
   }
 
   /**
+   * Returns a list of used uniforms from shader uniform structs.
+   */
+  parseUniforms(...shaders: string[]): string[] | undefined {
+    // Filter to most complete definition
+    if (shaders.length > 1) {
+      const definitions = shaders.map((shader) => this.parseUniforms(shader))
+      return definitions.filter(Boolean).sort((a: any, b: any) => b.length - a.length)?.[0]
+    }
+
+    // Remove comments for parsing
+    const shader = shaders[0].replace(/\/\*(?:[^*]|\**[^*/])*\*+\/|\/\/.*/g, '')
+
+    // Bail if no uniforms defined
+    if (!shader.includes('layout(std140)') && !shader.includes('var<uniform>')) return
+
+    // Detect and parse shader layout
+    const selector = shader.match(/var<uniform>[^;]+(?:\s|:)(\w+);/)?.[1] ?? 'layout\\(std140\\)'
+    const layout = shader.match(new RegExp(`${selector}[^\\{]+\\{([^\\}]+)\\}`))?.[1]
+    if (!layout) return
+
+    // Parse definitions
+    const names = Array.from(layout.match(/\w+(?=[;:])/g)!)
+
+    return names
+  }
+
+  /**
    * Renders a scene of objects with an optional camera.
    */
   abstract render(scene: Object3D | Program, camera?: Camera): void

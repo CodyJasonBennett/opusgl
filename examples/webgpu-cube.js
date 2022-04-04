@@ -46,11 +46,11 @@ const material = new Material({
   },
   vertex: `
     struct Uniforms {
-      color: vec3<f32>,
-      modelMatrix: mat4x4<f32>,
       projectionMatrix: mat4x4<f32>,
+      modelMatrix: mat4x4<f32>,
       viewMatrix: mat4x4<f32>,
       normalMatrix: mat3x3<f32>,
+      color: vec3<f32>,
     };
     @binding(0) @group(0) var<uniform> uniforms: Uniforms;
 
