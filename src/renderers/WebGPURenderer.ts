@@ -1,3 +1,4 @@
+/// <reference types="@webgpu/types" />
 import { Disposable, Compiled, Renderer } from '../core/Renderer'
 import { Program } from '../core/Program'
 import type { Uniform } from '../core/Program'
