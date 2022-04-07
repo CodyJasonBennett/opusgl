@@ -397,7 +397,12 @@ export class WebGPURenderer extends Renderer {
       colorAttachments: [
         {
           view: this.context.getCurrentTexture().createView(),
-          clearValue: { r: this.clearColor.r, g: this.clearColor.g, b: this.clearColor.b, a: this.clearAlpha },
+          clearValue: {
+            r: this.clearColor.r * this.clearAlpha,
+            g: this.clearColor.g * this.clearAlpha,
+            b: this.clearColor.b * this.clearAlpha,
+            a: this.clearAlpha,
+          },
           loadOp: 'clear',
           storeOp: 'store',
         },
