@@ -212,7 +212,7 @@ export class WebGLRenderer extends Renderer {
   /**
    * Sets or updates a material's program uniforms.
    */
-  protected updateUniforms(material: Material | Program, program: WebGLProgram) {
+  protected updateUniforms(material: Material | Program) {
     let uniforms = this._compiled.get(material)?.uniforms!
     let UBO = this._compiled.get(material)?.UBO
 
@@ -288,7 +288,7 @@ export class WebGLRenderer extends Renderer {
 
     // Bind program and update uniforms
     this.gl.useProgram(program)
-    const { uniforms, UBO } = this.updateUniforms(material, program)
+    const { uniforms, UBO } = this.updateUniforms(material)
 
     // Update material state
     this.setCullFace(GL_CULL_SIDES[material.side] ?? GL_CULL_SIDES.front)
