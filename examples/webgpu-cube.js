@@ -68,9 +68,9 @@ const material = new Material({
     @stage(vertex)
     fn main(input: VertexIn) -> VertexOut {
       var out: VertexOut;
-      out.position = uniforms.projectionMatrix * uniforms.viewMatrix * uniforms.modelMatrix * vec4<f32>(input.position, 1.0);
+      out.position = uniforms.projectionMatrix * uniforms.viewMatrix * uniforms.modelMatrix * vec4(input.position, 1.0);
       out.color = uniforms.color;
-      out.normal = normalize(uniforms.normalMatrix * input.normal).xyz;
+      out.normal = uniforms.normalMatrix * input.normal;
       return out;
     }
   `,
@@ -87,8 +87,8 @@ const material = new Material({
     @stage(fragment)
     fn main(input: FragmentIn) -> FragmentOut {
       var out: FragmentOut;
-      var lighting = dot(normalize(input.normal), normalize(vec3(10.0)));
-      out.color = vec4<f32>(vec3<f32>(input.color + lighting * 0.1), 1.0);
+      var lighting = dot(input.normal, normalize(vec3(10.0)));
+      out.color = vec4(input.color + lighting * 0.1, 1.0);
       return out;
     }
   `,

@@ -115,7 +115,7 @@ const material = new Material({
     out vec3 vColor;
 
     void main() {
-      vNormal = normalize(normalMatrix * normal);
+      vNormal = normalMatrix * normal;
       vColor = color;
       gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
     }
@@ -126,8 +126,7 @@ const material = new Material({
     out vec4 pc_fragColor;
 
     void main() {
-      vec3 normal = normalize(vNormal);
-      float lighting = dot(normal, normalize(vec3(10)));
+      float lighting = dot(vNormal, normalize(vec3(10)));
 
       pc_fragColor = vec4(vColor + lighting * 0.1, 1.0);
     }
@@ -226,9 +225,9 @@ const material = new Material({
     @stage(vertex)
     fn main(input: VertexIn) -> VertexOut {
       var out: VertexOut;
-      out.position = uniforms.projectionMatrix * uniforms.viewMatrix * uniforms.modelMatrix * vec4<f32>(input.position, 1.0);
+      out.position = uniforms.projectionMatrix * uniforms.viewMatrix * uniforms.modelMatrix * vec4(input.position, 1.0);
       out.color = uniforms.color;
-      out.normal = normalize(uniforms.normalMatrix * input.normal).xyz;
+      out.normal = uniforms.normalMatrix * input.normal;
       return out;
     }
   `,
@@ -245,8 +244,8 @@ const material = new Material({
     @stage(fragment)
     fn main(input: FragmentIn) -> FragmentOut {
       var out: FragmentOut;
-      var lighting = dot(normalize(input.normal), normalize(vec3(10.0)));
-      out.color = vec4<f32>(vec3<f32>(input.color + lighting * 0.1), 1.0);
+      var lighting = dot(input.normal, normalize(vec3(10.0)));
+      out.color = vec4(input.color + lighting * 0.1, 1.0);
       return out;
     }
   `,
@@ -373,8 +372,8 @@ const program = new Program({
     @stage(vertex)
     fn main(input: VertexIn) -> VertexOut {
       var out: VertexOut;
-      out.color = vec4<f32>(0.5 + 0.3 * cos(vec3<f32>(input.uv, 0.0) + uniforms.time) + uniforms.color, 1.0);
-      out.position = vec4<f32>(input.position, 1.0);
+      out.position = vec4(input.position, 1.0);
+      out.color = vec4(0.5 + 0.3 * cos(vec3(input.uv, 0.0) + uniforms.time) + uniforms.color, 1.0);
       return out;
     }
   `,

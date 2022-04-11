@@ -61,7 +61,7 @@ const material = new Material({
     out vec3 vColor;
 
     void main() {
-      vNormal = normalize(normalMatrix * normal);
+      vNormal = normalMatrix * normal;
       vColor = color;
       gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
     }
@@ -72,8 +72,7 @@ const material = new Material({
     out vec4 pc_fragColor;
 
     void main() {
-      vec3 normal = normalize(vNormal);
-      float lighting = dot(normal, normalize(vec3(10)));
+      float lighting = dot(vNormal, normalize(vec3(10)));
 
       pc_fragColor = vec4(vColor + lighting * 0.1, 1.0);
     }

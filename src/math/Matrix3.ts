@@ -124,10 +124,6 @@ export class Matrix3 extends Float32Array {
   }
 
   invert() {
-    const b01 = this[8] * this[4] - this[5] * this[7]
-    const b11 = -this[8] * this[3] + this[5] * this[6]
-    const b21 = this[7] * this[3] - this[4] * this[6]
-
     // Make sure we're not dividing by zero
     const det = this.determinant()
     if (!det) return this
@@ -135,13 +131,13 @@ export class Matrix3 extends Float32Array {
     const invDet = 1 / det
 
     return this.set(
-      b01,
+      this[8] * this[4] - this[5] * this[7],
       -this[8] * this[1] + this[2] * this[7],
       this[5] * this[1] - this[2] * this[4],
-      b11,
+      -this[8] * this[3] + this[5] * this[6],
       this[8] * this[0] - this[2] * this[6],
       -this[5] * this[0] + this[2] * this[3],
-      b21,
+      this[7] * this[3] - this[4] * this[6],
       -this[7] * this[0] + this[1] * this[6],
       this[4] * this[0] - this[1] * this[3],
     ).multiply(invDet)

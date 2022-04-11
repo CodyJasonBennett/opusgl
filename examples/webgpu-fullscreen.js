@@ -33,8 +33,8 @@ const program = new Program({
     @stage(vertex)
     fn main(input: VertexIn) -> VertexOut {
       var out: VertexOut;
-      out.color = vec4<f32>(0.5 + 0.3 * cos(vec3<f32>(input.uv, 0.0) + uniforms.time) + uniforms.color, 1.0);
-      out.position = vec4<f32>(input.position, 1.0);
+      out.position = vec4(input.position, 1.0);
+      out.color = vec4(0.5 + 0.3 * cos(vec3(input.uv, 0.0) + uniforms.time) + uniforms.color, 1.0);
       return out;
     }
   `,
