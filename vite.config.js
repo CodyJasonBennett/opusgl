@@ -8,6 +8,10 @@ export default defineConfig({
       opusgl: path.resolve(process.cwd(), 'src'),
     },
   },
+  test: {
+    environment: 'jsdom',
+    setupFiles: path.resolve(process.cwd(), 'tests/index.ts'),
+  },
   build: {
     minify: false,
     emptyOutDir: true,

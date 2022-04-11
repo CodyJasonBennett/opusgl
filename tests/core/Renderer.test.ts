@@ -3,6 +3,7 @@ import { Renderer, Scene, Mesh, Geometry, Material, Vector2 } from '../../src'
 
 class RendererImpl extends Renderer {
   render() {}
+  compile() {}
 }
 
 describe('core/Renderer', () => {
