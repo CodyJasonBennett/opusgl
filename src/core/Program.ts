@@ -12,7 +12,7 @@ import { uuid } from '../utils'
 /**
  * Represents a program uniform.
  */
-export type Uniform = number | Color | Euler | Matrix3 | Matrix4 | Quaternion | Vector2 | Vector3 | Vector4
+export type Uniform = number | number[] | Color | Euler | Matrix3 | Matrix4 | Quaternion | Vector2 | Vector3 | Vector4
 
 /**
  * Represents a program attribute.

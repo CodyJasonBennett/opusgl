@@ -16,9 +16,15 @@ describe('utils/uuid', () => {
 
 describe('utils/std140', () => {
   it('packs into 16 byte chunks', () => {
-    const uniforms = Array.from({ length: 1000 }, (_, i) => (i < 2 ? i : Array(i).fill(0))) as unknown as number[]
-    const buffer = std140(uniforms)
+    // Test number and number[] with lengths 1-4
+    for (let size = 0; size < 4; size++) {
+      // Arbitrary amount of times, 16 for min packing size
+      for (let length = 0; length < 16; length++) {
+        const uniforms = Array.from({ length }, () => (size < 1 ? size : Array(size).fill(0)))
+        const buffer = std140(uniforms)
 
-    expect(buffer.byteLength % 16).toBe(0)
+        expect(buffer.byteLength % 16).toBe(0)
+      }
+    }
   })
 })
