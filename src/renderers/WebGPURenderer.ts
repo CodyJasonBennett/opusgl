@@ -163,13 +163,13 @@ export class WebGPURenderer extends Renderer {
   protected updateAttributes(geometry: Geometry | Program) {
     const { attributes } = this._compiled.get(geometry)!
 
-    attributes.forEach(({ buffer }, name) => {
+    attributes.forEach((compiled, name) => {
       if (name === 'index') return
 
       const attribute = geometry.attributes[name]
       if (!attribute.needsUpdate) return
 
-      this.writeBuffer(buffer, attribute.data)
+      this.writeBuffer(compiled.buffer, attribute.data)
     })
 
     return attributes
@@ -423,7 +423,7 @@ export class WebGPURenderer extends Renderer {
     passEncoder.setScissorRect(this.scissor.x, this.scissor.y, this.scissor.width, this.scissor.height)
 
     // Update scene matrices
-    if (!(scene instanceof Program)) scene.updateMatrix()
+    if (!(scene instanceof Program) && scene.matrixAutoUpdate) scene.updateMatrix()
 
     // Update camera matrices
     if (camera) {
@@ -433,7 +433,7 @@ export class WebGPURenderer extends Renderer {
 
     // Render children
     const renderList = scene instanceof Program ? [scene] : this.sort(scene, camera)
-    renderList.forEach((child) => {
+    for (const child of renderList) {
       // Compile on first render, otherwise update
       const compiled = this.compile(child, camera)
 
@@ -455,7 +455,7 @@ export class WebGPURenderer extends Renderer {
       } else {
         passEncoder.draw(position.data.length / position.size)
       }
-    })
+    }
 
     // Cleanup frame, submit GL commands
     passEncoder.end()

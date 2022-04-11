@@ -323,11 +323,11 @@ export class WebGLRenderer extends Renderer {
   protected updateAttributes(geometry: Geometry | Program) {
     const { attributes } = this._compiled.get(geometry)!
 
-    Object.entries(geometry.attributes).forEach(([name, attribute]) => {
+    attributes.forEach((compiled, name) => {
+      const attribute = geometry.attributes[name]
       if (!attribute.needsUpdate) return
 
-      const { buffer } = attributes.get(name)!
-      this.writeBuffer(buffer, attribute.data)
+      this.writeBuffer(compiled.buffer, attribute.data)
     })
 
     return attributes
@@ -427,7 +427,7 @@ export class WebGLRenderer extends Renderer {
     }
 
     // Update scene matrices
-    if (!(scene instanceof Program)) scene.updateMatrix()
+    if (!(scene instanceof Program) && scene.matrixAutoUpdate) scene.updateMatrix()
 
     // Update camera matrices
     if (camera) {
@@ -437,7 +437,7 @@ export class WebGLRenderer extends Renderer {
 
     // Compile & render visible children
     const renderList = scene instanceof Program ? [scene] : this.sort(scene, camera)
-    renderList.forEach((child) => {
+    for (const child of renderList) {
       const { VAO } = this.compile(child, camera)
 
       // Bind
@@ -454,6 +454,6 @@ export class WebGLRenderer extends Renderer {
 
       // Unbind
       this.gl.bindVertexArray(null)
-    })
+    }
   }
 }

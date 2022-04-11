@@ -85,13 +85,11 @@ export class Object3D {
    * Used internally to calculate global transforms.
    */
   updateMatrix(updateChildren = true, updateParents = false) {
-    if (this.matrixAutoUpdate) {
-      this.quaternion.fromEuler(this.rotation)
-      this.matrix.compose(this.position, this.quaternion, this.scale)
+    this.quaternion.fromEuler(this.rotation)
+    this.matrix.compose(this.position, this.quaternion, this.scale)
 
-      this.worldMatrix.copy(this.matrix)
-      if (this.parent) this.worldMatrix.multiply(this.parent.worldMatrix)
-    }
+    this.worldMatrix.copy(this.matrix)
+    if (this.parent) this.worldMatrix.multiply(this.parent.worldMatrix)
 
     if (updateChildren) this.children.forEach((child) => child.updateMatrix())
     if (updateParents) this.parent?.updateMatrix(false, true)
