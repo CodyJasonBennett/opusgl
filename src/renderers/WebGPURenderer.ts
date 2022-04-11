@@ -391,7 +391,7 @@ export class WebGPURenderer extends Renderer {
     return { attributes, pipeline, UBO }
   }
 
-  render(scene: Object3D | Program, camera: Camera) {
+  render(scene: Object3D | Program, camera?: Camera) {
     const commandEncoder = this.device.createCommandEncoder()
     const passEncoder = commandEncoder.beginRenderPass({
       colorAttachments: [
@@ -439,7 +439,8 @@ export class WebGPURenderer extends Renderer {
 
       // Bind
       passEncoder.setPipeline(compiled.pipeline)
-      passEncoder.setBindGroup(0, compiled.UBO!.bindGroup)
+      if (compiled.UBO?.bindGroup) passEncoder.setBindGroup(0, compiled.UBO.bindGroup)
+
       compiled.attributes.forEach((attribute, name) => {
         if (name === 'index') {
           passEncoder.setIndexBuffer(attribute.buffer, 'uint32')
