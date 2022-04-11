@@ -447,7 +447,7 @@ export class WebGLRenderer extends Renderer {
       const { index, position } = child instanceof Program ? child.attributes : child.geometry.attributes
       const mode = GL_DRAW_MODES[child.mode] ?? GL_DRAW_MODES.triangles
       if (index) {
-        this.gl.drawElements(mode, index.data.length / index.size, this.gl.UNSIGNED_SHORT, 0)
+        this.gl.drawElements(mode, index.data.length / index.size, this.gl.UNSIGNED_INT, 0)
       } else {
         this.gl.drawArrays(mode, 0, position.data.length / position.size)
       }
