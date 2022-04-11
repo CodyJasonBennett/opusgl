@@ -423,7 +423,13 @@ export class WebGLRenderer extends Renderer {
     // Clear screen
     if (this.autoClear) {
       this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT)
-      this.gl.clearColor(this.clearColor.r, this.clearColor.g, this.clearColor.b, this.clearAlpha)
+      const multiplier = this._params.premultipliedAlpha ? this.clearAlpha : 1
+      this.gl.clearColor(
+        this.clearColor.r * multiplier,
+        this.clearColor.g * multiplier,
+        this.clearColor.b * multiplier,
+        this.clearAlpha,
+      )
     }
 
     // Update scene matrices
