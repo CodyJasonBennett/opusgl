@@ -178,6 +178,28 @@ export class WebGLRenderer extends Renderer {
   }
 
   /**
+   * Sets the active frameBuffer to render to.
+   */
+  setFrameBuffer(frameBuffer: WebGLFramebuffer | null) {
+    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, frameBuffer)
+  }
+
+  /**
+   * Clears color and depth buffers.
+   */
+  clear() {
+    this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT)
+
+    const multiplier = this._params.premultipliedAlpha ? this.clearAlpha : 1
+    this.gl.clearColor(
+      this.clearColor.r * multiplier,
+      this.clearColor.g * multiplier,
+      this.clearColor.b * multiplier,
+      this.clearAlpha,
+    )
+  }
+
+  /**
    * Creates buffer and initializes it.
    */
   createBuffer(data: Float32Array | Uint32Array, type = this.gl.ARRAY_BUFFER, usage = this.gl.STATIC_DRAW) {
@@ -486,17 +508,7 @@ export class WebGLRenderer extends Renderer {
 
   render(scene: Object3D | Program, camera?: Camera) {
     // Clear screen
-    if (this.autoClear) {
-      this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT)
-
-      const multiplier = this._params.premultipliedAlpha ? this.clearAlpha : 1
-      this.gl.clearColor(
-        this.clearColor.r * multiplier,
-        this.clearColor.g * multiplier,
-        this.clearColor.b * multiplier,
-        this.clearAlpha,
-      )
-    }
+    if (this.autoClear) this.clear()
 
     // Update scene matrices
     if (!(scene instanceof Program) && scene.matrixAutoUpdate) scene.updateMatrix()
