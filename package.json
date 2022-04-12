@@ -23,8 +23,8 @@
   "types": "dist/index.d.ts",
   "sideEffects": false,
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^5.18.0",
-    "@typescript-eslint/parser": "^5.18.0",
+    "@typescript-eslint/eslint-plugin": "^5.19.0",
+    "@typescript-eslint/parser": "^5.19.0",
     "eslint": "^8.13.0",
     "jsdom": "^19.0.0",
     "np": "^7.6.1",
@@ -33,7 +33,7 @@
     "vitest": "^0.9.3"
   },
   "dependencies": {
-    "@webgpu/types": "^0.1.13"
+    "@webgpu/types": "^0.1.14"
   },
   "scripts": {
     "dev": "vite",
