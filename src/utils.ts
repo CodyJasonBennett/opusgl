@@ -2,6 +2,11 @@ import type { Uniform } from './core/Program'
 import type { Texture } from './core/Texture'
 
 /**
+ * Clamps a value between a range
+ */
+export const clamp = (value: number, [min, max]: number[]) => Math.max(min, Math.min(max, value))
+
+/**
  * Generates a v4 UUID. Useful for tracking unique objects.
  */
 export const uuid = () =>

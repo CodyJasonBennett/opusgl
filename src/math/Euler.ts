@@ -1,7 +1,14 @@
+import { Matrix4 } from './Matrix4'
+import type { Quaternion } from './Quaternion'
+import { clamp } from '../utils'
+
 export type EulerOrder = 'XYZ' | 'XZY' | 'YXZ' | 'YZX' | 'ZXY' | 'ZYX'
+
+const matrix = new Matrix4()
 
 export class Euler extends Float32Array {
   readonly isEuler = true
+  public onChange = () => {}
   public order: EulerOrder = 'YXZ'
 
   constructor(x = 0, y = x, z = x) {
@@ -15,6 +22,7 @@ export class Euler extends Float32Array {
 
   set x(x) {
     this[0] = x
+    this.onChange()
   }
 
   get y() {
@@ -23,6 +31,7 @@ export class Euler extends Float32Array {
 
   set y(y) {
     this[1] = y
+    this.onChange()
   }
 
   get z() {
@@ -31,6 +40,7 @@ export class Euler extends Float32Array {
 
   set z(z) {
     this[2] = z
+    this.onChange()
   }
 
   // @ts-expect-error
@@ -118,5 +128,103 @@ export class Euler extends Float32Array {
       this.y === e.y &&
       this.z === e.z
     )
+  }
+
+  fromMatrix4(m: Matrix4) {
+    const m11 = m[0]
+    const m12 = m[4]
+    const m13 = m[8]
+    const m21 = m[1]
+    const m22 = m[5]
+    const m23 = m[9]
+    const m31 = m[2]
+    const m32 = m[6]
+    const m33 = m[10]
+
+    switch (this.order) {
+      case 'XYZ':
+        this[1] = Math.asin(clamp(m13, [-1, 1]))
+
+        if (Math.abs(m13) < 1 - Number.EPSILON) {
+          this[0] = Math.atan2(-m23, m33)
+          this[2] = Math.atan2(-m12, m11)
+        } else {
+          this[0] = Math.atan2(m32, m22)
+          this[2] = 0
+        }
+
+        break
+
+      case 'YXZ':
+        this[0] = Math.asin(-clamp(m23, [-1, 1]))
+
+        if (Math.abs(m23) < 1 - Number.EPSILON) {
+          this[1] = Math.atan2(m13, m33)
+          this[2] = Math.atan2(m21, m22)
+        } else {
+          this[1] = Math.atan2(-m31, m11)
+          this[2] = 0
+        }
+
+        break
+
+      case 'ZXY':
+        this[0] = Math.asin(clamp(m32, [-1, 1]))
+
+        if (Math.abs(m32) < 1 - Number.EPSILON) {
+          this[1] = Math.atan2(-m31, m33)
+          this[2] = Math.atan2(-m12, m22)
+        } else {
+          this[1] = 0
+          this[2] = Math.atan2(m21, m11)
+        }
+
+        break
+
+      case 'ZYX':
+        this[1] = Math.asin(-clamp(m31, [-1, 1]))
+
+        if (Math.abs(m31) < 1 - Number.EPSILON) {
+          this[0] = Math.atan2(m32, m33)
+          this[2] = Math.atan2(m21, m11)
+        } else {
+          this[0] = 0
+          this[2] = Math.atan2(-m12, m22)
+        }
+
+        break
+
+      case 'YZX':
+        this[2] = Math.asin(clamp(m21, [-1, 1]))
+
+        if (Math.abs(m21) < 1 - Number.EPSILON) {
+          this[0] = Math.atan2(-m23, m22)
+          this[1] = Math.atan2(-m31, m11)
+        } else {
+          this[0] = 0
+          this[1] = Math.atan2(m13, m33)
+        }
+
+        break
+
+      case 'XZY':
+        this[2] = Math.asin(-clamp(m12, [-1, 1]))
+
+        if (Math.abs(m12) < 1 - Number.EPSILON) {
+          this[0] = Math.atan2(m32, m22)
+          this[1] = Math.atan2(m13, m11)
+        } else {
+          this[0] = Math.atan2(-m23, m33)
+          this[1] = 0
+        }
+
+        break
+    }
+
+    return this
+  }
+
+  fromQuaternion(q: Quaternion) {
+    return this.fromMatrix4(matrix.fromQuaternion(q))
   }
 }

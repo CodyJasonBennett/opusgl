@@ -65,6 +65,9 @@ export class Object3D {
 
   constructor() {
     this.uuid = uuid()
+
+    this.quaternion.onChange = () => void this.rotation.fromQuaternion(this.quaternion)
+    this.rotation.onChange = () => void this.quaternion.fromEuler(this.rotation)
   }
 
   /**

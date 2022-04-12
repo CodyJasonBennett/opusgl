@@ -1,5 +1,8 @@
-import type { Vector3 } from './Vector3'
+import { Vector3 } from './Vector3'
 import type { Quaternion } from './Quaternion'
+
+const zero = new Vector3(0, 0, 0)
+const one = new Vector3(1, 1, 1)
 
 export class Matrix4 extends Float32Array {
   readonly isMatrix4 = true
@@ -494,5 +497,9 @@ export class Matrix4 extends Float32Array {
       this[13] * b01 - this[12] * b03 - this[14] * b00,
       this[8] * b03 - this[9] * b01 + this[10] * b00,
     ).multiply(invDet)
+  }
+
+  fromQuaternion(q: Quaternion) {
+    return this.compose(zero, q, one)
   }
 }

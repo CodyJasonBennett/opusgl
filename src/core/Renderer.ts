@@ -5,6 +5,7 @@ import type { Material } from './Material'
 import type { Mesh } from './Mesh'
 import type { Object3D } from './Object3D'
 import type { Camera } from './Camera'
+import { clamp } from '../utils'
 
 export interface Disposable {
   dispose: () => void
@@ -77,8 +78,7 @@ export abstract class Renderer {
    */
   setPixelRatio(pixelRatio: number | number[]) {
     if (Array.isArray(pixelRatio)) {
-      const [min, max] = pixelRatio
-      this._pixelRatio = Math.min(Math.max(min, window.devicePixelRatio), max)
+      this._pixelRatio = clamp(window.devicePixelRatio, pixelRatio)
     } else {
       this._pixelRatio = pixelRatio
     }
