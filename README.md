@@ -278,7 +278,7 @@ Creates an animated fullscreen gradient shader from a triangle.
   <summary>Show WebGL example</summary>
 
 ```js
-import { WebGLRenderer, Program, Color } from 'opusgl'
+import { WebGLRenderer, Program, Texture } from 'opusgl'
 
 const renderer = new WebGLRenderer()
 renderer.setSize(window.innerWidth, window.innerHeight)
@@ -290,8 +290,8 @@ const program = new Program({
     uv: { size: 2, data: new Float32Array([0, 0, 2, 0, 0, 2]) },
   },
   uniforms: {
-    uTime: 0,
-    uColor: new Color(0x4c3380),
+    time: 0,
+    texture: await new Texture().fromData(new Uint8Array([76, 51, 128, 255]), 1, 1),
   },
   vertex: `
     in vec2 uv;
@@ -304,17 +304,17 @@ const program = new Program({
       gl_Position = vec4(position, 1);
     }
   `,
-  fragment: `       
+  fragment: `
     layout(std140) uniform Uniforms {
-      float uTime;
-      vec3 uColor;
+      float time;
     };
+    uniform sampler2D test;
 
     in vec2 vUv;
     out vec4 pc_fragColor;
 
     void main() {
-      pc_fragColor = vec4(0.5 + 0.3 * cos(vUv.xyx + uTime) + uColor, 1.0);
+      pc_fragColor = vec4(0.5 + 0.3 * cos(vUv.xyx + time), 0.0) + texture(test, vUv);
     }
   `,
 })
@@ -325,7 +325,7 @@ window.addEventListener('resize', () => {
 
 const animate = (time) => {
   requestAnimationFrame(animate)
-  program.uniforms.uTime = time / 1000
+  program.uniforms.time = time / 1000
   renderer.render(program)
 }
 requestAnimationFrame(animate)
@@ -337,7 +337,7 @@ requestAnimationFrame(animate)
   <summary>Show WebGPU example</summary>
 
 ```js
-import { WebGPURenderer, Program, Color } from 'opusgl'
+import { WebGPURenderer, Program, Texture } from 'opusgl'
 
 const renderer = await new WebGPURenderer().init()
 renderer.setSize(window.innerWidth, window.innerHeight)
@@ -350,12 +350,11 @@ const program = new Program({
   },
   uniforms: {
     time: 0,
-    color: new Color(0x4c3380),
+    texture: await new Texture().fromData(new Uint8Array([76, 51, 128, 255]), 1, 1),
   },
   vertex: `
     struct Uniforms {
       time: f32,
-      color: vec3<f32>,
     };
     @binding(0) @group(0) var<uniform> uniforms: Uniforms;
 
@@ -367,19 +366,25 @@ const program = new Program({
     struct VertexOut {
       @builtin(position) position: vec4<f32>,
       @location(0) color: vec4<f32>,
+      @location(1) uv: vec2<f32>,
     };
 
     @stage(vertex)
     fn main(input: VertexIn) -> VertexOut {
       var out: VertexOut;
       out.position = vec4(input.position, 1.0);
-      out.color = vec4(0.5 + 0.3 * cos(vec3(input.uv, 0.0) + uniforms.time) + uniforms.color, 1.0);
+      out.color = vec4(0.5 + 0.3 * cos(vec3(input.uv, 0.0) + uniforms.time), 0.0);
+      out.uv = input.uv;
       return out;
     }
   `,
   fragment: `
+    @binding(1) @group(0) var sample: sampler;
+    @binding(2) @group(0) var texture: texture_2d<f32>;
+
     struct FragmentIn {
       @location(0) color: vec4<f32>,
+      @location(1) uv: vec2<f32>,
     };
 
     struct FragmentOut {
@@ -389,7 +394,7 @@ const program = new Program({
     @stage(fragment)
     fn main(input: FragmentIn) -> FragmentOut {
       var out: FragmentOut;
-      out.color = input.color;
+      out.color = input.color + textureSample(texture, sample, input.uv);
       return out;
     }
   `,

@@ -1,12 +1,20 @@
 import { Disposable, Compiled, Renderer } from '../core/Renderer'
 import { Program } from '../core/Program'
 import type { Uniform } from '../core/Program'
+import type { Texture } from '../core/Texture'
 import type { Material } from '../core/Material'
 import type { Geometry } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Object3D } from '../core/Object3D'
 import type { Camera } from '../core/Camera'
-import { GL_SHADER_TEMPLATES, GL_CULL_SIDES, GL_DRAW_MODES } from '../constants'
+import {
+  GL_SHADER_TEMPLATES,
+  GL_TEXTURE_FILTERS,
+  GL_TEXTURE_MIPMAP_FILTERS,
+  GL_TEXTURE_WRAPPINGS,
+  GL_CULL_SIDES,
+  GL_DRAW_MODES,
+} from '../constants'
 import { std140 } from '../utils'
 
 export type GLAttribute = { buffer: WebGLBuffer; location: number }
@@ -15,9 +23,13 @@ export type GLAttributeMap = Map<string, GLAttribute>
 export interface GLCompiled extends Disposable {
   VAO: WebGLVertexArrayObject
   program: WebGLProgram
-  UBO?: { data: Float32Array; buffer: WebGLBuffer }
-  uniforms: Map<string, Uniform>
-  attributes: GLAttributeMap
+  UBO: {
+    textures: Map<string, { target: WebGLTexture; index: number }>
+    uniforms: Map<string, Uniform>
+    data?: Float32Array
+    buffer?: WebGLBuffer
+  }
+  attributes: Map<string, { buffer: WebGLBuffer; location: number }>
 }
 
 export interface WebGLRendererOptions {
@@ -210,50 +222,101 @@ export class WebGLRenderer extends Renderer {
   }
 
   /**
+   * Compiles and activates a texture by index.
+   */
+  protected updateTexture(target: WebGLTexture, texture: Texture, index: number) {
+    this.gl.bindTexture(this.gl.TEXTURE_2D, target)
+
+    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, texture.image)
+    if (texture.flipY) this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, texture.flipY)
+
+    const anisotropy = this.gl.getExtension('EXT_texture_filter_anisotropic')
+    if (anisotropy) this.gl.texParameterf(this.gl.TEXTURE_2D, anisotropy.TEXTURE_MAX_ANISOTROPY_EXT, texture.anisotropy)
+    if (texture.generateMipmaps) this.gl.generateMipmap(this.gl.TEXTURE_2D)
+
+    const magFilter = GL_TEXTURE_FILTERS[texture.magFilter] ?? GL_TEXTURE_FILTERS.nearest
+    const minFilters = texture.generateMipmaps ? GL_TEXTURE_MIPMAP_FILTERS : GL_TEXTURE_FILTERS
+    const minFilter = minFilters[texture.minFilter] ?? minFilters.nearest
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, magFilter)
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, minFilter)
+
+    const wrapS = GL_TEXTURE_WRAPPINGS[texture.wrapS] ?? GL_TEXTURE_WRAPPINGS.clamp
+    const wrapT = GL_TEXTURE_WRAPPINGS[texture.wrapT] ?? GL_TEXTURE_WRAPPINGS.clamp
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, wrapS)
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, wrapT)
+
+    this.gl.activeTexture(this.gl.TEXTURE0 + index)
+    this.gl.bindTexture(this.gl.TEXTURE_2D, target)
+    texture.needsUpdate = false
+  }
+
+  /**
    * Sets or updates a material's program uniforms.
    */
   protected updateUniforms(material: Material | Program) {
-    let uniforms = this._compiled.get(material)?.uniforms!
-    let UBO = this._compiled.get(material)?.UBO
+    let UBO = this._compiled.get(material)?.UBO!
 
-    if (UBO) {
-      // Check whether a uniform has changed
-      let needsUpdate = false
-      uniforms.forEach((value, name) => {
-        const uniform = material.uniforms[name]
-        if (!this.uniformsEqual(value, uniform)) {
-          uniforms.set(name, this.cloneUniform(uniform))
-          needsUpdate = true
+    if (!UBO) {
+      UBO = { textures: new Map(), uniforms: new Map() }
+
+      // Init textures outside of std140
+      let index = 0
+      for (const name in material.uniforms) {
+        const texture = material.uniforms[name] as Texture
+        if (texture?.isTexture) {
+          const target = this.gl.createTexture()!
+          this.updateTexture(target, texture, index)
+
+          UBO.textures.set(name, { target, index })
+          index++
         }
-      })
-
-      // If a uniform changed, rebuild entire buffer
-      // TODO: expand writeBuffer to subdata at affected indices instead
-      if (needsUpdate) {
-        this.writeBuffer(UBO.buffer, std140(Array.from(uniforms.values()), UBO.data), this.gl.UNIFORM_BUFFER)
       }
-    } else if (!uniforms) {
-      uniforms = new Map()
 
+      // Parse used uniforms for std140
       const parsed = this.parseUniforms(material.vertex, material.fragment)
       if (parsed) {
+        // Init parsed uniforms
         for (const name of parsed) {
-          uniforms.set(name, this.cloneUniform(material.uniforms[name]))
+          const uniform = material.uniforms[name]
+          UBO.uniforms.set(name, this.cloneUniform(uniform))
         }
 
         // Create UBO
-        const data = std140(Array.from(uniforms.values()))
-        const buffer = this.gl.createBuffer()!
-        UBO = { data, buffer }
+        UBO.data = std140(Array.from(UBO.uniforms.values()))
+        UBO.buffer = this.gl.createBuffer()!
 
         // Bind it
-        this.gl.bindBufferBase(this.gl.UNIFORM_BUFFER, 0, buffer)
-        this.gl.bindBuffer(this.gl.UNIFORM_BUFFER, buffer)
-        this.gl.bufferData(this.gl.UNIFORM_BUFFER, data.byteLength, this.gl.DYNAMIC_DRAW)
+        this.gl.bindBufferBase(this.gl.UNIFORM_BUFFER, 0, UBO.buffer)
+        this.gl.bindBuffer(this.gl.UNIFORM_BUFFER, UBO.buffer)
+        this.gl.bufferData(this.gl.UNIFORM_BUFFER, UBO.data.byteLength, this.gl.DYNAMIC_DRAW)
+      }
+    } else {
+      // Update textures flagged for update
+      UBO.textures.forEach((compiled, name) => {
+        const texture = material.uniforms[name] as Texture
+        if (!texture.needsUpdate) return
+
+        this.updateTexture(compiled.target, texture, compiled.index)
+      })
+
+      // Check whether a uniform has changed
+      let needsUpdate = false
+      UBO.uniforms.forEach((value, name) => {
+        const uniform = material.uniforms[name]
+        if (this.uniformsEqual(value, uniform)) return
+
+        UBO.uniforms.set(name, this.cloneUniform(uniform))
+        needsUpdate = true
+      })
+
+      if (needsUpdate) {
+        // If a uniform changed, rebuild entire buffer
+        // TODO: expand writeBuffer to subdata at affected indices instead
+        this.writeBuffer(UBO.buffer!, std140(Array.from(UBO.uniforms.values()), UBO.data), this.gl.UNIFORM_BUFFER)
       }
     }
 
-    return { uniforms, UBO }
+    return UBO
   }
 
   /**
@@ -288,7 +351,7 @@ export class WebGLRenderer extends Renderer {
 
     // Bind program and update uniforms
     this.gl.useProgram(program)
-    const { uniforms, UBO } = this.updateUniforms(material)
+    const UBO = this.updateUniforms(material)
 
     // Update material state
     this.setCullFace(GL_CULL_SIDES[material.side] ?? GL_CULL_SIDES.front)
@@ -305,16 +368,19 @@ export class WebGLRenderer extends Renderer {
     if (!compiledMaterial && !(target instanceof Program)) {
       this._compiled.set(material, {
         program,
-        uniforms,
         UBO,
         dispose: () => {
           this.gl.deleteProgram(program)
-          if (UBO) this.gl.deleteBuffer(UBO.buffer)
+
+          if (UBO.buffer) this.gl.deleteBuffer(UBO.buffer)
+          UBO.textures.forEach(({ target }) => {
+            this.gl.deleteTexture(target)
+          })
         },
       } as GLCompiled)
     }
 
-    return { program, uniforms, UBO }
+    return { program, UBO }
   }
 
   /**
@@ -397,7 +463,7 @@ export class WebGLRenderer extends Renderer {
     this.gl.bindVertexArray(VAO)
 
     // Update shaders, uniforms, attributes
-    const { program, uniforms, UBO } = this.compileMaterial(target)
+    const { program, UBO } = this.compileMaterial(target)
     const attributes = this.compileGeometry(target, program)
 
     // Unbind
@@ -407,7 +473,6 @@ export class WebGLRenderer extends Renderer {
       this._compiled.set(target, {
         VAO,
         program,
-        uniforms,
         UBO,
         attributes,
         dispose: () => {
@@ -423,6 +488,7 @@ export class WebGLRenderer extends Renderer {
     // Clear screen
     if (this.autoClear) {
       this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT)
+
       const multiplier = this._params.premultipliedAlpha ? this.clearAlpha : 1
       this.gl.clearColor(
         this.clearColor.r * multiplier,
@@ -444,6 +510,7 @@ export class WebGLRenderer extends Renderer {
     // Compile & render visible children
     const renderList = scene instanceof Program ? [scene] : this.sort(scene, camera)
     for (const child of renderList) {
+      // Compile on first render, otherwise update
       const { VAO } = this.compile(child, camera)
 
       // Bind

@@ -10,6 +10,7 @@
     "sourceType": "module"
   },
   "rules": {
+    "@typescript-eslint/no-inferrable-types": "warn",
     "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
     "@typescript-eslint/no-use-before-define": "off",
     "@typescript-eslint/no-explicit-any": "off",

@@ -1,4 +1,4 @@
-import { WebGLRenderer, Program, Color } from 'opusgl'
+import { WebGLRenderer, Program, Texture } from 'opusgl'
 
 const renderer = new WebGLRenderer()
 renderer.setSize(window.innerWidth, window.innerHeight)
@@ -11,7 +11,7 @@ const program = new Program({
   },
   uniforms: {
     time: 0,
-    color: new Color(0x4c3380),
+    texture: await new Texture().fromData(new Uint8Array([76, 51, 128, 255]), 1, 1),
   },
   vertex: `
     in vec2 uv;
@@ -24,17 +24,17 @@ const program = new Program({
       gl_Position = vec4(position, 1);
     }
   `,
-  fragment: `       
+  fragment: `
     layout(std140) uniform Uniforms {
       float time;
-      vec3 color;
     };
+    uniform sampler2D test;
 
     in vec2 vUv;
     out vec4 pc_fragColor;
 
     void main() {
-      pc_fragColor = vec4(0.5 + 0.3 * cos(vUv.xyx + time) + color, 1.0);
+      pc_fragColor = vec4(0.5 + 0.3 * cos(vUv.xyx + time), 0.0) + texture(test, vUv);
     }
   `,
 })

@@ -2,11 +2,12 @@
 import { Disposable, Compiled, Renderer } from '../core/Renderer'
 import { Program } from '../core/Program'
 import type { Uniform } from '../core/Program'
+import type { Texture } from '../core/Texture'
 import type { Geometry } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Camera } from '../core/Camera'
 import type { Object3D } from '../core/Object3D'
-import { GPU_CULL_SIDES, GPU_DRAW_MODES } from '../constants'
+import { GPU_CULL_SIDES, GPU_DRAW_MODES, GPU_TEXTURE_FILTERS, GPU_TEXTURE_WRAPPINGS } from '../constants'
 import { std140 } from '../utils'
 
 export type GPUAttribute = Partial<GPUVertexBufferLayout> & { slot?: number; buffer: GPUBuffer }
@@ -19,9 +20,14 @@ export interface GPUCompiled extends Disposable {
   depthWriteEnabled: boolean
   depthCompare: GPUCompareFunction
   pipeline: GPURenderPipeline
-  attributes: GPUAttributeMap
-  uniforms: Map<string, Uniform>
-  UBO: { data: Float32Array; buffer: GPUBuffer; bindGroup: GPUBindGroup }
+  attributes: Map<string, Partial<GPUVertexBufferLayout> & { slot?: number; buffer: GPUBuffer }>
+  UBO: {
+    textures: Map<string, { binding: number; texture: GPUTexture }>
+    uniforms: Map<string, Uniform>
+    data?: Float32Array
+    buffer?: GPUBuffer
+    bindGroup?: GPUBindGroup
+  }
 }
 
 export interface WebGPURendererOptions {
@@ -303,19 +309,169 @@ export class WebGPURenderer extends Renderer {
     return pipeline
   }
 
+  /**
+   * Compiles and activates a texture.
+   */
+  protected updateTexture(uniform: Texture) {
+    const sampler = this.device.createSampler({
+      addressModeU: (GPU_TEXTURE_WRAPPINGS[uniform.wrapS] as GPUAddressMode) ?? GPU_TEXTURE_WRAPPINGS.clamp,
+      addressModeV: (GPU_TEXTURE_WRAPPINGS[uniform.wrapT] as GPUAddressMode) ?? GPU_TEXTURE_WRAPPINGS.clamp,
+      magFilter: GPU_TEXTURE_FILTERS[uniform.magFilter] ?? GPU_TEXTURE_FILTERS.nearest,
+      minFilter: GPU_TEXTURE_FILTERS[uniform.minFilter] ?? GPU_TEXTURE_FILTERS.nearest,
+      mipmapFilter: uniform.generateMipmaps
+        ? GPU_TEXTURE_FILTERS[uniform.minFilter] ?? GPU_TEXTURE_FILTERS.nearest
+        : undefined,
+      maxAnisotropy: uniform.anisotropy,
+    })
+
+    const texture = this.device.createTexture({
+      format: this.format,
+      dimension: '2d',
+      size: [uniform.image.width, uniform.image.width, 1],
+      usage:
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.TEXTURE_BINDING |
+        GPUTextureUsage.RENDER_ATTACHMENT |
+        GPUTextureUsage.COPY_SRC,
+      mipLevelCount: uniform.generateMipmaps
+        ? Math.floor(Math.log2(Math.max(uniform.image.width, uniform.image.height))) + 1
+        : undefined,
+    })
+
+    this.device.queue.copyExternalImageToTexture({ source: uniform.image, flipY: uniform.flipY }, { texture }, [
+      uniform.image.width,
+      uniform.image.height,
+    ])
+
+    uniform.needsUpdate = false
+
+    return { sampler, texture }
+  }
+
   protected updateUniforms(pipeline: GPURenderPipeline, target: Mesh | Program) {
     const material = target instanceof Program ? target : target.material
 
-    let uniforms = this._compiled.get(material)?.uniforms!
-    let UBO = this._compiled.get(material)?.UBO
+    let UBO = this._compiled.get(material)?.UBO!
 
-    if (UBO) {
+    if (!UBO) {
+      UBO = { textures: new Map(), uniforms: new Map() }
+
+      let binding = 0
+      const entries: GPUBindGroupEntry[] = []
+
+      // Parse used uniforms for std140
+      const parsed = this.parseUniforms(material.vertex, material.fragment)
+      if (parsed) {
+        // Init parsed uniforms
+        for (const name of parsed) {
+          UBO.uniforms.set(name, this.cloneUniform(material.uniforms[name]))
+        }
+
+        // Create UBO
+        UBO.data = std140(Array.from(UBO.uniforms.values()))
+        UBO.buffer = this.createBuffer(UBO.data, GPUBufferUsage.UNIFORM)
+        this.writeBuffer(UBO.buffer, UBO.data)
+
+        binding = entries.push({
+          binding,
+          resource: {
+            buffer: UBO.buffer,
+          },
+        })
+      }
+
+      for (const name in material.uniforms) {
+        const uniform = material.uniforms[name] as Texture
+        if (uniform?.isTexture) {
+          const { sampler, texture } = this.updateTexture(uniform)
+
+          UBO.textures.set(name, { binding, texture })
+
+          binding = entries.push(
+            {
+              binding,
+              resource: sampler,
+            },
+            {
+              binding: binding + 1,
+              resource: texture.createView(),
+            },
+          )
+        }
+      }
+
+      // Bind entries
+      UBO.bindGroup = this.device.createBindGroup({
+        layout: pipeline.getBindGroupLayout(0),
+        entries,
+      })
+
+      if (!(target instanceof Program)) {
+        this._compiled.set(material, {
+          UBO,
+          dispose: () => {
+            if (UBO.buffer) UBO.buffer.destroy()
+            UBO.textures.forEach(({ texture }) => texture.destroy())
+          },
+        } as GPUCompiled)
+      }
+    } else {
+      // Init layout
+      let layoutNeedsUpdate = false
+      let binding = 0
+      const entries: GPUBindGroupEntry[] = []
+
+      // Add UBO to layout if present
+      if (UBO.buffer) {
+        binding = entries.push({
+          binding,
+          resource: {
+            buffer: UBO.buffer,
+          },
+        })
+      }
+
+      // Update textures flagged for update
+      for (const name in material.uniforms) {
+        const uniform = material.uniforms[name] as Texture
+        if (uniform?.isTexture && uniform.needsUpdate) {
+          const prev = UBO.textures.get(name)
+          if (prev) prev.texture.destroy()
+
+          const { sampler, texture } = this.updateTexture(uniform)
+
+          UBO.textures.set(name, { binding, texture })
+
+          binding = entries.push(
+            {
+              binding,
+              resource: sampler,
+            },
+            {
+              binding: binding + 1,
+              resource: texture.createView(),
+            },
+          )
+
+          layoutNeedsUpdate = true
+        }
+      }
+
+      // If an entry changed, rebuild entire layout
+      // TODO: investigate copying to previous texture queue
+      if (layoutNeedsUpdate) {
+        UBO.bindGroup = this.device.createBindGroup({
+          layout: pipeline.getBindGroupLayout(0),
+          entries,
+        })
+      }
+
       // Check whether a uniform has changed
       let needsUpdate = false
-      uniforms.forEach((value, name) => {
+      UBO.uniforms.forEach((value, name) => {
         const uniform = material.uniforms[name]
         if (!this.uniformsEqual(value, uniform)) {
-          uniforms.set(name, this.cloneUniform(uniform))
+          UBO.uniforms.set(name, this.cloneUniform(uniform))
           needsUpdate = true
         }
       })
@@ -323,44 +479,7 @@ export class WebGPURenderer extends Renderer {
       // If a uniform changed, rebuild entire buffer
       // TODO: expand writeBuffer to subdata at affected indices instead
       if (needsUpdate) {
-        this.writeBuffer(UBO.buffer, std140(Array.from(uniforms.values()), UBO.data))
-      }
-    } else if (!uniforms) {
-      uniforms = new Map()
-
-      const parsed = this.parseUniforms(material.vertex, material.fragment)
-      if (parsed) {
-        for (const name of parsed) {
-          uniforms.set(name, this.cloneUniform(material.uniforms[name]))
-        }
-
-        const data = std140(Array.from(uniforms.values()))
-        const buffer = this.createBuffer(data, GPUBufferUsage.UNIFORM)
-        this.writeBuffer(buffer, data)
-
-        const bindGroup = this.device.createBindGroup({
-          layout: pipeline.getBindGroupLayout(0),
-          entries: [
-            {
-              binding: 0,
-              resource: {
-                buffer,
-              },
-            },
-          ],
-        })
-
-        UBO = { data, buffer, bindGroup }
-      }
-
-      if (!(target instanceof Program)) {
-        this._compiled.set(material, {
-          uniforms,
-          UBO,
-          dispose: () => {
-            if (UBO) UBO.buffer.destroy()
-          },
-        } as GPUCompiled)
+        this.writeBuffer(UBO.buffer!, std140(Array.from(UBO.uniforms.values()), UBO.data))
       }
     }
 
@@ -439,7 +558,7 @@ export class WebGPURenderer extends Renderer {
 
       // Bind
       passEncoder.setPipeline(compiled.pipeline)
-      if (compiled.UBO?.bindGroup) passEncoder.setBindGroup(0, compiled.UBO.bindGroup)
+      if (compiled.UBO.bindGroup) passEncoder.setBindGroup(0, compiled.UBO.bindGroup)
 
       compiled.attributes.forEach((attribute, name) => {
         if (name === 'index') {

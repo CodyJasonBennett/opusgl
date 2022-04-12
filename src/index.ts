@@ -6,6 +6,7 @@ export * from './core/Object3D'
 export * from './core/Program'
 export * from './core/Renderer'
 export * from './core/Scene'
+export * from './core/Texture'
 
 export * from './math/Color'
 export * from './math/Euler'

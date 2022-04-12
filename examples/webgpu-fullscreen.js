@@ -1,4 +1,4 @@
-import { WebGPURenderer, Program, Color } from 'opusgl'
+import { WebGPURenderer, Program, Texture } from 'opusgl'
 
 const renderer = await new WebGPURenderer().init()
 renderer.setSize(window.innerWidth, window.innerHeight)
@@ -11,12 +11,11 @@ const program = new Program({
   },
   uniforms: {
     time: 0,
-    color: new Color(0x4c3380),
+    texture: await new Texture().fromData(new Uint8Array([76, 51, 128, 255]), 1, 1),
   },
   vertex: `
     struct Uniforms {
       time: f32,
-      color: vec3<f32>,
     };
     @binding(0) @group(0) var<uniform> uniforms: Uniforms;
 
@@ -28,19 +27,25 @@ const program = new Program({
     struct VertexOut {
       @builtin(position) position: vec4<f32>,
       @location(0) color: vec4<f32>,
+      @location(1) uv: vec2<f32>,
     };
 
     @stage(vertex)
     fn main(input: VertexIn) -> VertexOut {
       var out: VertexOut;
       out.position = vec4(input.position, 1.0);
-      out.color = vec4(0.5 + 0.3 * cos(vec3(input.uv, 0.0) + uniforms.time) + uniforms.color, 1.0);
+      out.color = vec4(0.5 + 0.3 * cos(vec3(input.uv, 0.0) + uniforms.time), 0.0);
+      out.uv = input.uv;
       return out;
     }
   `,
   fragment: `
+    @binding(1) @group(0) var sample: sampler;
+    @binding(2) @group(0) var texture: texture_2d<f32>;
+
     struct FragmentIn {
       @location(0) color: vec4<f32>,
+      @location(1) uv: vec2<f32>,
     };
 
     struct FragmentOut {
@@ -50,7 +55,7 @@ const program = new Program({
     @stage(fragment)
     fn main(input: FragmentIn) -> FragmentOut {
       var out: FragmentOut;
-      out.color = input.color;
+      out.color = input.color + textureSample(texture, sample, input.uv);
       return out;
     }
   `,

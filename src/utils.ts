@@ -1,4 +1,5 @@
 import type { Uniform } from './core/Program'
+import type { Texture } from './core/Texture'
 
 /**
  * Generates a v4 UUID. Useful for tracking unique objects.
@@ -16,11 +17,13 @@ const pad4 = (n: number) => n + ((4 - (n % 4)) % 4)
  * Packs uniforms into a std140 compliant array buffer.
  */
 export const std140 = (uniforms: Uniform[], buffer?: Float32Array) => {
+  const values = uniforms as Exclude<Uniform, Texture>[]
+
   // Init buffer
   if (!buffer) {
     const length = pad4(
-      uniforms.reduce(
-        (n: number, u: Uniform) => n + (typeof u === 'number' ? 1 : u.length <= 2 ? pad2(u.length) : pad4(u.length)),
+      values.reduce(
+        (n: number, u) => n + (typeof u === 'number' ? 1 : u.length <= 2 ? pad2(u.length) : pad4(u.length)),
         0,
       ),
     )
@@ -29,15 +32,15 @@ export const std140 = (uniforms: Uniform[], buffer?: Float32Array) => {
 
   // Pack buffer
   let offset = 0
-  for (const uniform of uniforms) {
-    if (typeof uniform === 'number') {
-      buffer[offset] = uniform
+  for (const value of values) {
+    if (typeof value === 'number') {
+      buffer[offset] = value
       offset += 1 // leave empty space to stack primitives
     } else {
-      const pad = uniform.length <= 2 ? pad2 : pad4
+      const pad = value.length <= 2 ? pad2 : pad4
       offset = pad(offset) // fill in empty space
-      buffer.set(uniform, offset)
-      offset += pad(uniform.length)
+      buffer.set(value, offset)
+      offset += pad(value.length)
     }
   }
 

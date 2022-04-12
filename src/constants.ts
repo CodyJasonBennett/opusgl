@@ -31,6 +31,31 @@ export const GL_SHADER_TEMPLATES = {
   fragment: '#version 300 es\nprecision highp float;\nprecision highp int;',
 } as const
 
+export const GL_TEXTURE_FILTERS = {
+  nearest: 9728,
+  linear: 9729,
+} as const
+
+export const GPU_TEXTURE_FILTERS = {
+  nearest: 'nearest',
+  linear: 'linear',
+} as const
+
+export const GL_TEXTURE_MIPMAP_FILTERS = {
+  nearest: 9985,
+  linear: 9986,
+} as const
+
+export const GL_TEXTURE_WRAPPINGS = {
+  clamp: 33071,
+  repeat: 10497,
+} as const
+
+export const GPU_TEXTURE_WRAPPINGS = {
+  clamp: 'clamp-to-edge',
+  repeat: 'repeat',
+}
+
 export const COLORS = {
   aliceblue: 0xf0f8ff,
   antiquewhite: 0xfaebd7,

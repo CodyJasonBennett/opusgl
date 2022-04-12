@@ -6,13 +6,25 @@ import type { Quaternion } from '../math/Quaternion'
 import type { Vector2 } from '../math/Vector2'
 import type { Vector3 } from '../math/Vector3'
 import type { Vector4 } from '../math/Vector4'
+import type { Texture } from './Texture'
 import type { GL_DRAW_MODES, GL_CULL_SIDES } from '../constants'
 import { uuid } from '../utils'
 
 /**
  * Represents a program uniform.
  */
-export type Uniform = number | number[] | Color | Euler | Matrix3 | Matrix4 | Quaternion | Vector2 | Vector3 | Vector4
+export type Uniform =
+  | number
+  | number[]
+  | Color
+  | Euler
+  | Matrix3
+  | Matrix4
+  | Quaternion
+  | Vector2
+  | Vector3
+  | Vector4
+  | Texture
 
 /**
  * Represents a program attribute.
