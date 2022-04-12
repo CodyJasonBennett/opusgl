@@ -545,10 +545,7 @@ export class WebGPURenderer extends Renderer {
     if (!(scene instanceof Program) && scene.matrixAutoUpdate) scene.updateMatrix()
 
     // Update camera matrices
-    if (camera) {
-      camera.updateMatrix()
-      camera.updateProjectionMatrix()
-    }
+    if (camera?.matrixAutoUpdate) camera.updateMatrix()
 
     // Render children
     const renderList = scene instanceof Program ? [scene] : this.sort(scene, camera)

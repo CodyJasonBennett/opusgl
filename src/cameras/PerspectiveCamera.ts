@@ -13,6 +13,8 @@ export class PerspectiveCamera extends Camera {
     this.aspect = aspect
     this.near = near
     this.far = far
+
+    this.updateProjectionMatrix()
   }
 
   updateProjectionMatrix() {

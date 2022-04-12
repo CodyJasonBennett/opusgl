@@ -17,6 +17,8 @@ export class OrthographicCamera extends Camera {
     this.right = right
     this.bottom = bottom
     this.top = top
+
+    this.updateProjectionMatrix()
   }
 
   updateProjectionMatrix() {

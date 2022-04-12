@@ -502,10 +502,7 @@ export class WebGLRenderer extends Renderer {
     if (!(scene instanceof Program) && scene.matrixAutoUpdate) scene.updateMatrix()
 
     // Update camera matrices
-    if (camera) {
-      camera.updateMatrix()
-      camera.updateProjectionMatrix()
-    }
+    if (camera?.matrixAutoUpdate) camera.updateMatrix()
 
     // Compile & render visible children
     const renderList = scene instanceof Program ? [scene] : this.sort(scene, camera)
