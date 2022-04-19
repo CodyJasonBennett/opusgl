@@ -25,6 +25,7 @@ export type Uniform =
   | Vector3
   | Vector4
   | Texture
+  | Texture[]
 
 /**
  * Represents a program attribute.

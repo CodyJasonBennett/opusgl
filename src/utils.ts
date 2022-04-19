@@ -22,7 +22,7 @@ const pad4 = (n: number) => n + ((4 - (n % 4)) % 4)
  * Packs uniforms into a std140 compliant array buffer.
  */
 export const std140 = (uniforms: Uniform[], buffer?: Float32Array) => {
-  const values = uniforms as Exclude<Uniform, Texture>[]
+  const values = uniforms as Exclude<Uniform, Texture | Texture[]>[]
 
   // Init buffer
   if (!buffer) {

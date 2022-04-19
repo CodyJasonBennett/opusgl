@@ -1,7 +1,8 @@
 import { Disposable, Compiled, Renderer } from '../core/Renderer'
 import { Program } from '../core/Program'
+import { Texture } from '../core/Texture'
+import type { RenderTarget } from '../core/RenderTarget'
 import type { Uniform } from '../core/Program'
-import type { Texture } from '../core/Texture'
 import type { Material } from '../core/Material'
 import type { Geometry } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
@@ -24,12 +25,20 @@ export interface GLCompiled extends Disposable {
   VAO: WebGLVertexArrayObject
   program: WebGLProgram
   UBO: {
-    textures: Map<string, { target: WebGLTexture; index: number }>
     uniforms: Map<string, Uniform>
     data?: Float32Array
     buffer?: WebGLBuffer
   }
   attributes: Map<string, { buffer: WebGLBuffer; location: number }>
+}
+
+export interface GLTexture extends Disposable {
+  target: WebGLTexture
+}
+
+export interface GLRenderTarget extends Disposable {
+  renderBuffers: WebGLRenderbuffer[]
+  FBO: WebGLFramebuffer
 }
 
 export interface WebGLRendererOptions {
@@ -87,6 +96,8 @@ export class WebGLRenderer extends Renderer {
 
   protected _params: Partial<Omit<WebGLRendererOptions, 'canvas' | 'context'>>
   protected _compiled = new Compiled<GLCompiled>()
+  protected _textures = new Compiled<GLTexture>()
+  protected _renderTargets = new Compiled<GLRenderTarget>()
 
   constructor({
     canvas = document.createElement('canvas'),
@@ -180,8 +191,8 @@ export class WebGLRenderer extends Renderer {
   /**
    * Sets the active frameBuffer to render to.
    */
-  setFrameBuffer(frameBuffer: WebGLFramebuffer | null) {
-    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, frameBuffer)
+  setFrameBuffer(frameBuffer: WebGLFramebuffer | null, type = this.gl.FRAMEBUFFER) {
+    this.gl.bindFramebuffer(type, frameBuffer)
   }
 
   /**
@@ -246,10 +257,11 @@ export class WebGLRenderer extends Renderer {
   /**
    * Compiles and activates a texture by index.
    */
-  protected updateTexture(target: WebGLTexture, texture: Texture, index: number) {
+  protected updateTexture(target: WebGLTexture, texture: Texture) {
     this.gl.bindTexture(this.gl.TEXTURE_2D, target)
 
-    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, texture.image)
+    if (texture.image)
+      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, texture.image)
     if (texture.flipY) this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, texture.flipY)
 
     const anisotropy = this.gl.getExtension('EXT_texture_filter_anisotropic')
@@ -267,30 +279,54 @@ export class WebGLRenderer extends Renderer {
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, wrapS)
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, wrapT)
 
-    this.gl.activeTexture(this.gl.TEXTURE0 + index)
-    this.gl.bindTexture(this.gl.TEXTURE_2D, target)
     texture.needsUpdate = false
   }
 
   /**
    * Sets or updates a material's program uniforms.
    */
-  protected updateUniforms(material: Material | Program) {
+  protected updateUniforms(material: Material | Program, program: WebGLProgram) {
     let UBO = this._compiled.get(material)?.UBO!
 
     if (!UBO) {
-      UBO = { textures: new Map(), uniforms: new Map() }
+      UBO = { uniforms: new Map() }
 
       // Init textures outside of std140
-      let index = 0
+      let textureIndex = 0
       for (const name in material.uniforms) {
-        const texture = material.uniforms[name] as Texture
-        if (texture?.isTexture) {
-          const target = this.gl.createTexture()!
-          this.updateTexture(target, texture, index)
+        const uniform = material.uniforms[name] as Texture | Texture[]
 
-          UBO.textures.set(name, { target, index })
-          index++
+        // Check if sampler or sampler array
+        if (uniform instanceof Texture || (Array.isArray(uniform) && uniform.every((t) => t instanceof Texture))) {
+          const queue = uniform instanceof Texture ? [uniform] : uniform
+
+          // Set uniform sampler index
+          const location = this.gl.getUniformLocation(program, name)
+          if (uniform instanceof Texture) {
+            this.gl.uniform1i(location, textureIndex)
+          } else {
+            this.gl.uniform1iv(
+              location,
+              Array.from({ length: queue.length }, (_, i) => i + textureIndex),
+            )
+          }
+
+          // Create and bind textures
+          for (const texture of queue) {
+            const target = this._textures.get(texture)?.target ?? this.gl.createTexture()!
+            if (texture.needsUpdate) this.updateTexture(target, texture)
+
+            this.gl.activeTexture(this.gl.TEXTURE0 + textureIndex)
+            this.gl.bindTexture(this.gl.TEXTURE_2D, target)
+
+            this._textures.set(texture, {
+              target,
+              dispose: () => {
+                this.gl.deleteTexture(target)
+              },
+            })
+            textureIndex++
+          }
         }
       }
 
@@ -314,12 +350,14 @@ export class WebGLRenderer extends Renderer {
       }
     } else {
       // Update textures flagged for update
-      UBO.textures.forEach((compiled, name) => {
-        const texture = material.uniforms[name] as Texture
-        if (!texture.needsUpdate) return
+      for (const name in material.uniforms) {
+        const uniform = material.uniforms[name]
 
-        this.updateTexture(compiled.target, texture, compiled.index)
-      })
+        if (uniform instanceof Texture && uniform.needsUpdate) {
+          const compiled = this._textures.get(uniform)!
+          this.updateTexture(compiled.target, uniform)
+        }
+      }
 
       // Check whether a uniform has changed
       let needsUpdate = false
@@ -373,7 +411,7 @@ export class WebGLRenderer extends Renderer {
 
     // Bind program and update uniforms
     this.gl.useProgram(program)
-    const UBO = this.updateUniforms(material)
+    const UBO = this.updateUniforms(material, program)
 
     // Update material state
     this.setCullFace(GL_CULL_SIDES[material.side] ?? GL_CULL_SIDES.front)
@@ -393,11 +431,7 @@ export class WebGLRenderer extends Renderer {
         UBO,
         dispose: () => {
           this.gl.deleteProgram(program)
-
           if (UBO.buffer) this.gl.deleteBuffer(UBO.buffer)
-          UBO.textures.forEach(({ target }) => {
-            this.gl.deleteTexture(target)
-          })
         },
       } as GLCompiled)
     }
@@ -504,6 +538,175 @@ export class WebGLRenderer extends Renderer {
     }
 
     return this._compiled.get(target)!
+  }
+
+  /**
+   * Compiles and binds a render target to render to.
+   */
+  setRenderTarget(renderTarget: RenderTarget | null) {
+    if (!renderTarget) {
+      this.setViewport(this.viewport.x, this.viewport.y, this.viewport.width, this.viewport.height)
+      return this.setFrameBuffer(null)
+    }
+
+    if (!this._renderTargets.has(renderTarget)) {
+      const FBO = this.gl.createFramebuffer()!
+      this.setFrameBuffer(FBO)
+
+      const attachments: number[] = []
+      const renderBuffers: WebGLRenderbuffer[] = []
+
+      for (let i = 0; i < renderTarget.count; i++) {
+        const attachment = this.gl.COLOR_ATTACHMENT0 + i
+        attachments.push(attachment)
+
+        if (renderTarget.samples) {
+          const renderBuffer = this.gl.createRenderbuffer()!
+          renderBuffers.push(renderBuffer)
+
+          this.gl.bindRenderbuffer(this.gl.RENDERBUFFER, renderBuffer)
+          this.gl.renderbufferStorageMultisample(
+            this.gl.RENDERBUFFER,
+            renderTarget.samples,
+            this.gl.RGBA8,
+            renderTarget.width,
+            renderTarget.height,
+          )
+          this.gl.framebufferRenderbuffer(this.gl.FRAMEBUFFER, attachment, this.gl.RENDERBUFFER, renderBuffer)
+        } else {
+          const texture = renderTarget.textures[i]
+
+          if (!this._textures.has(texture)) {
+            const target = this.gl.createTexture()!
+            this._textures.set(texture, {
+              target,
+              dispose: () => {
+                this.gl.deleteTexture(target)
+              },
+            })
+          }
+
+          const { target } = this._textures.get(texture)!
+          this.updateTexture(target, texture)
+          this.gl.texImage2D(
+            this.gl.TEXTURE_2D,
+            0,
+            this.gl.RGBA,
+            renderTarget.width,
+            renderTarget.height,
+            0,
+            this.gl.RGBA,
+            this.gl.UNSIGNED_BYTE,
+            null,
+          )
+          this.gl.bindTexture(this.gl.TEXTURE_2D, null)
+
+          this.gl.framebufferTexture2D(this.gl.DRAW_FRAMEBUFFER, attachment, this.gl.TEXTURE_2D, target, 0)
+        }
+      }
+
+      this.gl.drawBuffers(attachments)
+
+      this._renderTargets.set(renderTarget, {
+        renderBuffers,
+        FBO,
+        dispose: () => {
+          this.gl.deleteFramebuffer(FBO)
+          renderBuffers.forEach((renderBuffer) => this.gl.deleteRenderbuffer(renderBuffer))
+        },
+      })
+    }
+
+    const compiled = this._renderTargets.get(renderTarget)!
+    this.setFrameBuffer(compiled.FBO)
+    this.gl.viewport(0, 0, renderTarget.width, renderTarget.height)
+  }
+
+  /**
+   * Downsamples a multi-sampled render target and its attachments to be readable via `blitFramebuffer`. Supports MRT.
+   */
+  blitRenderTarget(renderTarget: RenderTarget) {
+    const compiled = this._renderTargets.get(renderTarget)!
+
+    // blitFramebuffer can only copy the first color attachment to another FBO
+    // so we create temporary FBOs and copy renderBuffers to textures one by one
+    // (See issue #12): https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_framebuffer_blit.txt
+    const read = this.gl.createFramebuffer()
+    const write = this.gl.createFramebuffer()
+
+    for (const [i, renderBuffer] of compiled.renderBuffers.entries()) {
+      const texture = renderTarget.textures[i]
+
+      if (!this._textures.has(texture)) {
+        const target = this.gl.createTexture()!
+        this._textures.set(texture, {
+          target,
+          dispose: () => {
+            this.gl.deleteTexture(target)
+          },
+        })
+      }
+
+      const { target } = this._textures.get(texture)!
+      this.updateTexture(target, texture)
+      this.gl.texImage2D(
+        this.gl.TEXTURE_2D,
+        0,
+        this.gl.RGBA,
+        renderTarget.width,
+        renderTarget.height,
+        0,
+        this.gl.RGBA,
+        this.gl.UNSIGNED_BYTE,
+        null,
+      )
+      this.gl.bindTexture(this.gl.TEXTURE_2D, null)
+
+      this.setFrameBuffer(read, this.gl.READ_FRAMEBUFFER)
+      this.setFrameBuffer(write, this.gl.DRAW_FRAMEBUFFER)
+
+      this.gl.framebufferRenderbuffer(
+        this.gl.READ_FRAMEBUFFER,
+        this.gl.COLOR_ATTACHMENT0,
+        this.gl.RENDERBUFFER,
+        renderBuffer,
+      )
+      this.gl.framebufferTexture2D(this.gl.DRAW_FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, target, 0)
+      this.gl.clearBufferfv(this.gl.COLOR, 0, [0, 0, 0, 1])
+      this.gl.blitFramebuffer(
+        0,
+        0,
+        renderTarget.width,
+        renderTarget.height,
+        0,
+        0,
+        renderTarget.width,
+        renderTarget.height,
+        this.gl.COLOR_BUFFER_BIT,
+        this.gl.NEAREST,
+      )
+
+      this.setFrameBuffer(null, this.gl.READ_FRAMEBUFFER)
+      this.setFrameBuffer(null, this.gl.DRAW_FRAMEBUFFER)
+    }
+
+    // Reconstruct the downsampled render target
+    this.setFrameBuffer(compiled.FBO)
+    for (let i = 0; i < renderTarget.count; i++) {
+      const texture = renderTarget.textures[i]
+      const { target } = this._textures.get(texture)!
+
+      this.gl.framebufferTexture2D(
+        this.gl.DRAW_FRAMEBUFFER,
+        this.gl.COLOR_ATTACHMENT0 + i,
+        this.gl.TEXTURE_2D,
+        target,
+        0,
+      )
+    }
+
+    this.gl.deleteFramebuffer(read)
+    this.gl.deleteFramebuffer(write)
   }
 
   render(scene: Object3D | Program, camera?: Camera) {

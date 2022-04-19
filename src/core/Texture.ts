@@ -56,4 +56,11 @@ export class Texture implements TextureOptions {
 
     return this
   }
+
+  /**
+   * Disposes texture from GPU memory.
+   */
+  dispose() {
+    // Implemented by renderer
+  }
 }

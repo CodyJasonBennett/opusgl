@@ -3,6 +3,8 @@ import type { Program, Uniform } from './Program'
 import type { Geometry } from './Geometry'
 import type { Material } from './Material'
 import type { Mesh } from './Mesh'
+import type { Texture } from './Texture'
+import type { RenderTarget } from './RenderTarget'
 import type { Object3D } from './Object3D'
 import type { Camera } from './Camera'
 import { clamp } from '../utils'
@@ -11,7 +13,7 @@ export interface Disposable {
   dispose: () => void
 }
 
-export type Compilable = Program | Geometry | Material | Mesh
+export type Compilable = Program | Geometry | Material | Mesh | Texture | RenderTarget
 
 export class Compiled<Compiled extends Disposable> extends Map<Compilable, Compiled> {
   // @ts-expect-error

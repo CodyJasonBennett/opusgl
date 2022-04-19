@@ -1,8 +1,9 @@
 /// <reference types="@webgpu/types" />
 import { Disposable, Compiled, Renderer } from '../core/Renderer'
 import { Program } from '../core/Program'
+import { Texture } from '../core/Texture'
+import type { RenderTarget } from '../core/RenderTarget'
 import type { Uniform } from '../core/Program'
-import type { Texture } from '../core/Texture'
 import type { Geometry } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Camera } from '../core/Camera'
@@ -22,12 +23,20 @@ export interface GPUCompiled extends Disposable {
   pipeline: GPURenderPipeline
   attributes: Map<string, Partial<GPUVertexBufferLayout> & { slot?: number; buffer: GPUBuffer }>
   UBO: {
-    textures: Map<string, { binding: number; texture: GPUTexture }>
     uniforms: Map<string, Uniform>
     data?: Float32Array
     buffer?: GPUBuffer
     bindGroup?: GPUBindGroup
   }
+}
+
+export interface GPUTextureImpl extends Disposable {
+  sampler: GPUSampler
+  target: GPUTexture
+}
+
+export interface GPURenderTarget extends Disposable {
+  depthTexture: GPUTexture
 }
 
 export interface WebGPURendererOptions {
@@ -65,8 +74,11 @@ export class WebGPURenderer extends Renderer {
 
   protected _params: Partial<Omit<WebGPURendererOptions, 'canvas'>>
   protected _compiled = new Compiled<GPUCompiled>()
+  protected _textures = new Compiled<GPUTextureImpl>()
+  protected _renderTargets = new Compiled<GPURenderTarget>()
   private _depthTexture!: GPUTexture
   private _depthTextureView!: GPUTextureView
+  private _renderPass?: GPURenderPassDescriptor
 
   constructor({
     canvas = document.createElement('canvas'),
@@ -97,21 +109,13 @@ export class WebGPURenderer extends Renderer {
         device: this.device,
         format: this.format,
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
-        size: {
-          width: this.viewport.width,
-          height: this.viewport.height,
-          depthOrArrayLayers: 1,
-        },
+        size: [this.viewport.width, this.viewport.height, 1],
         compositingAlphaMode: 'premultiplied',
       })
 
       if (this._depthTexture) this._depthTexture.destroy()
       this._depthTexture = this.device.createTexture({
-        size: {
-          width: this.viewport.width,
-          height: this.viewport.height,
-          depthOrArrayLayers: 1,
-        },
+        size: [this.viewport.width, this.viewport.height, 1],
         format: 'depth24plus-stencil8',
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
       })
@@ -255,6 +259,9 @@ export class WebGPURenderer extends Renderer {
         buffers.push(attribute)
       })
 
+      // @ts-expect-error
+      const colorAttachments = this._renderPass?.colorAttachments.length ?? 1
+
       pipeline = this.device.createRenderPipeline({
         vertex: {
           module: this.device.createShaderModule({ code: material.vertex }),
@@ -264,26 +271,24 @@ export class WebGPURenderer extends Renderer {
         fragment: {
           module: this.device.createShaderModule({ code: material.fragment }),
           entryPoint: 'main',
-          targets: [
-            {
-              format: this.format,
-              blend: pipelineState.transparent
-                ? {
-                    alpha: {
-                      srcFactor: 'one',
-                      dstFactor: 'one-minus-src-alpha',
-                      operation: 'add',
-                    },
-                    color: {
-                      srcFactor: 'src-alpha',
-                      dstFactor: 'one-minus-src-alpha',
-                      operation: 'add',
-                    },
-                  }
-                : undefined,
-              writeMask: 0xf,
-            },
-          ],
+          targets: Array(colorAttachments).fill({
+            format: this.format,
+            blend: pipelineState.transparent
+              ? {
+                  alpha: {
+                    srcFactor: 'one',
+                    dstFactor: 'one-minus-src-alpha',
+                    operation: 'add',
+                  },
+                  color: {
+                    srcFactor: 'src-alpha',
+                    dstFactor: 'one-minus-src-alpha',
+                    operation: 'add',
+                  },
+                }
+              : undefined,
+            writeMask: 0xf,
+          }),
         },
         primitive: {
           frontFace: 'ccw',
@@ -324,7 +329,7 @@ export class WebGPURenderer extends Renderer {
       maxAnisotropy: uniform.anisotropy,
     })
 
-    const texture = this.device.createTexture({
+    const target = this.device.createTexture({
       format: this.format,
       dimension: '2d',
       size: [uniform.image.width, uniform.image.width, 1],
@@ -338,14 +343,14 @@ export class WebGPURenderer extends Renderer {
         : undefined,
     })
 
-    this.device.queue.copyExternalImageToTexture({ source: uniform.image, flipY: uniform.flipY }, { texture }, [
+    this.device.queue.copyExternalImageToTexture({ source: uniform.image, flipY: uniform.flipY }, { texture: target }, [
       uniform.image.width,
       uniform.image.height,
     ])
 
     uniform.needsUpdate = false
 
-    return { sampler, texture }
+    return { sampler, target }
   }
 
   protected updateUniforms(pipeline: GPURenderPipeline, target: Mesh | Program) {
@@ -354,7 +359,7 @@ export class WebGPURenderer extends Renderer {
     let UBO = this._compiled.get(material)?.UBO!
 
     if (!UBO) {
-      UBO = { textures: new Map(), uniforms: new Map() }
+      UBO = { uniforms: new Map() }
 
       let binding = 0
       const entries: GPUBindGroupEntry[] = []
@@ -381,11 +386,20 @@ export class WebGPURenderer extends Renderer {
       }
 
       for (const name in material.uniforms) {
-        const uniform = material.uniforms[name] as Texture
-        if (uniform?.isTexture) {
-          const { sampler, texture } = this.updateTexture(uniform)
+        const uniform = material.uniforms[name]
+        if (uniform instanceof Texture) {
+          if (!this._textures.get(uniform) || uniform.needsUpdate) {
+            const { sampler, target } = this.updateTexture(uniform)
+            this._textures.set(uniform, {
+              sampler,
+              target,
+              dispose: () => {
+                target.destroy()
+              },
+            })
+          }
 
-          UBO.textures.set(name, { binding, texture })
+          const { sampler, target } = this._textures.get(uniform)!
 
           binding = entries.push(
             {
@@ -394,7 +408,7 @@ export class WebGPURenderer extends Renderer {
             },
             {
               binding: binding + 1,
-              resource: texture.createView(),
+              resource: target.createView(),
             },
           )
         }
@@ -411,7 +425,6 @@ export class WebGPURenderer extends Renderer {
           UBO,
           dispose: () => {
             if (UBO.buffer) UBO.buffer.destroy()
-            UBO.textures.forEach(({ texture }) => texture.destroy())
           },
         } as GPUCompiled)
       }
@@ -433,14 +446,20 @@ export class WebGPURenderer extends Renderer {
 
       // Update textures flagged for update
       for (const name in material.uniforms) {
-        const uniform = material.uniforms[name] as Texture
-        if (uniform?.isTexture && uniform.needsUpdate) {
-          const prev = UBO.textures.get(name)
-          if (prev) prev.texture.destroy()
+        const uniform = material.uniforms[name]
+        if (uniform instanceof Texture && uniform.needsUpdate) {
+          const prev = this._textures.get(uniform)!
+          if (prev) prev.dispose()
 
-          const { sampler, texture } = this.updateTexture(uniform)
+          const { sampler, target } = this.updateTexture(uniform)
 
-          UBO.textures.set(name, { binding, texture })
+          this._textures.set(uniform, {
+            sampler,
+            target,
+            dispose: () => {
+              target.destroy()
+            },
+          })
 
           binding = entries.push(
             {
@@ -449,7 +468,7 @@ export class WebGPURenderer extends Renderer {
             },
             {
               binding: binding + 1,
-              resource: texture.createView(),
+              resource: target.createView(),
             },
           )
 
@@ -486,6 +505,87 @@ export class WebGPURenderer extends Renderer {
     return UBO
   }
 
+  /**
+   * Compiles and binds a render target to render to.
+   */
+  setRenderTarget(renderTarget: RenderTarget | null) {
+    if (!renderTarget) return void (this._renderPass = undefined)
+
+    const views: GPUTextureView[] = []
+
+    for (const texture of renderTarget.textures) {
+      if (!this._textures.has(texture) || texture.needsUpdate) {
+        const prev = this._textures.get(texture)
+        if (prev) prev.target.destroy()
+
+        const sampler = this.device.createSampler({
+          magFilter: GPU_TEXTURE_FILTERS[texture.magFilter] ?? GPU_TEXTURE_FILTERS.nearest,
+          minFilter: GPU_TEXTURE_FILTERS[texture.minFilter] ?? GPU_TEXTURE_FILTERS.nearest,
+        })
+
+        const target = this.device.createTexture({
+          format: this.format,
+          dimension: '2d',
+          size: [renderTarget.width, renderTarget.height, 1],
+          usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT,
+        })
+
+        texture.needsUpdate = false
+
+        this._textures.set(texture, {
+          sampler,
+          target,
+          dispose: () => {
+            target.destroy()
+          },
+        })
+      }
+
+      const compiled = this._textures.get(texture)!
+      views.push(compiled.target.createView())
+    }
+
+    const prev = this._renderTargets.get(renderTarget)
+    if (prev) prev.dispose()
+
+    const depthTexture = this.device.createTexture({
+      size: [renderTarget.width, renderTarget.height, 1],
+      format: 'depth24plus-stencil8',
+      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+    })
+    const depthTextureView = depthTexture.createView()
+
+    this._renderTargets.set(renderTarget, {
+      depthTexture,
+      dispose: () => {
+        depthTexture.destroy()
+      },
+    })
+
+    this._renderPass = {
+      colorAttachments: views.map((view) => ({
+        view,
+        clearValue: {
+          r: this.clearColor.r * this.clearAlpha,
+          g: this.clearColor.g * this.clearAlpha,
+          b: this.clearColor.b * this.clearAlpha,
+          a: this.clearAlpha,
+        },
+        loadOp: 'clear',
+        storeOp: 'store',
+      })),
+      depthStencilAttachment: {
+        view: depthTextureView,
+        depthClearValue: 1,
+        depthLoadOp: 'clear',
+        depthStoreOp: 'store',
+        stencilClearValue: 0,
+        stencilLoadOp: 'clear',
+        stencilStoreOp: 'store',
+      },
+    }
+  }
+
   compile(target: Mesh | Program, camera?: Camera) {
     const isProgram = target instanceof Program
 
@@ -512,30 +612,32 @@ export class WebGPURenderer extends Renderer {
 
   render(scene: Object3D | Program, camera?: Camera) {
     const commandEncoder = this.device.createCommandEncoder()
-    const passEncoder = commandEncoder.beginRenderPass({
-      colorAttachments: [
-        {
-          view: this.context.getCurrentTexture().createView(),
-          clearValue: {
-            r: this.clearColor.r * this.clearAlpha,
-            g: this.clearColor.g * this.clearAlpha,
-            b: this.clearColor.b * this.clearAlpha,
-            a: this.clearAlpha,
+    const passEncoder = commandEncoder.beginRenderPass(
+      this._renderPass ?? {
+        colorAttachments: [
+          {
+            view: this.context.getCurrentTexture().createView(),
+            clearValue: {
+              r: this.clearColor.r * this.clearAlpha,
+              g: this.clearColor.g * this.clearAlpha,
+              b: this.clearColor.b * this.clearAlpha,
+              a: this.clearAlpha,
+            },
+            loadOp: 'clear',
+            storeOp: 'store',
           },
-          loadOp: 'clear',
-          storeOp: 'store',
+        ],
+        depthStencilAttachment: {
+          view: this._depthTextureView,
+          depthClearValue: 1,
+          depthLoadOp: 'clear',
+          depthStoreOp: 'store',
+          stencilClearValue: 0,
+          stencilLoadOp: 'clear',
+          stencilStoreOp: 'store',
         },
-      ],
-      depthStencilAttachment: {
-        view: this._depthTextureView,
-        depthClearValue: 1,
-        depthLoadOp: 'clear',
-        depthStoreOp: 'store',
-        stencilClearValue: 0,
-        stencilLoadOp: 'clear',
-        stencilStoreOp: 'store',
       },
-    })
+    )
 
     // Update drawing area
     passEncoder.setViewport(this.viewport.x, this.viewport.y, this.viewport.width, this.viewport.height, 0, 1)
