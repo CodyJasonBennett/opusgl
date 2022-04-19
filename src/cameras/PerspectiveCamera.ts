@@ -19,5 +19,6 @@ export class PerspectiveCamera extends Camera {
 
   updateProjectionMatrix() {
     this.projectionMatrix.perspective(this.fov, this.aspect, this.near, this.far)
+    this.frustum.update()
   }
 }

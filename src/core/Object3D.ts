@@ -59,6 +59,10 @@ export class Object3D {
    */
   public visible = true
   /**
+   * Whether to cull from rendering when out of view of a camera, if able.
+   */
+  public frustumCulled = true
+  /**
    * An optional named identifier. Default is an empty string.
    */
   public name = ''

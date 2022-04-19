@@ -123,15 +123,23 @@ export abstract class Renderer {
     const meshes: Mesh[] = []
 
     scene.traverse((node) => {
+      // Skip invisible nodes
       if (!node.visible) return true
 
+      // Filter to meshes
       const mesh = node as Mesh
       if (!mesh.isMesh) return
+
+      // Frustum cull if able
+      if (camera && mesh.frustumCulled) {
+        const inFrustum = camera.frustum.contains(mesh)
+        if (!inFrustum) return true
+      }
 
       meshes.push(mesh)
     })
 
-    // TODO: handle frustum culling and depth sorting
+    // TODO: handle depth sorting
 
     return meshes
   }
