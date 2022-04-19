@@ -239,8 +239,8 @@ export class WebGPURenderer extends Renderer {
 
     const pipelineState = {
       transparent: material.transparent,
-      cullMode: GPU_CULL_SIDES[material.side] ?? GPU_CULL_SIDES.front,
-      topology: GPU_DRAW_MODES[target.mode] ?? GPU_DRAW_MODES.triangles,
+      cullMode: GPU_CULL_SIDES[material.side],
+      topology: GPU_DRAW_MODES[target.mode],
       depthWriteEnabled: material.depthWrite,
       depthCompare: (material.depthTest ? 'less' : 'always') as GPUCompareFunction,
     }
@@ -319,13 +319,11 @@ export class WebGPURenderer extends Renderer {
    */
   protected updateTexture(uniform: Texture) {
     const sampler = this.device.createSampler({
-      addressModeU: (GPU_TEXTURE_WRAPPINGS[uniform.wrapS] as GPUAddressMode) ?? GPU_TEXTURE_WRAPPINGS.clamp,
-      addressModeV: (GPU_TEXTURE_WRAPPINGS[uniform.wrapT] as GPUAddressMode) ?? GPU_TEXTURE_WRAPPINGS.clamp,
-      magFilter: GPU_TEXTURE_FILTERS[uniform.magFilter] ?? GPU_TEXTURE_FILTERS.nearest,
-      minFilter: GPU_TEXTURE_FILTERS[uniform.minFilter] ?? GPU_TEXTURE_FILTERS.nearest,
-      mipmapFilter: uniform.generateMipmaps
-        ? GPU_TEXTURE_FILTERS[uniform.minFilter] ?? GPU_TEXTURE_FILTERS.nearest
-        : undefined,
+      addressModeU: GPU_TEXTURE_WRAPPINGS[uniform.wrapS] as GPUAddressMode,
+      addressModeV: GPU_TEXTURE_WRAPPINGS[uniform.wrapT] as GPUAddressMode,
+      magFilter: GPU_TEXTURE_FILTERS[uniform.magFilter],
+      minFilter: GPU_TEXTURE_FILTERS[uniform.minFilter],
+      mipmapFilter: uniform.generateMipmaps ? GPU_TEXTURE_FILTERS[uniform.minFilter] : undefined,
       maxAnisotropy: uniform.anisotropy,
     })
 
@@ -519,8 +517,8 @@ export class WebGPURenderer extends Renderer {
         if (prev) prev.target.destroy()
 
         const sampler = this.device.createSampler({
-          magFilter: GPU_TEXTURE_FILTERS[texture.magFilter] ?? GPU_TEXTURE_FILTERS.nearest,
-          minFilter: GPU_TEXTURE_FILTERS[texture.minFilter] ?? GPU_TEXTURE_FILTERS.nearest,
+          magFilter: GPU_TEXTURE_FILTERS[texture.magFilter],
+          minFilter: GPU_TEXTURE_FILTERS[texture.minFilter],
         })
 
         const target = this.device.createTexture({

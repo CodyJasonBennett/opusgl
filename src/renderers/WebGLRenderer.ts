@@ -268,16 +268,12 @@ export class WebGLRenderer extends Renderer {
     if (anisotropy) this.gl.texParameterf(this.gl.TEXTURE_2D, anisotropy.TEXTURE_MAX_ANISOTROPY_EXT, texture.anisotropy)
     if (texture.generateMipmaps) this.gl.generateMipmap(this.gl.TEXTURE_2D)
 
-    const magFilter = GL_TEXTURE_FILTERS[texture.magFilter] ?? GL_TEXTURE_FILTERS.nearest
     const minFilters = texture.generateMipmaps ? GL_TEXTURE_MIPMAP_FILTERS : GL_TEXTURE_FILTERS
-    const minFilter = minFilters[texture.minFilter] ?? minFilters.nearest
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, magFilter)
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, minFilter)
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, GL_TEXTURE_FILTERS[texture.magFilter])
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, minFilters[texture.minFilter])
 
-    const wrapS = GL_TEXTURE_WRAPPINGS[texture.wrapS] ?? GL_TEXTURE_WRAPPINGS.clamp
-    const wrapT = GL_TEXTURE_WRAPPINGS[texture.wrapT] ?? GL_TEXTURE_WRAPPINGS.clamp
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, wrapS)
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, wrapT)
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, GL_TEXTURE_WRAPPINGS[texture.wrapS])
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, GL_TEXTURE_WRAPPINGS[texture.wrapT])
 
     texture.needsUpdate = false
   }
@@ -414,7 +410,7 @@ export class WebGLRenderer extends Renderer {
     const UBO = this.updateUniforms(material, program)
 
     // Update material state
-    this.setCullFace(GL_CULL_SIDES[material.side] ?? GL_CULL_SIDES.front)
+    this.setCullFace(GL_CULL_SIDES[material.side])
     this.setDepthTest(material.depthTest)
     this.setDepthMask(material.depthWrite)
 
@@ -730,7 +726,7 @@ export class WebGLRenderer extends Renderer {
 
       // Alternate drawing for indexed and non-indexed children
       const { index, position } = child instanceof Program ? child.attributes : child.geometry.attributes
-      const mode = GL_DRAW_MODES[child.mode] ?? GL_DRAW_MODES.triangles
+      const mode = GL_DRAW_MODES[child.mode]
       if (index) {
         this.gl.drawElements(mode, index.data.length / index.size, this.gl.UNSIGNED_INT, 0)
       } else {
