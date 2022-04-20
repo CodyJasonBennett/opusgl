@@ -1,0 +1,15 @@
+// Vitest Snapshot v1
+
+exports[`utils/parseUniforms > can parse uniform definitions from GLSL 1`] = `
+[
+  "time",
+  "color",
+]
+`;
+
+exports[`utils/parseUniforms > can parse uniform definitions from WGSL 1`] = `
+[
+  "time",
+  "color",
+]
+`;

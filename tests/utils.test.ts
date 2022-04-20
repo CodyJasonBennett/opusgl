@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { uuid, std140 } from '../src'
+import { uuid, std140, Vector2, uniformsEqual, parseUniforms } from '../src'
 
 describe('utils/uuid', () => {
   it('is UUID RFC compliant', () => {
@@ -26,5 +26,62 @@ describe('utils/std140', () => {
         expect(buffer.byteLength % 16).toBe(0)
       }
     }
+  })
+})
+
+describe('utils/uniformsEqual', () => {
+  it('can compare uniforms', () => {
+    // Compares initial uniforms
+    expect(uniformsEqual(undefined, 0)).toBe(false)
+    expect(uniformsEqual(undefined, undefined)).toBe(true)
+
+    // Compares math classes via #equals
+    expect(uniformsEqual(new Vector2(1), new Vector2(1))).toBe(true)
+    expect(uniformsEqual(new Vector2(1), new Vector2(2))).toBe(false)
+
+    // Atomically compares numbers
+    expect(uniformsEqual(1, 1)).toBe(true)
+    expect(uniformsEqual(1, 2)).toBe(false)
+  })
+})
+
+describe('utils/parseUniforms', () => {
+  it('can parse uniform definitions from GLSL', () => {
+    const names = parseUniforms(
+      `
+      /*
+        layout(std140) uniform Uniforms {};
+      */
+
+      layout(std140) uniform Uniforms {
+        // bool test;
+        float time;
+        vec3 color;
+      };
+    `,
+      '',
+    )
+
+    expect(names).toMatchSnapshot()
+  })
+
+  it('can parse uniform definitions from WGSL', () => {
+    const names = parseUniforms(
+      `
+      /*
+        @binding(0) @group(0) var<uniform> uniforms: Foo;
+      */
+
+      struct Uniforms {
+        // bool test,
+        time: f32,
+        color: vec3<f32>
+      };
+      @binding(0) @group(0) var<uniform> uniforms: Uniforms;
+    `,
+      '',
+    )
+
+    expect(names).toMatchSnapshot()
   })
 })

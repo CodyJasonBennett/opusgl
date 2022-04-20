@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { Renderer, Scene, Mesh, Geometry, Material, Vector2 } from '../../src'
+import { Renderer, Object3D, Mesh, Geometry, Material, PerspectiveCamera } from '../../src'
 
 class RendererImpl extends Renderer {
   render() {}
@@ -10,68 +10,45 @@ describe('core/Renderer', () => {
   it('can sort a list of meshes by visibility', () => {
     const renderer = new RendererImpl()
 
-    const scene = new Scene()
-    scene.add(new Mesh(new Geometry(), new Material()))
+    const scene = new Object3D()
+    const mesh = new Mesh(new Geometry(), new Material())
+    scene.add(mesh)
 
-    const renderList = renderer.sort(scene)
+    expect(renderer.sort(scene).length).toBe(1)
+    expect(renderer.sort(mesh).length).toBe(1)
 
-    expect(renderList.length).toBe(1)
+    scene.visible = false
+    expect(renderer.sort(scene).length).toBe(0)
+    expect(renderer.sort(mesh).length).toBe(1)
   })
 
-  it('can compare uniforms', () => {
+  it('can sort frustum cull a mesh', () => {
     const renderer = new RendererImpl()
 
-    // Compares initial uniforms
-    expect(renderer.uniformsEqual(undefined, 0)).toBe(false)
-    expect(renderer.uniformsEqual(undefined, undefined)).toBe(true)
-
-    // Compares math classes via #equals
-    expect(renderer.uniformsEqual(new Vector2(1), new Vector2(1))).toBe(true)
-    expect(renderer.uniformsEqual(new Vector2(1), new Vector2(2))).toBe(false)
-
-    // Atomically compares numbers
-    expect(renderer.uniformsEqual(1, 1)).toBe(true)
-    expect(renderer.uniformsEqual(1, 2)).toBe(false)
-  })
-
-  it('can parse uniform definitions from GLSL', () => {
-    const renderer = new RendererImpl()
-    const names = renderer.parseUniforms(
-      `
-      /*
-        layout(std140) uniform Uniforms {};
-      */
-
-      layout(std140) uniform Uniforms {
-        // bool test;
-        float time;
-        vec3 color;
-      };
-    `,
-      '',
+    const mesh = new Mesh(
+      new Geometry({
+        position: {
+          size: 3,
+          data: new Float32Array([
+            0.5, 0.5, 0.5, 0.5, 0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, -0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, -0.5,
+            -0.5, -0.5, -0.5, 0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5, 0.5, -0.5, -0.5, 0.5, 0.5,
+            -0.5, 0.5, -0.5, -0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, -0.5, 0.5, -0.5, 0.5, -0.5, -0.5, -0.5, -0.5,
+            -0.5, -0.5, 0.5, 0.5, 0.5, 0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5,
+          ]),
+        },
+      }),
+      new Material(),
     )
+    const camera = new PerspectiveCamera(45, 2)
 
-    expect(names).toMatchSnapshot()
-  })
+    camera.position.z = 5
+    camera.updateMatrix()
+    mesh.updateMatrix()
+    expect(renderer.sort(mesh, camera).length).toBe(1)
 
-  it('can parse uniform definitions from WGSL', () => {
-    const renderer = new RendererImpl()
-    const names = renderer.parseUniforms(
-      `
-      /*
-        @binding(0) @group(0) var<uniform> uniforms: Foo;
-      */
-
-      struct Uniforms {
-        // bool test,
-        time: f32,
-        color: vec3<f32>
-      };
-      @binding(0) @group(0) var<uniform> uniforms: Uniforms;
-    `,
-      '',
-    )
-
-    expect(names).toMatchSnapshot()
+    camera.position.z = -5
+    camera.updateMatrix()
+    mesh.updateMatrix()
+    expect(renderer.sort(mesh, camera).length).toBe(0)
   })
 })

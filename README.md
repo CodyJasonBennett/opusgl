@@ -52,7 +52,7 @@ Creates a rotating 3D cube with Lambert shading.
   <summary>Show WebGL example</summary>
 
 ```js
-import { WebGLRenderer, PerspectiveCamera, Scene, Geometry, Material, Color, Mesh } from 'opusgl'
+import { WebGLRenderer, PerspectiveCamera, Geometry, Material, Color, Mesh } from 'opusgl'
 
 const renderer = new WebGLRenderer()
 renderer.setSize(window.innerWidth, window.innerHeight)
@@ -60,8 +60,6 @@ document.body.appendChild(renderer.canvas)
 
 const camera = new PerspectiveCamera(45, window.innerWidth / window.innerHeight)
 camera.position.z = 5
-
-const scene = new Scene()
 
 const geometry = new Geometry({
   position: {
@@ -134,7 +132,6 @@ const material = new Material({
 })
 
 const mesh = new Mesh(geometry, material)
-scene.add(mesh)
 
 window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight)
@@ -145,7 +142,7 @@ window.addEventListener('resize', () => {
 const animate = (time) => {
   requestAnimationFrame(animate)
   mesh.rotation.z = mesh.rotation.y = time / 1500
-  renderer.render(scene, camera)
+  renderer.render(mesh, camera)
 }
 requestAnimationFrame(animate)
 ```

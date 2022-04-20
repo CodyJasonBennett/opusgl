@@ -1,5 +1,5 @@
 import { Color } from '../math/Color'
-import type { Program, Uniform } from './Program'
+import type { Program } from './Program'
 import type { Geometry } from './Geometry'
 import type { Material } from './Material'
 import type { Mesh } from './Mesh'
@@ -7,7 +7,6 @@ import type { Texture } from './Texture'
 import type { RenderTarget } from './RenderTarget'
 import type { Object3D } from './Object3D'
 import type { Camera } from './Camera'
-import { clamp } from '../utils'
 
 export interface Disposable {
   dispose: () => void
@@ -78,13 +77,8 @@ export abstract class Renderer {
   /**
    * Interpolates a pixel ratio and resizes accordingly.
    */
-  setPixelRatio(pixelRatio: number | number[]) {
-    if (Array.isArray(pixelRatio)) {
-      this._pixelRatio = clamp(window.devicePixelRatio, pixelRatio)
-    } else {
-      this._pixelRatio = pixelRatio
-    }
-
+  setPixelRatio(pixelRatio: number) {
+    this._pixelRatio = pixelRatio
     this.setSize(this._viewport.width, this._viewport.height)
   }
 
@@ -132,7 +126,7 @@ export abstract class Renderer {
 
       // Frustum cull if able
       if (camera && mesh.frustumCulled) {
-        const inFrustum = camera.frustum.contains(mesh)
+        const inFrustum = camera.frustumContains(mesh)
         if (!inFrustum) return true
       }
 
@@ -145,49 +139,8 @@ export abstract class Renderer {
   }
 
   /**
-   * Compares two uniforms, preferring to use math `equals` methods if available.
+   * Compiles a mesh or program and sets initial uniforms.
    */
-  uniformsEqual(a: Uniform, b: Uniform) {
-    // @ts-expect-error
-    if (a?.constructor === b?.constructor && typeof b?.equals === 'function') return b.equals(a) as boolean
-    return a === b
-  }
-
-  /**
-   * Clones a uniform's value into memory.
-   */
-  cloneUniform(uniform: Uniform) {
-    // @ts-expect-error
-    return uniform?.clone?.() ?? uniform
-  }
-
-  /**
-   * Returns a list of used uniforms from shader uniform structs.
-   */
-  parseUniforms(...shaders: string[]): string[] | undefined {
-    // Filter to most complete definition
-    if (shaders.length > 1) {
-      const definitions = shaders.map((shader) => this.parseUniforms(shader))
-      return definitions.filter(Boolean).sort((a: any, b: any) => b.length - a.length)?.[0]
-    }
-
-    // Remove comments for parsing
-    const shader = shaders[0].replace(/\/\*(?:[^*]|\**[^*/])*\*+\/|\/\/.*/g, '')
-
-    // Bail if no uniforms defined
-    if (!shader.includes('layout(std140)') && !shader.includes('var<uniform>')) return
-
-    // Detect and parse shader layout
-    const selector = shader.match(/var<uniform>[^;]+(?:\s|:)(\w+);/)?.[1] ?? 'layout\\(std140\\)'
-    const layout = shader.match(new RegExp(`${selector}[^\\{]+\\{([^\\}]+)\\}`))?.[1]
-    if (!layout) return
-
-    // Parse definitions
-    const names = Array.from(layout.match(/\w+(?=[;:])/g)!)
-
-    return names
-  }
-
   abstract compile(target: Mesh | Program, camera?: Camera): void
 
   /**

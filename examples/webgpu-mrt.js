@@ -44,7 +44,11 @@ const compute = new Program({
   `,
 })
 
-const renderTarget = new RenderTarget(window.innerWidth, window.innerHeight, 4)
+const width = 1
+const height = 1
+const count = 4
+
+const renderTarget = new RenderTarget({ width, height, count })
 
 renderer.setRenderTarget(renderTarget)
 renderer.render(compute)

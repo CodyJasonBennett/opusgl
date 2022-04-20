@@ -1,23 +1,42 @@
 import { Texture } from './Texture'
 import { uuid } from '../utils'
 
-export class RenderTarget {
+export interface RenderTargetOptions {
+  /**
+   * Drawing buffer width.
+   */
+  width: number
+  /**
+   * Drawing buffer height.
+   */
+  height: number
+  /**
+   * Number of color attachments to create. Default is `1`.
+   */
+  count?: number
+  /**
+   * Number of samples for multi-sampling. Default is `0`.
+   */
+  samples?: number
+}
+
+/**
+ * Constructs a render target to draw into.
+ */
+export class RenderTarget implements RenderTargetOptions {
   readonly uuid: string
-  readonly width: number
-  readonly height: number
-  readonly count: number
-  readonly samples: number
+  readonly width: number = 0
+  readonly height: number = 0
+  readonly count: number = 1
+  readonly samples: number = 0
   readonly textures: Texture[] = []
   readonly isRenderTarget = true
 
-  constructor(width: number, height: number, count = 1, samples = 0) {
+  constructor(options: RenderTargetOptions) {
     this.uuid = uuid()
-    this.width = width
-    this.height = height
-    this.count = count
-    this.samples = samples
+    Object.assign(this, options)
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < this.count; i++) {
       const texture = new Texture({ minFilter: 'nearest', magFilter: 'nearest', flipY: false, generateMipmaps: false })
       this.textures.push(texture)
     }

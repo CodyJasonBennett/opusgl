@@ -1,11 +1,10 @@
 import { Vector3 } from './Vector3'
 import type { Quaternion } from './Quaternion'
 
-const zero = new Vector3(0, 0, 0)
-const one = new Vector3(1, 1, 1)
-
 export class Matrix4 extends Float32Array {
   readonly isMatrix4 = true
+  private _zero = new Vector3(0, 0, 0)
+  private _one = new Vector3(1, 1, 1)
 
   constructor(
     m00 = 1,
@@ -500,6 +499,6 @@ export class Matrix4 extends Float32Array {
   }
 
   fromQuaternion(q: Quaternion) {
-    return this.compose(zero, q, one)
+    return this.compose(this._zero, q, this._one)
   }
 }

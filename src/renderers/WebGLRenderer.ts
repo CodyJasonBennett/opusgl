@@ -16,7 +16,7 @@ import {
   GL_CULL_SIDES,
   GL_DRAW_MODES,
 } from '../constants'
-import { std140 } from '../utils'
+import { parseUniforms, cloneUniform, std140, uniformsEqual } from '../utils'
 
 export type GLAttribute = { buffer: WebGLBuffer; location: number }
 export type GLAttributeMap = Map<string, GLAttribute>
@@ -55,7 +55,7 @@ export interface WebGLRendererOptions {
    */
   alpha: boolean
   /**
-   * Whether to enable anti-aliasing for sharp corners. Default is `false` unless rendering at DPR <= 1.
+   * Whether to enable anti-aliasing for sharp corners. Default is `false`.
    */
   antialias: boolean
   /**
@@ -327,12 +327,12 @@ export class WebGLRenderer extends Renderer {
       }
 
       // Parse used uniforms for std140
-      const parsed = this.parseUniforms(material.vertex, material.fragment)
+      const parsed = parseUniforms(material.vertex, material.fragment)
       if (parsed) {
         // Init parsed uniforms
         for (const name of parsed) {
           const uniform = material.uniforms[name]
-          UBO.uniforms.set(name, this.cloneUniform(uniform))
+          UBO.uniforms.set(name, cloneUniform(uniform))
         }
 
         // Create UBO
@@ -359,9 +359,9 @@ export class WebGLRenderer extends Renderer {
       let needsUpdate = false
       UBO.uniforms.forEach((value, name) => {
         const uniform = material.uniforms[name]
-        if (this.uniformsEqual(value, uniform)) return
+        if (uniformsEqual(value, uniform)) return
 
-        UBO.uniforms.set(name, this.cloneUniform(uniform))
+        UBO.uniforms.set(name, cloneUniform(uniform))
         needsUpdate = true
       })
 
@@ -388,9 +388,9 @@ export class WebGLRenderer extends Renderer {
     if (!compiledMaterial) {
       // Compile shaders and attach them
       const shaders = this.compileShaders(material)
-      shaders.forEach((shader) => {
+      for (const shader of shaders) {
         this.gl.attachShader(program, shader)
-      })
+      }
 
       this.gl.linkProgram(program)
       if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
@@ -399,10 +399,10 @@ export class WebGLRenderer extends Renderer {
       }
 
       // Cleanup shaders
-      shaders.forEach((shader) => {
+      for (const shader of shaders) {
         this.gl.detachShader(program, shader)
         this.gl.deleteShader(shader)
-      })
+      }
     }
 
     // Bind program and update uniforms
@@ -495,14 +495,14 @@ export class WebGLRenderer extends Renderer {
 
     // Update mesh built-ins
     if (!isProgram) {
-      target.material.uniforms.modelMatrix = target.worldMatrix
+      target.material.uniforms.modelMatrix = target.matrix
 
       if (camera) {
         target.material.uniforms.projectionMatrix = camera.projectionMatrix
         target.material.uniforms.viewMatrix = camera.viewMatrix
         target.material.uniforms.normalMatrix = target.normalMatrix
 
-        target.modelViewMatrix.copy(camera.viewMatrix).multiply(target.worldMatrix)
+        target.modelViewMatrix.copy(camera.viewMatrix).multiply(target.matrix)
         target.normalMatrix.getNormalMatrix(target.modelViewMatrix)
       }
     }
@@ -537,7 +537,7 @@ export class WebGLRenderer extends Renderer {
   }
 
   /**
-   * Compiles and binds a render target to render to.
+   * Compiles and binds a render target to render into.
    */
   setRenderTarget(renderTarget: RenderTarget | null) {
     if (!renderTarget) {
@@ -608,7 +608,7 @@ export class WebGLRenderer extends Renderer {
         FBO,
         dispose: () => {
           this.gl.deleteFramebuffer(FBO)
-          renderBuffers.forEach((renderBuffer) => this.gl.deleteRenderbuffer(renderBuffer))
+          for (const renderBuffer of renderBuffers) this.gl.deleteRenderbuffer(renderBuffer)
         },
       })
     }
@@ -710,10 +710,10 @@ export class WebGLRenderer extends Renderer {
     if (this.autoClear) this.clear()
 
     // Update scene matrices
-    if (!(scene instanceof Program) && scene.matrixAutoUpdate) scene.updateMatrix()
+    if (!(scene instanceof Program)) scene.updateMatrix()
 
     // Update camera matrices
-    if (camera?.matrixAutoUpdate) camera.updateMatrix()
+    if (camera) camera.updateMatrix()
 
     // Compile & render visible children
     const renderList = scene instanceof Program ? [scene] : this.sort(scene, camera)

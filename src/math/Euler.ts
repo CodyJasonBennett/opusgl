@@ -4,12 +4,11 @@ import { clamp } from '../utils'
 
 export type EulerOrder = 'XYZ' | 'XZY' | 'YXZ' | 'YZX' | 'ZXY' | 'ZYX'
 
-const matrix = new Matrix4()
-
 export class Euler extends Float32Array {
   readonly isEuler = true
-  public onChange = () => {}
   public order: EulerOrder = 'YXZ'
+  public onChange?: () => any
+  private _m = new Matrix4()
 
   constructor(x = 0, y = x, z = x) {
     super(3)
@@ -22,7 +21,7 @@ export class Euler extends Float32Array {
 
   set x(x) {
     this[0] = x
-    this.onChange()
+    this.onChange?.()
   }
 
   get y() {
@@ -31,7 +30,7 @@ export class Euler extends Float32Array {
 
   set y(y) {
     this[1] = y
-    this.onChange()
+    this.onChange?.()
   }
 
   get z() {
@@ -40,7 +39,7 @@ export class Euler extends Float32Array {
 
   set z(z) {
     this[2] = z
-    this.onChange()
+    this.onChange?.()
   }
 
   // @ts-expect-error
@@ -225,6 +224,6 @@ export class Euler extends Float32Array {
   }
 
   fromQuaternion(q: Quaternion) {
-    return this.fromMatrix4(matrix.fromQuaternion(q))
+    return this.fromMatrix4(this._m.fromQuaternion(q))
   }
 }

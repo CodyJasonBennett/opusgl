@@ -92,7 +92,7 @@ export interface ProgramOptions {
 }
 
 /**
- * Represents a GPU graphics or compute program.
+ * Constructs a GPU graphics or compute program.
  */
 export class Program implements ProgramOptions {
   readonly isProgram = true

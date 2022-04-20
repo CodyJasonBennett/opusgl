@@ -4,6 +4,8 @@ import { Euler } from '../math/Euler'
 import { Quaternion } from '../math/Quaternion'
 import { uuid } from '../utils'
 
+export type TraverseCallback = (object: Object3D) => boolean | void
+
 /**
  * Constructs a 3D object. Useful for calculating transform matrices.
  */
@@ -11,13 +13,9 @@ export class Object3D {
   readonly isObject3D = true
   readonly uuid: string
   /**
-   * Combined transforms of the object in local space.
-   */
-  readonly matrix = new Matrix4()
-  /**
    * Combined transforms of the object in world space.
    */
-  readonly worldMatrix = new Matrix4()
+  readonly matrix = new Matrix4()
   /**
    * Used to store the object's orientation when using the `lookAt` method.
    */
@@ -43,7 +41,7 @@ export class Object3D {
    */
   readonly quaternion = new Quaternion()
   /**
-   * Whether to automatically update transform matrices.
+   * Whether to automatically update transform matrices from position/rotation/scale properties.
    */
   public matrixAutoUpdate = true
   /**
@@ -53,7 +51,7 @@ export class Object3D {
   /**
    * The current parent in the scene graph.
    */
-  public parent?: Object3D
+  public parent: Object3D | null = null
   /**
    * Whether object should be rendered. Default is `true`.
    */
@@ -79,7 +77,7 @@ export class Object3D {
    */
   lookAt(x: Vector3 | number, y?: number, z?: number) {
     if (typeof x === 'number') {
-      this.target.set(x, y, z)
+      this.target.set(x, y ?? x, z ?? x)
     } else {
       this.target.copy(x)
     }
@@ -92,44 +90,44 @@ export class Object3D {
    * Used internally to calculate global transforms.
    */
   updateMatrix(updateChildren = true, updateParents = false) {
-    this.quaternion.fromEuler(this.rotation)
-    this.matrix.compose(this.position, this.quaternion, this.scale)
+    if (this.matrixAutoUpdate) this.matrix.compose(this.position, this.quaternion, this.scale)
 
-    this.worldMatrix.copy(this.matrix)
-    if (this.parent) this.worldMatrix.multiply(this.parent.worldMatrix)
+    if (this.parent) {
+      if (updateParents) this.parent.updateMatrix(false, true)
+      this.matrix.multiply(this.parent.matrix)
+    }
 
-    if (updateChildren) this.children.forEach((child) => child.updateMatrix())
-    if (updateParents) this.parent?.updateMatrix(false, true)
+    if (updateChildren) for (const child of this.children) child.updateMatrix()
   }
 
   /**
    * Adds objects as a children.
    */
   add(...children: Object3D[]) {
-    children.forEach((child) => {
+    for (const child of children) {
       this.children.push(child)
       child.parent = this
-    })
+    }
   }
 
   /**
    * Removes objects as children.
    */
   remove(...children: Object3D[]) {
-    children.forEach((child) => {
+    for (const child of children) {
       const childIndex = this.children.indexOf(child)
       if (childIndex !== -1) this.children.splice(childIndex, 1)
-      delete child.parent
-    })
+      child.parent = null
+    }
   }
 
   /**
-   * Traverses through scene children and executes a callback. Return `true` to stop traversing.
+   * Traverses through children and executes a callback. Return `true` to stop traversing.
    */
-  traverse(callback: (object: Object3D) => any) {
-    const shouldStop = !!callback(this)
+  traverse(callback: TraverseCallback) {
+    const shouldStop = callback(this)
     if (shouldStop) return
 
-    this.children.forEach((child) => child.traverse(callback))
+    for (const child of this.children) child.traverse(callback)
   }
 }

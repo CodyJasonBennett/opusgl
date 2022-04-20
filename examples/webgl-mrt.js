@@ -35,7 +35,7 @@ const height = 1
 const count = 4
 const samples = 4
 
-const renderTarget = new RenderTarget(width, height, count, samples)
+const renderTarget = new RenderTarget({ width, height, count, samples })
 
 renderer.setRenderTarget(renderTarget)
 renderer.render(compute)

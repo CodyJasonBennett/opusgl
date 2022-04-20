@@ -2,8 +2,8 @@ import type { Euler } from './Euler'
 import type { Vector3 } from './Vector3'
 
 export class Quaternion extends Float32Array {
-  public onChange = () => {}
   readonly isQuaternion = true
+  public onChange?: () => any
 
   constructor(x = 0, y = 0, z = 0, w = 1) {
     super(4)
@@ -16,7 +16,7 @@ export class Quaternion extends Float32Array {
 
   set x(x) {
     this[0] = x
-    this.onChange()
+    this.onChange?.()
   }
 
   get y() {
@@ -25,7 +25,7 @@ export class Quaternion extends Float32Array {
 
   set y(y) {
     this[1] = y
-    this.onChange()
+    this.onChange?.()
   }
 
   get z() {
@@ -34,7 +34,7 @@ export class Quaternion extends Float32Array {
 
   set z(z) {
     this[2] = z
-    this.onChange()
+    this.onChange?.()
   }
 
   get w() {
@@ -43,7 +43,7 @@ export class Quaternion extends Float32Array {
 
   set w(w) {
     this[3] = w
-    this.onChange()
+    this.onChange?.()
   }
 
   // @ts-expect-error

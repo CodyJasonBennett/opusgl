@@ -9,7 +9,7 @@ import type { Mesh } from '../core/Mesh'
 import type { Camera } from '../core/Camera'
 import type { Object3D } from '../core/Object3D'
 import { GPU_CULL_SIDES, GPU_DRAW_MODES, GPU_TEXTURE_FILTERS, GPU_TEXTURE_WRAPPINGS } from '../constants'
-import { std140 } from '../utils'
+import { cloneUniform, parseUniforms, std140, uniformsEqual } from '../utils'
 
 export type GPUAttribute = Partial<GPUVertexBufferLayout> & { slot?: number; buffer: GPUBuffer }
 export type GPUAttributeMap = Map<string, GPUAttribute>
@@ -78,7 +78,7 @@ export class WebGPURenderer extends Renderer {
   protected _renderTargets = new Compiled<GPURenderTarget>()
   private _depthTexture!: GPUTexture
   private _depthTextureView!: GPUTextureView
-  private _renderPass?: GPURenderPassDescriptor
+  private _renderPass: GPURenderPassDescriptor | null = null
 
   constructor({
     canvas = document.createElement('canvas'),
@@ -363,11 +363,11 @@ export class WebGPURenderer extends Renderer {
       const entries: GPUBindGroupEntry[] = []
 
       // Parse used uniforms for std140
-      const parsed = this.parseUniforms(material.vertex, material.fragment)
+      const parsed = parseUniforms(material.vertex, material.fragment)
       if (parsed) {
         // Init parsed uniforms
         for (const name of parsed) {
-          UBO.uniforms.set(name, this.cloneUniform(material.uniforms[name]))
+          UBO.uniforms.set(name, cloneUniform(material.uniforms[name]))
         }
 
         // Create UBO
@@ -487,8 +487,8 @@ export class WebGPURenderer extends Renderer {
       let needsUpdate = false
       UBO.uniforms.forEach((value, name) => {
         const uniform = material.uniforms[name]
-        if (!this.uniformsEqual(value, uniform)) {
-          UBO.uniforms.set(name, this.cloneUniform(uniform))
+        if (!uniformsEqual(value, uniform)) {
+          UBO.uniforms.set(name, cloneUniform(uniform))
           needsUpdate = true
         }
       })
@@ -504,10 +504,10 @@ export class WebGPURenderer extends Renderer {
   }
 
   /**
-   * Compiles and binds a render target to render to.
+   * Compiles and binds a render target to render into.
    */
   setRenderTarget(renderTarget: RenderTarget | null) {
-    if (!renderTarget) return void (this._renderPass = undefined)
+    if (!renderTarget) return void (this._renderPass = null)
 
     const views: GPUTextureView[] = []
 
@@ -589,14 +589,14 @@ export class WebGPURenderer extends Renderer {
 
     // Update built-ins
     if (!isProgram) {
-      target.material.uniforms.modelMatrix = target.worldMatrix
+      target.material.uniforms.modelMatrix = target.matrix
 
       if (camera) {
         target.material.uniforms.projectionMatrix = camera.projectionMatrix
         target.material.uniforms.viewMatrix = camera.viewMatrix
         target.material.uniforms.normalMatrix = target.normalMatrix
 
-        target.modelViewMatrix.copy(camera.viewMatrix).multiply(target.worldMatrix)
+        target.modelViewMatrix.copy(camera.viewMatrix).multiply(target.matrix)
         target.normalMatrix.getNormalMatrix(target.modelViewMatrix)
       }
     }
@@ -642,10 +642,10 @@ export class WebGPURenderer extends Renderer {
     passEncoder.setScissorRect(this.scissor.x, this.scissor.y, this.scissor.width, this.scissor.height)
 
     // Update scene matrices
-    if (!(scene instanceof Program) && scene.matrixAutoUpdate) scene.updateMatrix()
+    if (!(scene instanceof Program)) scene.updateMatrix()
 
     // Update camera matrices
-    if (camera?.matrixAutoUpdate) camera.updateMatrix()
+    if (camera) camera.updateMatrix()
 
     // Render children
     const renderList = scene instanceof Program ? [scene] : this.sort(scene, camera)

@@ -88,30 +88,4 @@ export class Color extends Float32Array {
 
     return this.set(r, g, b)
   }
-
-  /**
-   * Converts from linear to sRGB color space.
-   */
-  toSRGB() {
-    const [r, g, b] = Array.from(this).map((n) => {
-      if (n <= 0) return 0
-      if (n >= 1) return 1
-      if (n < 0.0031308) return 12.92 * n
-      return 1.055 * Math.pow(n, 1 / 2.4) - 0.055
-    })
-
-    return this.set(r, g, b)
-  }
-
-  /**
-   * Converts from sRGB to linear color space.
-   */
-  toLinear() {
-    const [r, g, b] = Array.from(this).map((n) => {
-      if (n <= 0.04045) return n / 12.92
-      return Math.pow((n + 0.055) / 1.055, 2.4)
-    })
-
-    return this.set(r, g, b)
-  }
 }
