@@ -10,7 +10,7 @@ export interface TextureOptions {
   /**
    * An image source to set this texture to.
    */
-  image: ImageRepresentation
+  image?: ImageRepresentation
   /**
    * How to sample when a texel is more than 1 pixel. Default is `nearest`.
    */
@@ -30,15 +30,15 @@ export interface TextureOptions {
   /**
    * Whether to generate mipmaps for increased perceived quality. Default is `true`.
    */
-  generateMipmaps: boolean
+  generateMipmaps?: boolean
   /**
    * Vertically flips the texture when uploading to the GPU. Default is `true`.
    */
-  flipY: boolean
+  flipY?: boolean
   /**
    * Number of samples for anisotropic filtering. Eliminates aliasing at oblique angles. Default is `1`.
    */
-  anisotropy: number
+  anisotropy?: number
 }
 
 /**
@@ -46,7 +46,7 @@ export interface TextureOptions {
  */
 export class Texture implements TextureOptions {
   readonly uuid: string
-  public image!: ImageRepresentation
+  public image?: ImageRepresentation
   public magFilter: keyof typeof GL_TEXTURE_FILTERS = 'nearest'
   public minFilter: keyof typeof GL_TEXTURE_FILTERS = 'nearest'
   public wrapS: keyof typeof GL_TEXTURE_WRAPPINGS = 'clamp'

@@ -1,3 +1,6 @@
+export * from './cameras/PerspectiveCamera'
+export * from './cameras/OrthographicCamera'
+
 export * from './core/Camera'
 export * from './core/Geometry'
 export * from './core/Material'
@@ -16,9 +19,6 @@ export * from './math/Quaternion'
 export * from './math/Vector2'
 export * from './math/Vector3'
 export * from './math/Vector4'
-
-export * from './cameras/PerspectiveCamera'
-export * from './cameras/OrthographicCamera'
 
 export * from './renderers/WebGLRenderer'
 export * from './renderers/WebGPURenderer'

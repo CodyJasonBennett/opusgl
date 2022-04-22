@@ -56,7 +56,10 @@ const composite = new Program({
     uv: { size: 2, data: new Float32Array([0, 0, 2, 0, 0, 2]) },
   },
   uniforms: {
-    textures: renderTarget.textures,
+    texture0: renderTarget.textures[0],
+    texture1: renderTarget.textures[1],
+    texture2: renderTarget.textures[2],
+    texture3: renderTarget.textures[3],
   },
   vertex: `
     in vec3 position;
@@ -70,16 +73,19 @@ const composite = new Program({
     }
   `,
   fragment: `
-    uniform sampler2D textures[4];
+    uniform sampler2D texture0;
+    uniform sampler2D texture1;
+    uniform sampler2D texture2;
+    uniform sampler2D texture3;
 
     in vec2 vUv;
     out vec4 pc_fragColor;
 
     void main() {
-      vec4 color0 = texture(textures[0], vUv);
-      vec4 color1 = texture(textures[1], vUv);
-      vec4 color2 = texture(textures[2], vUv);
-      vec4 color3 = texture(textures[3], vUv);
+      vec4 color0 = texture(texture0, vUv);
+      vec4 color1 = texture(texture1, vUv);
+      vec4 color2 = texture(texture2, vUv);
+      vec4 color3 = texture(texture3, vUv);
 
       vec4 top = mix(color0, color1, step(0.5, vUv.x));
       vec4 bottom = mix(color2, color3, step(0.5, vUv.x));

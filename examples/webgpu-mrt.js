@@ -44,8 +44,8 @@ const compute = new Program({
   `,
 })
 
-const width = 1
-const height = 1
+const width = window.innerWidth
+const height = window.innerHeight
 const count = 4
 
 const renderTarget = new RenderTarget({ width, height, count })
@@ -60,10 +60,10 @@ const composite = new Program({
     uv: { size: 2, data: new Float32Array([0, 0, 2, 0, 0, 2]) },
   },
   uniforms: {
-    0: renderTarget.textures[0],
-    1: renderTarget.textures[1],
-    2: renderTarget.textures[2],
-    3: renderTarget.textures[3],
+    texture0: renderTarget.textures[0],
+    texture1: renderTarget.textures[1],
+    texture2: renderTarget.textures[2],
+    texture3: renderTarget.textures[3],
   },
   vertex: `
     struct VertexIn {

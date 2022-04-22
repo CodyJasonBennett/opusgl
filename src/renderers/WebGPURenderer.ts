@@ -330,21 +330,22 @@ export class WebGPURenderer extends Renderer {
     const target = this.device.createTexture({
       format: this.format,
       dimension: '2d',
-      size: [uniform.image.width, uniform.image.width, 1],
+      size: [uniform.image!.width, uniform.image!.width, 1],
       usage:
         GPUTextureUsage.COPY_DST |
         GPUTextureUsage.TEXTURE_BINDING |
         GPUTextureUsage.RENDER_ATTACHMENT |
         GPUTextureUsage.COPY_SRC,
       mipLevelCount: uniform.generateMipmaps
-        ? Math.floor(Math.log2(Math.max(uniform.image.width, uniform.image.height))) + 1
+        ? Math.floor(Math.log2(Math.max(uniform.image!.width, uniform.image!.height))) + 1
         : undefined,
     })
 
-    this.device.queue.copyExternalImageToTexture({ source: uniform.image, flipY: uniform.flipY }, { texture: target }, [
-      uniform.image.width,
-      uniform.image.height,
-    ])
+    this.device.queue.copyExternalImageToTexture(
+      { source: uniform.image!, flipY: uniform.flipY },
+      { texture: target },
+      [uniform.image!.width, uniform.image!.height],
+    )
 
     uniform.needsUpdate = false
 

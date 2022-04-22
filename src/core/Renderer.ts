@@ -25,6 +25,7 @@ export class Compiled<Compiled extends Disposable> extends Map<Compilable, Compi
 
       compiled.dispose?.()
       object.dispose = dispose
+      this.delete(object)
     }
   }
 }
