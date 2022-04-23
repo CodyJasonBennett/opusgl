@@ -121,7 +121,8 @@ export class WebGLBufferObject implements Disposable {
 export class WebGLProgramObject {
   readonly gl: WebGL2RenderingContext
   readonly program: WebGLProgram
-  readonly textures = new Map<string, { texture: WebGLTextureObject; location: number }>()
+  readonly activeUniforms = new Map<string, { size: number; type: number; location: WebGLUniformLocation }>()
+  readonly textureLocations = new Map<string, number>()
   readonly UBOs = new Map<number, { data: Float32Array; buffer: WebGLBufferObject; uniforms: Map<string, Uniform> }>()
 
   constructor(gl: WebGL2RenderingContext, vertex: string, fragment: string) {
@@ -163,6 +164,23 @@ export class WebGLProgramObject {
       this.gl.deleteShader(shader)
     }
 
+    // Query active uniforms
+    let textureIndex = 0
+    const uniformsLength = this.gl.getProgramParameter(this.program, this.gl.ACTIVE_UNIFORMS)
+    for (let i = 0; i < uniformsLength; i++) {
+      const activeUniform = this.gl.getActiveUniform(this.program, i)
+      if (activeUniform) {
+        const { name, size, type } = activeUniform
+        const location = this.getUniformLocation(name)
+        this.activeUniforms.set(name, { size, type, location })
+
+        if (type === this.gl.SAMPLER_2D) {
+          this.textureLocations.set(name, textureIndex)
+          textureIndex++
+        }
+      }
+    }
+
     this.bind()
   }
 
@@ -198,79 +216,76 @@ export class WebGLProgramObject {
    * Returns an active texture's location by name. Will return `-1` if not found.
    */
   getTextureLocation(name: string) {
-    return this.textures.get(name)?.location ?? -1
+    return this.textureLocations.get(name) ?? -1
   }
 
   /**
-   * Binds and activates a texture by name and location.
+   * Binds and activates a texture by name.
    */
-  activateTexture(name: string, texture: WebGLTextureObject, location: number) {
-    this.textures.set(name, { texture, location })
-    this.gl.activeTexture(this.gl.TEXTURE0 + location)
-    texture.bind()
+  activateTexture(name: string, texture: WebGLTextureObject) {
+    const location = this.getTextureLocation(name)
+    if (location !== -1) {
+      this.gl.activeTexture(this.gl.TEXTURE0 + location)
+      texture.bind()
+    }
   }
 
   /**
    * Sets a uniform outside of std140 by name.
    */
-  setUniform(name: string, value: any) {
-    let uniform!: WebGLActiveInfo | null
+  setUniform(name: string, value: Uniform) {
+    const uniform = this.activeUniforms.get(name)
+    if (!uniform) return
 
-    // Query for active uniform by name
-    const uniformsLength = this.gl.getProgramParameter(this.program, this.gl.ACTIVE_UNIFORMS)
-    for (let i = 0; i < uniformsLength; i++) {
-      const activeUniform = this.gl.getActiveUniform(this.program, i)
-      if (activeUniform?.name === name) uniform = activeUniform
-    }
+    const data = (this.textureLocations.get(name) ?? value) as number | number[]
 
-    const location = this.getUniformLocation(name)
-
-    // Set uniform if active
-    if (uniform) {
+    if (typeof data === 'number') {
       switch (uniform.type) {
         case this.gl.FLOAT:
-          value?.length ? this.gl.uniform1fv(location, value) : this.gl.uniform1f(location, value)
-          break
-        case this.gl.FLOAT_VEC2:
-          this.gl.uniform2fv(location, value)
-          break
-        case this.gl.FLOAT_VEC3:
-          this.gl.uniform3fv(location, value)
-          break
-        case this.gl.FLOAT_VEC4:
-          this.gl.uniform4fv(location, value)
+          this.gl.uniform1f(uniform.location, data)
           break
         case this.gl.BOOL:
         case this.gl.INT:
         case this.gl.SAMPLER_2D:
-        case this.gl.SAMPLER_CUBE:
-          value?.length ? this.gl.uniform1iv(location, value) : this.gl.uniform1i(location, value)
+          this.gl.uniform1i(uniform.location, data)
+          break
+      }
+    } else {
+      switch (uniform.type) {
+        case this.gl.FLOAT_VEC2:
+          this.gl.uniform2fv(uniform.location, data)
           break
         case this.gl.BOOL_VEC2:
         case this.gl.INT_VEC2:
-          this.gl.uniform2iv(location, value)
+          this.gl.uniform2iv(uniform.location, data)
+          break
+        case this.gl.FLOAT_VEC3:
+          this.gl.uniform3fv(uniform.location, data)
           break
         case this.gl.BOOL_VEC3:
         case this.gl.INT_VEC3:
-          this.gl.uniform3iv(location, value)
+          this.gl.uniform3iv(uniform.location, data)
+          break
+        case this.gl.FLOAT_VEC4:
+          this.gl.uniform4fv(uniform.location, data)
           break
         case this.gl.BOOL_VEC4:
         case this.gl.INT_VEC4:
-          this.gl.uniform4iv(location, value)
+          this.gl.uniform4iv(uniform.location, data)
           break
         case this.gl.FLOAT_MAT2:
-          this.gl.uniformMatrix2fv(location, false, value)
+          this.gl.uniformMatrix2fv(uniform.location, false, data)
           break
         case this.gl.FLOAT_MAT3:
-          this.gl.uniformMatrix3fv(location, false, value)
+          this.gl.uniformMatrix3fv(uniform.location, false, data)
           break
         case this.gl.FLOAT_MAT4:
-          this.gl.uniformMatrix4fv(location, false, value)
+          this.gl.uniformMatrix4fv(uniform.location, false, data)
           break
       }
     }
 
-    return { uniform, location }
+    return uniform
   }
 
   /**
@@ -820,20 +835,18 @@ export class WebGLRenderer extends Renderer {
       }
 
       // Set texture uniform samplers outside of std140
-      let textureIndex = 0
       for (const name in material.uniforms) {
         const uniform = material.uniforms[name]
 
         if (uniform instanceof Texture) {
-          program.setUniform(name, textureIndex)
+          program.setUniform(name, uniform)
 
           if (!this._textures.has(uniform)) {
             this._textures.set(uniform, new WebGLTextureObject(this.gl))
           }
 
           const compiled = this._textures.get(uniform)!
-          program.activateTexture(name, compiled, textureIndex)
-          textureIndex++
+          program.activateTexture(name, compiled)
         }
       }
     }
@@ -843,10 +856,11 @@ export class WebGLRenderer extends Renderer {
     program.updateUniforms(material.uniforms)
 
     // Update textures outside of std140
-    program.textures.forEach((compiled, name) => {
+    program.textureLocations.forEach((_, name) => {
       const texture = material.uniforms[name] as Texture
+      const compiled = this._textures.get(texture)!
       if (texture.needsUpdate) {
-        compiled.texture.update(texture)
+        compiled.update(texture)
         texture.needsUpdate = false
       }
     })

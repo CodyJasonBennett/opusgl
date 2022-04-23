@@ -11,7 +11,7 @@ const program = new Program({
   },
   uniforms: {
     time: 0,
-    texture: await new Texture().fromData(new Uint8Array([76, 51, 128, 255]), 1, 1),
+    color: await new Texture().fromData(new Uint8Array([76, 51, 128, 255]), 1, 1),
   },
   vertex: `
     in vec2 uv;
@@ -28,13 +28,13 @@ const program = new Program({
     layout(std140) uniform Uniforms {
       float time;
     };
-    uniform sampler2D test;
+    uniform sampler2D color;
 
     in vec2 vUv;
     out vec4 pc_fragColor;
 
     void main() {
-      pc_fragColor = vec4(0.5 + 0.3 * cos(vUv.xyx + time), 0.0) + texture(test, vUv);
+      pc_fragColor = vec4(0.5 + 0.3 * cos(vUv.xyx + time), 0.0) + texture(color, vUv);
     }
   `,
 })
