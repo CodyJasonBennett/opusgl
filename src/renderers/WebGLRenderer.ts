@@ -482,9 +482,10 @@ export class WebGLFBO implements Disposable {
   readonly height: number
   readonly count: number
   readonly samples: number
+  readonly read: WebGLFramebuffer
+  readonly write: WebGLFramebuffer
   readonly textures: WebGLTextureObject[]
   readonly renderBuffers: WebGLRenderbuffer[]
-  readonly frameBuffer: WebGLFramebuffer
 
   constructor(
     gl: WebGL2RenderingContext,
@@ -499,7 +500,9 @@ export class WebGLFBO implements Disposable {
     this.height = height
     this.count = count
     this.samples = samples
-    this.frameBuffer = this.gl.createFramebuffer()!
+
+    this.read = this.gl.createFramebuffer()!
+    this.write = this.gl.createFramebuffer()!
     this.textures = textures
     this.renderBuffers = []
 
@@ -537,7 +540,7 @@ export class WebGLFBO implements Disposable {
    * Binds the FBO.
    */
   bind(type = this.gl.FRAMEBUFFER) {
-    this.gl.bindFramebuffer(type, this.frameBuffer)
+    this.gl.bindFramebuffer(type, this.write)
   }
 
   /**
@@ -554,15 +557,15 @@ export class WebGLFBO implements Disposable {
     // blitFramebuffer can only copy the first color attachment to another FBO
     // so we create temporary FBOs and copy renderBuffers to textures one by one
     // (See issue #12): https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_framebuffer_blit.txt
-    const read = this.gl.createFramebuffer()
-    const write = this.gl.createFramebuffer()
+    const tempRead = this.gl.createFramebuffer()!
+    const tempWrite = this.gl.createFramebuffer()!
 
     // Blit multi-sampled renderBuffers to textures
     for (const [i, renderBuffer] of this.renderBuffers.entries()) {
       const texture = this.textures[i]
 
-      this.gl.bindFramebuffer(this.gl.READ_FRAMEBUFFER, read)
-      this.gl.bindFramebuffer(this.gl.DRAW_FRAMEBUFFER, write)
+      this.gl.bindFramebuffer(this.gl.READ_FRAMEBUFFER, tempRead)
+      this.gl.bindFramebuffer(this.gl.DRAW_FRAMEBUFFER, tempWrite)
 
       this.gl.framebufferRenderbuffer(
         this.gl.READ_FRAMEBUFFER,
@@ -594,8 +597,11 @@ export class WebGLFBO implements Disposable {
       this.gl.bindFramebuffer(this.gl.DRAW_FRAMEBUFFER, null)
     }
 
+    this.gl.deleteFramebuffer(tempRead)
+    this.gl.deleteFramebuffer(tempWrite)
+
     // Bind downsampled texture attachments
-    this.bind()
+    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.read)
     for (let i = 0; i < this.count; i++) {
       const texture = this.textures[i]
       this.gl.framebufferTexture2D(
@@ -606,16 +612,14 @@ export class WebGLFBO implements Disposable {
         0,
       )
     }
-
-    this.gl.deleteFramebuffer(read)
-    this.gl.deleteFramebuffer(write)
   }
 
   /**
    * Disposes of the FBO from GPU memory.
    */
   dispose() {
-    this.gl.deleteFramebuffer(this.frameBuffer)
+    this.gl.deleteFramebuffer(this.read)
+    this.gl.deleteFramebuffer(this.write)
     for (const renderBuffer of this.renderBuffers) this.gl.deleteRenderbuffer(renderBuffer)
   }
 }
