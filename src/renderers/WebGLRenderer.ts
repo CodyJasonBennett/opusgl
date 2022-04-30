@@ -57,13 +57,27 @@ export class WebGLBufferObject implements Disposable {
   readonly buffer: WebGLBuffer
   readonly type: number
   readonly usage: number
-  private _init = false
 
-  constructor(gl: WebGL2RenderingContext, type = gl.ARRAY_BUFFER, usage = gl.STATIC_DRAW) {
+  constructor(
+    gl: WebGL2RenderingContext,
+    data: Float32Array | Uint32Array | number,
+    type = gl.ARRAY_BUFFER,
+    usage = gl.STATIC_DRAW,
+    index?: number,
+  ) {
     this.gl = gl
     this.buffer = this.gl.createBuffer()!
     this.type = type
     this.usage = usage
+
+    if (typeof index === 'number') this.gl.bindBufferBase(this.type, index, this.buffer)
+    this.bind()
+
+    if (typeof data === 'number') {
+      this.gl.bufferData(this.type, data, this.usage)
+    } else {
+      this.gl.bufferData(this.type, data, this.usage)
+    }
   }
 
   /**
@@ -81,30 +95,11 @@ export class WebGLBufferObject implements Disposable {
   }
 
   /**
-   * Binds the buffer at an index. Useful for transform feedback and uniform buffers.
+   * Writes binary data to buffer.
    */
-  setIndex(index: number) {
-    this.gl.bindBufferBase(this.type, index, this.buffer)
+  write(data: Float32Array | Uint32Array) {
     this.bind()
-  }
-
-  /**
-   * Writes binary data to buffer or sets buffer length.
-   */
-  write(data: Float32Array | Uint32Array | number) {
-    this.bind()
-
-    if (!this._init) {
-      if (typeof data === 'number') {
-        this.gl.bufferData(this.type, data, this.usage)
-      } else {
-        this.gl.bufferData(this.type, data, this.usage)
-      }
-
-      this._init = true
-    } else if (typeof data !== 'number') {
-      this.gl.bufferSubData(this.type, 0, data)
-    }
+    this.gl.bufferSubData(this.type, 0, data)
   }
 
   /**
@@ -299,9 +294,7 @@ export class WebGLProgramObject {
     }
 
     const data = std140(Array.from(memoizedUniforms.values()))
-    const buffer = new WebGLBufferObject(this.gl, this.gl.UNIFORM_BUFFER, this.gl.DYNAMIC_DRAW)
-    buffer.setIndex(index)
-    buffer.write(data.byteLength)
+    const buffer = new WebGLBufferObject(this.gl, data.byteLength, this.gl.UNIFORM_BUFFER, this.gl.DYNAMIC_DRAW, 0)
 
     this.UBOs.set(index, { data, buffer, uniforms: memoizedUniforms })
   }
@@ -323,9 +316,9 @@ export class WebGLProgramObject {
       needsUpdate = true
     })
 
+    // If a uniform changed, rebuild entire buffer
+    // TODO: expand write to subdata at affected indices instead
     if (needsUpdate) {
-      // If a uniform changed, rebuild entire buffer
-      // TODO: expand write to subdata at affected indices instead
       UBO.buffer.write(std140(Array.from(UBO.uniforms.values()), UBO.data))
     }
   }
@@ -361,8 +354,7 @@ export class WebGLBufferAttributes {
       attribute.needsUpdate = false
 
       const type = name === 'index' ? this.gl.ELEMENT_ARRAY_BUFFER : this.gl.ARRAY_BUFFER
-      const buffer = new WebGLBufferObject(this.gl, type)
-      buffer.write(attribute.data)
+      const buffer = new WebGLBufferObject(this.gl, attribute.data, type)
 
       const location = this.program.getAttributeLocation(name)
       if (location !== -1) {

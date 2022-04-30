@@ -100,5 +100,7 @@ export class Texture implements TextureOptions {
    */
   dispose() {
     // Implemented by renderer
+
+    if (this.image instanceof ImageBitmap) this.image.close()
   }
 }

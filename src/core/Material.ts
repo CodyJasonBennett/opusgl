@@ -5,7 +5,7 @@ import { uuid } from '../utils'
 /**
  * Material constructor parameters. Accepts shaders, their uniforms, and various blending & culling options.
  */
-export interface MaterialOptions extends Omit<ProgramOptions, 'attributes' | 'compute'> {}
+export interface MaterialOptions extends Omit<ProgramOptions, 'attributes' | 'compute' | 'mode'> {}
 
 /**
  * Constructs a material object. Used to store program shaders and uniforms.
