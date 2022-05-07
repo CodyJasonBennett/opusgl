@@ -446,6 +446,7 @@ export class WebGLTextureObject implements Disposable {
         this.gl.texParameterf(this.gl.TEXTURE_2D, anisotropyExt.TEXTURE_MAX_ANISOTROPY_EXT, options.anisotropy)
     }
     if (options.generateMipmaps) this.gl.generateMipmap(this.gl.TEXTURE_2D)
+    this.gl.pixelStorei(this.gl.UNPACK_ALIGNMENT, 1)
 
     const minFilters = options.generateMipmaps ? GL_TEXTURE_MIPMAP_FILTERS : GL_TEXTURE_FILTERS
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, GL_TEXTURE_FILTERS[options.magFilter])

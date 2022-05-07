@@ -295,6 +295,8 @@ export class WebGPURenderer extends Renderer {
           cullMode: pipelineState.cullMode,
           topology: pipelineState.topology,
         },
+        // @ts-expect-error WGPU types need sync
+        layout: 'auto',
         depthStencil: {
           depthWriteEnabled: pipelineState.depthWriteEnabled,
           depthCompare: pipelineState.depthCompare,
