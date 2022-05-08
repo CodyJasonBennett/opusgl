@@ -966,10 +966,10 @@ export class WebGLRenderer extends Renderer {
     if (this.autoClear) this.clear()
 
     // Update scene matrices
-    if (!(scene instanceof Program)) scene.updateMatrix()
+    if (!(scene instanceof Program) && scene.autoUpdate) scene.updateMatrix()
 
     // Update camera matrices
-    if (camera) camera.updateMatrix()
+    if (camera?.autoUpdate && camera.parent === null) camera.updateMatrix()
 
     // Compile & render visible children
     const renderList = scene instanceof Program ? [scene] : this.sort(scene, camera)

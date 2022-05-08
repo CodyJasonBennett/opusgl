@@ -41,7 +41,11 @@ export class Object3D {
    */
   readonly quaternion = new Quaternion()
   /**
-   * Whether to automatically update transform matrices from position/rotation/scale properties.
+   * Whether to automatically update transform matrices for this object and its descendants.
+   */
+  public autoUpdate = true
+  /**
+   * Whether to automatically update local transform from position/rotation/scale properties.
    */
   public matrixAutoUpdate = true
   /**
@@ -97,7 +101,11 @@ export class Object3D {
       this.matrix.multiply(this.parent.matrix)
     }
 
-    if (updateChildren) for (const child of this.children) child.updateMatrix()
+    if (updateChildren) {
+      for (const child of this.children) {
+        if (child.autoUpdate) child.updateMatrix()
+      }
+    }
   }
 
   /**
