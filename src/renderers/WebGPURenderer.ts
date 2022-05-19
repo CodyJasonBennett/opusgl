@@ -109,7 +109,6 @@ export class WebGPURenderer extends Renderer {
         device: this.device,
         format: this.format,
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
-        size: [this.viewport.width, this.viewport.height, 1],
         compositingAlphaMode: 'premultiplied',
       })
 
@@ -137,7 +136,7 @@ export class WebGPURenderer extends Renderer {
 
     // Init GL
     this.context = this.canvas.getContext('webgpu')!
-    this.format = this.context.getPreferredFormat(this.adapter)
+    this.format = navigator.gpu.getPreferredCanvasFormat()
 
     // Resize swapchain
     this.setSize(this.canvas.width, this.canvas.height)
@@ -295,7 +294,6 @@ export class WebGPURenderer extends Renderer {
           cullMode: pipelineState.cullMode,
           topology: pipelineState.topology,
         },
-        // @ts-expect-error WGPU types need sync
         layout: 'auto',
         depthStencil: {
           depthWriteEnabled: pipelineState.depthWriteEnabled,
