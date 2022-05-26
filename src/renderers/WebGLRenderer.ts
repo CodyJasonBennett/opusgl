@@ -73,11 +73,8 @@ export class WebGLBufferObject implements Disposable {
     if (typeof index === 'number') this.gl.bindBufferBase(this.type, index, this.buffer)
     this.bind()
 
-    if (typeof data === 'number') {
-      this.gl.bufferData(this.type, data, this.usage)
-    } else {
-      this.gl.bufferData(this.type, data, this.usage)
-    }
+    // @ts-expect-error
+    this.gl.bufferData(this.type, data, this.usage)
   }
 
   /**
@@ -767,7 +764,7 @@ export class WebGLRenderer extends Renderer {
     if (enabled) {
       this.gl.enable(this.gl.DEPTH_TEST)
     } else {
-      this.gl.enable(this.gl.DEPTH_TEST)
+      this.gl.disable(this.gl.DEPTH_TEST)
     }
   }
 
@@ -839,7 +836,7 @@ export class WebGLRenderer extends Renderer {
 
       // Set std140 uniforms
       if (parsed) {
-        const uniforms = parsed?.reduce((acc, key) => ({ ...acc, [key]: material.uniforms[key] }), {})
+        const uniforms = parsed.reduce((acc, key) => ({ ...acc, [key]: material.uniforms[key] }), {})
         program.compileUniforms(uniforms)
       }
 

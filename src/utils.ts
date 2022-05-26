@@ -76,7 +76,7 @@ export const parseUniforms = (...shaders: string[]): string[] | undefined => {
   // Filter to most complete definition
   if (shaders.length > 1) {
     const definitions = shaders.map((shader) => parseUniforms(shader))
-    return definitions.filter(Boolean).sort((a: any, b: any) => b.length - a.length)?.[0]
+    return definitions.filter(Boolean).sort((a: any, b: any) => b.length - a.length)[0]
   }
 
   // Remove comments for parsing
