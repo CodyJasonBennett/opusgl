@@ -22,6 +22,7 @@ global.GPUBufferUsage = {
 // GPU navigator polyfill
 global.navigator = {
   gpu: {
+    getPreferredCanvasFormat: () => 'bgra8unorm',
     requestAdapter: async () => ({
       requestDevice: async () => ({
         queue: {
