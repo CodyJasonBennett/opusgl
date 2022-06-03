@@ -22,12 +22,11 @@ export default defineConfig({
     lib: {
       formats: ['es', 'cjs'],
       entry: path.resolve(process.cwd(), 'src/index.ts'),
+      fileName: (format) => (format === 'es' ? '[name].mjs' : '[name].js'),
     },
     rollupOptions: {
       output: {
-        entryFileNames: '[name].[format].js',
         preserveModules: true,
-        dir: 'dist',
       },
     },
   },
