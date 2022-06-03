@@ -109,7 +109,8 @@ export class WebGPURenderer extends Renderer {
         device: this.device,
         format: this.format,
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
-        compositingAlphaMode: 'premultiplied',
+        // @ts-expect-error
+        alphaMode: 'premultiplied',
       })
 
       if (this._depthTexture) this._depthTexture.destroy()
