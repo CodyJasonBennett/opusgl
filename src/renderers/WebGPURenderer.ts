@@ -647,7 +647,8 @@ export class WebGPURenderer extends Renderer {
 
       compiled.attributes.forEach((attribute, name) => {
         if (name === 'index') {
-          passEncoder.setIndexBuffer(attribute.buffer, 'uint32')
+          const indexFormat = child.geometry.attributes[name].data instanceof Uint32Array ? 'uint32' : 'uint16'
+          passEncoder.setIndexBuffer(attribute.buffer, indexFormat)
         } else {
           passEncoder.setVertexBuffer(attribute.slot!, attribute.buffer)
         }
