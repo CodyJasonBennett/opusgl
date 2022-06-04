@@ -30,7 +30,15 @@ export interface UniformList {
   [name: string]: Uniform
 }
 
-export type AttributeData = Uint8Array | Uint16Array | Uint32Array | Float32Array
+export type AttributeData =
+  | Float32Array
+  | Int8Array
+  | Int16Array
+  | Int32Array
+  | Uint8Array
+  | Uint8ClampedArray
+  | Uint16Array
+  | Uint32Array
 
 /**
  * Represents a program attribute.

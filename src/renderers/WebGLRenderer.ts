@@ -16,6 +16,31 @@ import {
 import { cloneUniform, std140, uniformsEqual, parseUniforms } from '../utils'
 
 /**
+ * Gets the appropriate WebGL data type for a data view.
+ */
+const getDataType = (data: AttributeData) => {
+  switch (data.constructor) {
+    case Float32Array:
+      return 5126 // FLOAT
+    case Int8Array:
+      return 5120 // BYTE
+    case Int16Array:
+      return 5122 // SHORT
+    case Int32Array:
+      return 5124 // INT
+    case Uint8Array:
+    case Uint8ClampedArray:
+      return 5121 // UNSIGNED_BYTE
+    case Uint16Array:
+      return 5123 // UNSIGNED_SHORT
+    case Uint32Array:
+      return 5125 // UNSIGNED_INT
+    default:
+      return null
+  }
+}
+
+/**
  * Constructs a WebGL VAO. Can be used to memoize gl state.
  */
 export class WebGLVAO implements Disposable {
@@ -365,7 +390,13 @@ export class WebGLBufferAttributes {
       const location = this.program.getAttributeLocation(name)
       if (location !== -1) {
         this.gl.enableVertexAttribArray(location)
-        this.gl.vertexAttribPointer(location, attribute.size, this.gl.FLOAT, false, 0, 0)
+
+        const dataType = getDataType(attribute.data)!
+        if (dataType === this.gl.INT || dataType === this.gl.UNSIGNED_INT) {
+          this.gl.vertexAttribIPointer(location, attribute.size, dataType, 0, 0)
+        } else {
+          this.gl.vertexAttribPointer(location, attribute.size, dataType, false, 0, 0)
+        }
       }
 
       this.attributes.set(name, { buffer, location })
@@ -991,8 +1022,7 @@ export class WebGLRenderer extends Renderer {
       const { index, position } = child instanceof Program ? child.attributes : child.geometry.attributes
       const mode = GL_DRAW_MODES[child.mode]
       if (index) {
-        const typeFromBytes: { [key: number]: GLenum } = { 1: this.gl.BYTE, 2: this.gl.SHORT, 4: this.gl.UNSIGNED_INT }
-        this.gl.drawElements(mode, index.data.length / index.size, typeFromBytes[index.data.BYTES_PER_ELEMENT], 0)
+        this.gl.drawElements(mode, index.data.length / index.size, getDataType(index.data)!, 0)
       } else {
         this.gl.drawArrays(mode, 0, position.data.length / position.size)
       }
