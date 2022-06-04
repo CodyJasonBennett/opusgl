@@ -1,41 +1,382 @@
 /// <reference types="@webgpu/types" />
-import { Disposable, Compiled, Renderer } from '../core/Renderer'
+import { Compiled, Renderer } from '../core/Renderer'
 import { Texture } from '../core/Texture'
+import type { Disposable } from '../core/Renderer'
+import type { TextureOptions } from '../core/Texture'
 import type { RenderTarget } from '../core/RenderTarget'
-import type { Uniform } from '../core/Material'
-import type { AttributeData, Geometry } from '../core/Geometry'
+import type { AttributeData, AttributeList } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Camera } from '../core/Camera'
 import type { Object3D } from '../core/Object3D'
+import type { Uniform, UniformList } from '../core/Material'
 import { GPU_CULL_SIDES, GPU_DRAW_MODES, GPU_TEXTURE_FILTERS, GPU_TEXTURE_WRAPPINGS } from '../constants'
 import { cloneUniform, parseUniforms, std140, uniformsEqual } from '../utils'
 
-export type GPUAttribute = Partial<GPUVertexBufferLayout> & { slot?: number; buffer: GPUBuffer }
-export type GPUAttributeMap = Map<string, GPUAttribute>
+export class WebGPUBufferObject implements Disposable {
+  readonly device: GPUDevice
+  readonly buffer: GPUBuffer
 
-export interface GPUCompiled extends Disposable {
-  transparent: boolean
-  cullMode: keyof typeof GPU_CULL_SIDES
-  topology: keyof typeof GPU_DRAW_MODES
-  depthWriteEnabled: boolean
-  depthCompare: GPUCompareFunction
-  pipeline: GPURenderPipeline
-  attributes: Map<string, Partial<GPUVertexBufferLayout> & { slot?: number; buffer: GPUBuffer }>
-  UBO: {
-    uniforms: Map<string, Uniform>
-    data?: Float32Array
-    buffer?: GPUBuffer
-    bindGroup?: GPUBindGroup
+  constructor(device: GPUDevice, data: AttributeData, usage: GPUBufferUsageFlags) {
+    this.device = device
+
+    this.buffer = this.device.createBuffer({
+      size: data.byteLength,
+      usage: usage | GPUBufferUsage.COPY_DST,
+      mappedAtCreation: true,
+    })
+
+    // @ts-ignore
+    new data.constructor(this.buffer.getMappedRange()).set(data)
+    this.buffer.unmap()
+  }
+
+  write(data: AttributeData) {
+    this.device.queue.writeBuffer(this.buffer, 0, data)
+  }
+
+  dispose() {
+    this.buffer.destroy()
   }
 }
 
-export interface GPUTextureImpl extends Disposable {
-  sampler: GPUSampler
-  target: GPUTexture
+export interface WebGPUBufferAttribute extends Partial<GPUVertexBufferLayout> {
+  slot?: number
+  indexFormat?: GPUIndexFormat
+  buffer: WebGPUBufferObject
 }
 
-export interface GPURenderTarget extends Disposable {
-  depthTexture: GPUTexture
+export class WebGPUBufferAttributes implements Disposable {
+  readonly device: GPUDevice
+  readonly attributes = new Map<string, WebGPUBufferAttribute>()
+
+  constructor(device: GPUDevice, attributes: AttributeList) {
+    this.device = device
+
+    let offset = 0
+    Object.entries(attributes).forEach(([name, attribute], index) => {
+      const formatType = attribute.data instanceof Float32Array ? 'float' : 'uint'
+      const formatBits = attribute.data.BYTES_PER_ELEMENT * 8
+      const formatName = formatType + formatBits
+
+      if (name === 'index') {
+        offset -= 1
+        const buffer = new WebGPUBufferObject(this.device, attribute.data, GPUBufferUsage.INDEX)
+        this.attributes.set(name, { indexFormat: formatName as GPUIndexFormat, buffer })
+      } else {
+        const slot = index + offset
+        const buffer = new WebGPUBufferObject(this.device, attribute.data, GPUBufferUsage.VERTEX)
+
+        this.attributes.set(name, {
+          slot,
+          buffer,
+          arrayStride: attribute.size * attribute.data.BYTES_PER_ELEMENT,
+          attributes: [
+            {
+              shaderLocation: slot,
+              offset: 0,
+              format: `${formatName}x${attribute.size}`,
+            },
+          ],
+        } as WebGPUBufferAttribute)
+      }
+    })
+  }
+
+  bind(passEncoder: GPURenderPassEncoder) {
+    this.attributes.forEach((attribute, name) => {
+      if (name === 'index') {
+        passEncoder.setIndexBuffer(attribute.buffer.buffer, attribute.indexFormat!)
+      } else {
+        passEncoder.setVertexBuffer(attribute.slot!, attribute.buffer.buffer)
+      }
+    })
+  }
+
+  update(attributes: AttributeList) {
+    this.attributes.forEach(({ buffer }, name) => {
+      if (name === 'index') return
+
+      const attribute = attributes[name]
+      if (attribute.needsUpdate) {
+        buffer.write(attribute.data)
+        attribute.needsUpdate = false
+      }
+    })
+  }
+
+  dispose() {
+    this.attributes.forEach(({ buffer }) => {
+      buffer.dispose()
+    })
+  }
+}
+
+export class WebGPUUniformBuffer extends WebGPUBufferObject {
+  readonly uniforms: Map<string, Uniform>
+  readonly data: Float32Array
+
+  constructor(device: GPUDevice, uniforms: UniformList) {
+    const memoizedUniforms = new Map<string, Uniform>()
+    for (const name in uniforms) {
+      const uniform = cloneUniform(uniforms[name])
+      memoizedUniforms.set(name, uniform)
+    }
+
+    const data = std140(Array.from(memoizedUniforms.values()))
+    super(device, data, GPUBufferUsage.UNIFORM)
+
+    this.uniforms = memoizedUniforms
+    this.data = data
+  }
+
+  update(uniforms: UniformList) {
+    // Check whether a uniform has changed
+    let needsUpdate = false
+    this.uniforms.forEach((value, name) => {
+      const uniform = uniforms[name]
+      if (!uniformsEqual(value, uniform)) {
+        this.uniforms.set(name, cloneUniform(uniform))
+        needsUpdate = true
+      }
+    })
+
+    // If a uniform changed, rebuild entire buffer
+    // TODO: expand write to subdata at affected indices instead
+    if (needsUpdate) {
+      this.write(std140(Array.from(this.uniforms.values()), this.data))
+    }
+  }
+
+  dispose() {
+    super.dispose()
+    this.uniforms.clear()
+  }
+}
+
+export class WebGPURenderPipeline implements Disposable {
+  readonly device: GPUDevice
+  readonly format: GPUTextureFormat
+  public pipelineState!: {
+    transparent: boolean
+    cullMode: typeof GPU_CULL_SIDES[keyof typeof GPU_CULL_SIDES]
+    topology: typeof GPU_DRAW_MODES[keyof typeof GPU_DRAW_MODES]
+    depthWriteEnabled: boolean
+    depthCompare: GPUCompareFunction
+  }
+  public pipeline!: GPURenderPipeline
+  readonly bindGroups: Map<number, GPUBindGroup> = new Map()
+  readonly bindGroupEntries: Map<number, GPUBindGroupEntry[]> = new Map()
+  readonly UBOs: Map<number, WebGPUUniformBuffer> = new Map()
+
+  constructor(device: GPUDevice, format: GPUTextureFormat) {
+    this.device = device
+    this.format = format
+  }
+
+  bind(passEncoder: GPURenderPassEncoder) {
+    passEncoder.setPipeline(this.pipeline)
+    this.bindGroups.forEach((bindGroup, index) => {
+      passEncoder.setBindGroup(index, bindGroup)
+    })
+  }
+
+  update(target: Mesh, bufferAttributes: WebGPUBufferAttributes, colorAttachments = 1) {
+    const transparent = target.material.transparent
+    const cullMode = GPU_CULL_SIDES[target.material.side]
+    const topology = GPU_DRAW_MODES[target.mode]
+    const depthWriteEnabled = target.material.depthWrite
+    const depthCompare = (target.material.depthTest ? 'less' : 'always') as GPUCompareFunction
+
+    if (
+      transparent === this.pipelineState?.transparent &&
+      cullMode === this.pipelineState?.cullMode &&
+      topology === this.pipelineState?.topology &&
+      depthWriteEnabled === this.pipelineState?.depthWriteEnabled &&
+      depthCompare === this.pipelineState?.depthCompare
+    )
+      return
+
+    this.pipelineState = {
+      transparent,
+      cullMode,
+      topology,
+      depthWriteEnabled,
+      depthCompare,
+    }
+
+    const buffers: GPUVertexBufferLayout[] = []
+    bufferAttributes.attributes.forEach((attribute, name) => {
+      if (name === 'index') return
+      buffers.push(attribute as GPUVertexBufferLayout)
+    })
+
+    this.pipeline = this.device.createRenderPipeline({
+      vertex: {
+        module: this.device.createShaderModule({ code: target.material.vertex }),
+        entryPoint: 'main',
+        buffers,
+      },
+      fragment: {
+        module: this.device.createShaderModule({ code: target.material.fragment }),
+        entryPoint: 'main',
+        targets: Array(colorAttachments).fill({
+          format: this.format,
+          blend: this.pipelineState.transparent
+            ? {
+                alpha: {
+                  srcFactor: 'one',
+                  dstFactor: 'one-minus-src-alpha',
+                  operation: 'add',
+                },
+                color: {
+                  srcFactor: 'src-alpha',
+                  dstFactor: 'one-minus-src-alpha',
+                  operation: 'add',
+                },
+              }
+            : undefined,
+          writeMask: 0xf,
+        }),
+      },
+      primitive: {
+        frontFace: 'ccw',
+        cullMode: this.pipelineState.cullMode,
+        topology: this.pipelineState.topology,
+      },
+      depthStencil: {
+        depthWriteEnabled: this.pipelineState.depthWriteEnabled,
+        depthCompare: this.pipelineState.depthCompare,
+        format: 'depth24plus-stencil8',
+      },
+      layout: 'auto',
+    })
+
+    this.bindGroupEntries.forEach((entries, index) => {
+      const bindGroup = this.device.createBindGroup({
+        layout: this.pipeline.getBindGroupLayout(index),
+        entries,
+      })
+      this.bindGroups.set(index, bindGroup)
+    })
+  }
+
+  setBindGroup(resources: (WebGPUBufferObject | WebGPUTextureObject)[], index = 0) {
+    const entries = []
+    let binding = entries.length
+
+    for (const resource of resources) {
+      if (resource instanceof WebGPUBufferObject) {
+        binding = entries.push({
+          binding,
+          resource: {
+            buffer: resource.buffer,
+          },
+        })
+      } else if (resource instanceof WebGPUTextureObject) {
+        binding = entries.push(
+          {
+            binding,
+            resource: resource.sampler!,
+          },
+          {
+            binding: binding + 1,
+            resource: resource.target!.createView(),
+          },
+        )
+      }
+    }
+
+    this.bindGroupEntries.set(index, entries)
+  }
+
+  dispose() {
+    this.bindGroupEntries.clear()
+    this.bindGroups.clear()
+  }
+}
+
+export class WebGPUTextureObject implements Disposable {
+  readonly device: GPUDevice
+  readonly format: GPUTextureFormat
+  public sampler?: GPUSampler
+  public target?: GPUTexture
+
+  constructor(device: GPUDevice, format: GPUTextureFormat) {
+    this.device = device
+    this.format = format
+  }
+
+  update(options: Texture | TextureOptions, width = options.image?.width ?? 0, height = options.image?.height ?? 0) {
+    this.sampler = this.device.createSampler({
+      addressModeU: GPU_TEXTURE_WRAPPINGS[options.wrapS] as GPUAddressMode,
+      addressModeV: GPU_TEXTURE_WRAPPINGS[options.wrapT] as GPUAddressMode,
+      magFilter: GPU_TEXTURE_FILTERS[options.magFilter],
+      minFilter: GPU_TEXTURE_FILTERS[options.minFilter],
+      mipmapFilter: options.generateMipmaps ? GPU_TEXTURE_FILTERS[options.minFilter] : undefined,
+      maxAnisotropy: options.anisotropy,
+    })
+
+    this.target = this.device.createTexture({
+      format: this.format,
+      dimension: '2d',
+      size: [width, height, 1],
+      usage:
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.TEXTURE_BINDING |
+        GPUTextureUsage.RENDER_ATTACHMENT |
+        GPUTextureUsage.COPY_SRC,
+      mipLevelCount: options.generateMipmaps ? Math.floor(Math.log2(Math.max(width, height))) + 1 : undefined,
+    })
+
+    if (options.image) {
+      this.device.queue.copyExternalImageToTexture(
+        { source: options.image, flipY: options.flipY },
+        { texture: this.target },
+        [options.image.width, options.image.height],
+      )
+    }
+  }
+
+  dispose() {
+    this.target?.destroy()
+  }
+}
+
+export class WebGPUFBO implements Disposable {
+  readonly device: GPUDevice
+  readonly width: number
+  readonly height: number
+  readonly count: number
+  readonly samples: number
+  readonly depthTexture: GPUTexture
+  readonly depthTextureView: GPUTextureView
+  readonly views: GPUTextureView[] = []
+
+  constructor(
+    device: GPUDevice,
+    width: number,
+    height: number,
+    count = 1,
+    samples = 0,
+    textures: WebGPUTextureObject[] = [],
+  ) {
+    this.device = device
+    this.width = width
+    this.height = height
+    this.count = count
+    this.samples = samples
+    this.depthTexture = this.device.createTexture({
+      size: [this.width, this.height, 1],
+      format: 'depth24plus-stencil8',
+      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+    })
+    this.depthTextureView = this.depthTexture.createView()
+    this.views = textures.map((texture) => texture.target!.createView())
+  }
+
+  dispose() {
+    this.depthTexture.destroy()
+  }
 }
 
 export interface WebGPURendererOptions {
@@ -47,6 +388,14 @@ export interface WebGPURendererOptions {
    * An optional WebGPU context to draw with.
    */
   context: GPUCanvasContext
+  /**
+   * An optional WebGPU device to request from.
+   */
+  device: GPUDevice
+  /**
+   * An optional GPUFormat to create texture views with.
+   */
+  format: GPUTextureFormat
   /**
    * Whether to enable antialiasing. Creates a multisampled rendertarget under the hood. Default is `true`.
    */
@@ -66,35 +415,34 @@ export interface WebGPURendererOptions {
 }
 
 export class WebGPURenderer extends Renderer {
-  public adapter!: GPUAdapter
   public device!: GPUDevice
   public context!: GPUCanvasContext
   public format!: GPUTextureFormat
 
   protected _params: Partial<Omit<WebGPURendererOptions, 'canvas'>>
-  protected _compiled = new Compiled<GPUCompiled>()
-  protected _textures = new Compiled<GPUTextureImpl>()
-  protected _renderTargets = new Compiled<GPURenderTarget>()
+  protected _bufferAttributes = new Compiled<WebGPUBufferAttributes>()
+  protected _pipelines = new Compiled<WebGPURenderPipeline>()
+  protected _textures = new Compiled<WebGPUTextureObject>()
+  protected _FBOs = new Compiled<WebGPUFBO>()
   private _depthTexture!: GPUTexture
   private _depthTextureView!: GPUTextureView
   private _renderPass: GPURenderPassDescriptor | null = null
 
   constructor({
     canvas = document.createElement('canvas'),
-    antialias = true,
-    powerPreference,
-    requiredFeatures,
-    requiredLimits,
+    context,
+    format,
+    device,
+    ...params
   }: Partial<WebGPURendererOptions> = {}) {
     super()
 
     this.canvas = canvas
-    this._params = {
-      antialias,
-      powerPreference,
-      requiredFeatures,
-      requiredLimits,
-    }
+    this.context = context ?? this.canvas.getContext('webgpu')!
+    this.format = format ?? navigator.gpu.getPreferredCanvasFormat()
+
+    if (device) this.device = device
+    this._params = params
 
     this.setSize(canvas.width, canvas.height)
   }
@@ -125,17 +473,11 @@ export class WebGPURenderer extends Renderer {
    * Initializes the internal WebGPU context and swapchain.
    */
   async init() {
-    // Check for compatibility
-    const isSupported = typeof window !== 'undefined' && 'gpu' in navigator
-    if (!isSupported) throw 'WebGPU is not supported on this device!'
+    if (this.device) return this
 
-    // Init API
-    this.adapter = (await navigator.gpu.requestAdapter(this._params))!
-    this.device = await this.adapter.requestDevice(this._params)
-
-    // Init GL
-    this.context = this.canvas.getContext('webgpu')!
-    this.format = navigator.gpu.getPreferredCanvasFormat()
+    // Create device
+    const adapter = await navigator.gpu.requestAdapter(this._params)
+    this.device = await adapter!.requestDevice(this._params)
 
     // Resize swapchain
     this.setSize(this.canvas.width, this.canvas.height)
@@ -144,17 +486,16 @@ export class WebGPURenderer extends Renderer {
   }
 
   /**
-   * Creates buffer and initializes it.
+   * Updates a buffer.
    */
-  writeBuffer(buffer: GPUBuffer, data: AttributeData) {
+  writeBuffer(buffer: GPUBuffer, data: Float32Array | Uint32Array) {
     this.device.queue.writeBuffer(buffer, 0, data)
-    return buffer
   }
 
   /**
-   * Updates a buffer.
+   * Creates buffer and initializes it.
    */
-  createBuffer(data: AttributeData, usage: GPUBufferUsageFlags) {
+  createBuffer(data: Float32Array | Uint32Array, usage: GPUBufferUsageFlags) {
     const buffer = this.device.createBuffer({
       size: data.byteLength,
       usage: usage | GPUBufferUsage.COPY_DST,
@@ -166,414 +507,6 @@ export class WebGPURenderer extends Renderer {
     buffer.unmap()
 
     return buffer
-  }
-
-  protected updateAttributes(geometry: Geometry) {
-    const { attributes } = this._compiled.get(geometry)!
-
-    attributes.forEach((compiled, name) => {
-      if (name === 'index') return
-
-      const attribute = geometry.attributes[name]
-      if (!attribute.needsUpdate) return
-
-      this.writeBuffer(compiled.buffer, attribute.data)
-    })
-
-    return attributes
-  }
-
-  protected updateGeometry(target: Mesh) {
-    let attributes: GPUAttributeMap
-
-    if (this._compiled.has(target.geometry)) {
-      attributes = this.updateAttributes(target.geometry)
-    } else {
-      attributes = new Map()
-
-      let offset = 0
-      Object.entries(target.geometry.attributes).forEach(([name, attribute], index) => {
-        if (name === 'index') {
-          offset -= 1
-          const buffer = this.createBuffer(attribute.data, GPUBufferUsage.INDEX)
-          attributes.set(name, { buffer })
-        } else {
-          const slot = index + offset
-          const buffer = this.createBuffer(attribute.data, GPUBufferUsage.VERTEX)
-
-          const arrayStride = attribute.size * attribute.data.BYTES_PER_ELEMENT
-          const formatType = attribute.data instanceof Float32Array ? 'float' : 'uint'
-          const formatBits = attribute.data.BYTES_PER_ELEMENT * 8
-
-          attributes.set(name, {
-            slot,
-            buffer,
-            arrayStride,
-            attributes: [
-              {
-                shaderLocation: slot,
-                offset: 0,
-                format: `${formatType}${formatBits}x${attribute.size}`,
-              },
-            ],
-          } as GPUAttribute)
-        }
-      })
-
-      this._compiled.set(target.geometry, {
-        attributes,
-        dispose: () => {
-          attributes.forEach(({ buffer }) => buffer.destroy())
-          attributes.clear()
-        },
-      } as GPUCompiled)
-    }
-
-    return attributes
-  }
-
-  protected updatePipeline(target: Mesh, attributes: GPUAttributeMap) {
-    const pipelineState = {
-      transparent: target.material.transparent,
-      cullMode: GPU_CULL_SIDES[target.material.side],
-      topology: GPU_DRAW_MODES[target.mode],
-      depthWriteEnabled: target.material.depthWrite,
-      depthCompare: (target.material.depthTest ? 'less' : 'always') as GPUCompareFunction,
-    }
-
-    const compiledMesh = this._compiled.get(target)
-    const needsUpdate =
-      !compiledMesh ||
-      Object.entries(pipelineState).some(([key, value]) => compiledMesh?.[key as keyof typeof pipelineState] !== value)
-
-    let pipeline = this._compiled.get(target)?.pipeline
-
-    if (needsUpdate) {
-      const buffers: GPUAttribute[] = []
-      attributes.forEach((attribute, name) => {
-        if (name === 'index') return
-        buffers.push(attribute)
-      })
-
-      // @ts-expect-error
-      const colorAttachments = this._renderPass?.colorAttachments.length ?? 1
-
-      pipeline = this.device.createRenderPipeline({
-        vertex: {
-          module: this.device.createShaderModule({ code: target.material.vertex }),
-          entryPoint: 'main',
-          buffers: buffers as GPUVertexBufferLayout[],
-        },
-        fragment: {
-          module: this.device.createShaderModule({ code: target.material.fragment }),
-          entryPoint: 'main',
-          targets: Array(colorAttachments).fill({
-            format: this.format,
-            blend: pipelineState.transparent
-              ? {
-                  alpha: {
-                    srcFactor: 'one',
-                    dstFactor: 'one-minus-src-alpha',
-                    operation: 'add',
-                  },
-                  color: {
-                    srcFactor: 'src-alpha',
-                    dstFactor: 'one-minus-src-alpha',
-                    operation: 'add',
-                  },
-                }
-              : undefined,
-            writeMask: 0xf,
-          }),
-        },
-        primitive: {
-          frontFace: 'ccw',
-          cullMode: pipelineState.cullMode,
-          topology: pipelineState.topology,
-        },
-        layout: 'auto',
-        depthStencil: {
-          depthWriteEnabled: pipelineState.depthWriteEnabled,
-          depthCompare: pipelineState.depthCompare,
-          format: 'depth24plus-stencil8',
-        },
-      })
-
-      this._compiled.set(target, {
-        ...pipelineState,
-        pipeline,
-        dispose: () => {},
-      } as unknown as GPUCompiled)
-    }
-
-    return pipeline
-  }
-
-  /**
-   * Compiles and activates a texture.
-   */
-  protected updateTexture(uniform: Texture) {
-    const sampler = this.device.createSampler({
-      addressModeU: GPU_TEXTURE_WRAPPINGS[uniform.wrapS] as GPUAddressMode,
-      addressModeV: GPU_TEXTURE_WRAPPINGS[uniform.wrapT] as GPUAddressMode,
-      magFilter: GPU_TEXTURE_FILTERS[uniform.magFilter],
-      minFilter: GPU_TEXTURE_FILTERS[uniform.minFilter],
-      mipmapFilter: uniform.generateMipmaps ? GPU_TEXTURE_FILTERS[uniform.minFilter] : undefined,
-      maxAnisotropy: uniform.anisotropy,
-    })
-
-    const target = this.device.createTexture({
-      format: this.format,
-      dimension: '2d',
-      size: [uniform.image!.width, uniform.image!.width, 1],
-      usage:
-        GPUTextureUsage.COPY_DST |
-        GPUTextureUsage.TEXTURE_BINDING |
-        GPUTextureUsage.RENDER_ATTACHMENT |
-        GPUTextureUsage.COPY_SRC,
-      mipLevelCount: uniform.generateMipmaps
-        ? Math.floor(Math.log2(Math.max(uniform.image!.width, uniform.image!.height))) + 1
-        : undefined,
-    })
-
-    this.device.queue.copyExternalImageToTexture(
-      { source: uniform.image!, flipY: uniform.flipY },
-      { texture: target },
-      [uniform.image!.width, uniform.image!.height],
-    )
-
-    uniform.needsUpdate = false
-
-    return { sampler, target }
-  }
-
-  protected updateUniforms(pipeline: GPURenderPipeline, target: Mesh) {
-    let UBO = this._compiled.get(target.material)?.UBO!
-
-    if (!UBO) {
-      UBO = { uniforms: new Map() }
-
-      let binding = 0
-      const entries: GPUBindGroupEntry[] = []
-
-      // Parse used uniforms for std140
-      const parsed = parseUniforms(target.material.vertex, target.material.fragment)
-      if (parsed) {
-        // Init parsed uniforms
-        for (const name of parsed) {
-          UBO.uniforms.set(name, cloneUniform(target.material.uniforms[name]))
-        }
-
-        // Create UBO
-        UBO.data = std140(Array.from(UBO.uniforms.values()))
-        UBO.buffer = this.createBuffer(UBO.data, GPUBufferUsage.UNIFORM)
-        this.writeBuffer(UBO.buffer, UBO.data)
-
-        binding = entries.push({
-          binding,
-          resource: {
-            buffer: UBO.buffer,
-          },
-        })
-      }
-
-      for (const name in target.material.uniforms) {
-        const uniform = target.material.uniforms[name]
-        if (uniform instanceof Texture) {
-          if (!this._textures.get(uniform) || uniform.needsUpdate) {
-            const { sampler, target } = this.updateTexture(uniform)
-            this._textures.set(uniform, {
-              sampler,
-              target,
-              dispose: () => {
-                target.destroy()
-              },
-            })
-          }
-
-          const { sampler, target } = this._textures.get(uniform)!
-
-          binding = entries.push(
-            {
-              binding,
-              resource: sampler,
-            },
-            {
-              binding: binding + 1,
-              resource: target.createView(),
-            },
-          )
-        }
-      }
-
-      // Bind entries
-      UBO.bindGroup = this.device.createBindGroup({
-        layout: pipeline.getBindGroupLayout(0),
-        entries,
-      })
-
-      this._compiled.set(target.material, {
-        UBO,
-        dispose: () => {
-          if (UBO.buffer) UBO.buffer.destroy()
-        },
-      } as GPUCompiled)
-    } else {
-      // Init layout
-      let layoutNeedsUpdate = false
-      let binding = 0
-      const entries: GPUBindGroupEntry[] = []
-
-      // Add UBO to layout if present
-      if (UBO.buffer) {
-        binding = entries.push({
-          binding,
-          resource: {
-            buffer: UBO.buffer,
-          },
-        })
-      }
-
-      // Update textures flagged for update
-      for (const name in target.material.uniforms) {
-        const uniform = target.material.uniforms[name]
-        if (uniform instanceof Texture && uniform.needsUpdate) {
-          const prev = this._textures.get(uniform)!
-          if (prev) prev.dispose()
-
-          const { sampler, target } = this.updateTexture(uniform)
-
-          this._textures.set(uniform, {
-            sampler,
-            target,
-            dispose: () => {
-              target.destroy()
-            },
-          })
-
-          binding = entries.push(
-            {
-              binding,
-              resource: sampler,
-            },
-            {
-              binding: binding + 1,
-              resource: target.createView(),
-            },
-          )
-
-          layoutNeedsUpdate = true
-        }
-      }
-
-      // If an entry changed, rebuild entire layout
-      // TODO: investigate copying to previous texture queue
-      if (layoutNeedsUpdate) {
-        UBO.bindGroup = this.device.createBindGroup({
-          layout: pipeline.getBindGroupLayout(0),
-          entries,
-        })
-      }
-
-      // Check whether a uniform has changed
-      let needsUpdate = false
-      UBO.uniforms.forEach((value, name) => {
-        const uniform = target.material.uniforms[name]
-        if (!uniformsEqual(value, uniform)) {
-          UBO.uniforms.set(name, cloneUniform(uniform))
-          needsUpdate = true
-        }
-      })
-
-      // If a uniform changed, rebuild entire buffer
-      // TODO: expand writeBuffer to subdata at affected indices instead
-      if (needsUpdate) {
-        this.writeBuffer(UBO.buffer!, std140(Array.from(UBO.uniforms.values()), UBO.data))
-      }
-    }
-
-    return UBO
-  }
-
-  /**
-   * Compiles and binds a render target to render into.
-   */
-  setRenderTarget(renderTarget: RenderTarget | null) {
-    if (!renderTarget) return void (this._renderPass = null)
-
-    const views: GPUTextureView[] = []
-
-    for (const texture of renderTarget.textures) {
-      if (!this._textures.has(texture) || texture.needsUpdate) {
-        const prev = this._textures.get(texture)
-        if (prev) prev.target.destroy()
-
-        const sampler = this.device.createSampler({
-          magFilter: GPU_TEXTURE_FILTERS[texture.magFilter],
-          minFilter: GPU_TEXTURE_FILTERS[texture.minFilter],
-        })
-
-        const target = this.device.createTexture({
-          format: this.format,
-          dimension: '2d',
-          size: [renderTarget.width, renderTarget.height, 1],
-          usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT,
-        })
-
-        texture.needsUpdate = false
-
-        this._textures.set(texture, {
-          sampler,
-          target,
-          dispose: () => {
-            target.destroy()
-          },
-        })
-      }
-
-      const compiled = this._textures.get(texture)!
-      views.push(compiled.target.createView())
-    }
-
-    const prev = this._renderTargets.get(renderTarget)
-    if (prev) prev.dispose()
-
-    const depthTexture = this.device.createTexture({
-      size: [renderTarget.width, renderTarget.height, 1],
-      format: 'depth24plus-stencil8',
-      usage: GPUTextureUsage.RENDER_ATTACHMENT,
-    })
-    const depthTextureView = depthTexture.createView()
-
-    this._renderTargets.set(renderTarget, {
-      depthTexture,
-      dispose: () => {
-        depthTexture.destroy()
-      },
-    })
-
-    this._renderPass = {
-      colorAttachments: views.map((view) => ({
-        view,
-        clearValue: {
-          r: this.clearColor.r * this.clearAlpha,
-          g: this.clearColor.g * this.clearAlpha,
-          b: this.clearColor.b * this.clearAlpha,
-          a: this.clearAlpha,
-        },
-        loadOp: 'clear',
-        storeOp: 'store',
-      })),
-      depthStencilAttachment: {
-        view: depthTextureView,
-        depthClearValue: 1,
-        depthLoadOp: 'clear',
-        depthStoreOp: 'store',
-        stencilClearValue: 0,
-        stencilLoadOp: 'clear',
-        stencilStoreOp: 'store',
-      },
-    }
   }
 
   compile(target: Mesh, camera?: Camera) {
@@ -589,11 +522,134 @@ export class WebGPURenderer extends Renderer {
       target.normalMatrix.getNormalMatrix(target.modelViewMatrix)
     }
 
-    const attributes = this.updateGeometry(target)
-    const pipeline = this.updatePipeline(target, attributes)!
-    const UBO = this.updateUniforms(pipeline, target)
+    // Create pipeline and initial layout on first compile
+    if (!this._pipelines.has(target)) {
+      const pipeline = new WebGPURenderPipeline(this.device, this.format)
+      this._pipelines.set(target, pipeline)
 
-    return { attributes, pipeline, UBO }
+      // Layout resources
+      const resources = []
+
+      // Init UBO
+      const parsed = parseUniforms(target.material.vertex, target.material.fragment)
+      if (parsed) {
+        const uniforms = parsed.reduce((acc, key) => ({ ...acc, [key]: target.material.uniforms[key] }), {})
+        const UBO = new WebGPUUniformBuffer(this.device, uniforms)
+        pipeline.UBOs.set(0, UBO)
+        resources.push(UBO)
+      }
+
+      // Init textures
+      for (const name in target.material.uniforms) {
+        const uniform = target.material.uniforms[name]
+        if (uniform instanceof Texture) {
+          if (!this._textures.has(uniform)) {
+            const texture = new WebGPUTextureObject(this.device, this.format)
+            this._textures.set(uniform, texture)
+          }
+
+          const texture = this._textures.get(uniform)!
+          if (uniform.needsUpdate) {
+            texture.update(uniform)
+            uniform.needsUpdate = false
+          }
+
+          resources.push(texture)
+        }
+      }
+
+      pipeline.setBindGroup(resources, 0)
+    }
+
+    // Create buffer attribute collection on first compile
+    if (!this._bufferAttributes.get(target.geometry)) {
+      this._bufferAttributes.set(target.geometry, new WebGPUBufferAttributes(this.device, target.geometry.attributes))
+    }
+    const bufferAttributes = this._bufferAttributes.get(target.geometry)!
+    bufferAttributes.update(target.geometry.attributes)
+
+    // Update pipeline state
+    const pipeline = this._pipelines.get(target)!
+    // @ts-ignore
+    const colorAttachments = this._renderPass?.colorAttachments.length ?? 1
+    pipeline.update(target, bufferAttributes, colorAttachments)
+
+    // Update uniforms
+    pipeline.UBOs.forEach((UBO) => UBO.update(target.material.uniforms))
+
+    for (const name in target.material.uniforms) {
+      const uniform = target.material.uniforms[name]
+      if (uniform instanceof Texture) {
+        const texture = this._textures.get(uniform)!
+
+        if (uniform.needsUpdate) {
+          texture.update(uniform)
+          uniform.needsUpdate = false
+        }
+      }
+    }
+
+    return { pipeline, bufferAttributes }
+  }
+
+  /**
+   * Compiles and binds a render target to render into.
+   */
+  setRenderTarget(renderTarget: RenderTarget | null) {
+    if (!renderTarget) return void (this._renderPass = null)
+
+    if (!this._FBOs.has(renderTarget)) {
+      const textures = renderTarget.textures.map((texture) => {
+        if (!this._textures.has(texture)) {
+          this._textures.set(texture, new WebGPUTextureObject(this.device, this.format))
+        }
+
+        const compiled = this._textures.get(texture)!
+        if (texture.needsUpdate) {
+          compiled.update(texture, renderTarget.width, renderTarget.height)
+          texture.needsUpdate = false
+        }
+
+        return compiled
+      })
+
+      this._FBOs.set(
+        renderTarget,
+        new WebGPUFBO(
+          this.device,
+          renderTarget.width,
+          renderTarget.height,
+          renderTarget.count,
+          renderTarget.samples,
+          textures,
+        ),
+      )
+    }
+
+    const compiled = this._FBOs.get(renderTarget)!
+
+    this._renderPass = {
+      colorAttachments: compiled.views.map((view) => ({
+        view,
+        clearValue: {
+          r: this.clearColor.r * this.clearAlpha,
+          g: this.clearColor.g * this.clearAlpha,
+          b: this.clearColor.b * this.clearAlpha,
+          a: this.clearAlpha,
+        },
+        loadOp: 'clear',
+        storeOp: 'store',
+      })),
+      depthStencilAttachment: {
+        view: compiled.depthTextureView,
+        depthClearValue: 1,
+        depthLoadOp: 'clear',
+        depthStoreOp: 'store',
+        stencilClearValue: 0,
+        stencilLoadOp: 'clear',
+        stencilStoreOp: 'store',
+      },
+    }
   }
 
   render(scene: Object3D, camera?: Camera) {
@@ -642,17 +698,8 @@ export class WebGPURenderer extends Renderer {
       const compiled = this.compile(child, camera)
 
       // Bind
-      passEncoder.setPipeline(compiled.pipeline)
-      if (compiled.UBO.bindGroup) passEncoder.setBindGroup(0, compiled.UBO.bindGroup)
-
-      compiled.attributes.forEach((attribute, name) => {
-        if (name === 'index') {
-          const indexFormat = child.geometry.attributes[name].data instanceof Uint32Array ? 'uint32' : 'uint16'
-          passEncoder.setIndexBuffer(attribute.buffer, indexFormat)
-        } else {
-          passEncoder.setVertexBuffer(attribute.slot!, attribute.buffer)
-        }
-      })
+      compiled.pipeline.bind(passEncoder)
+      compiled.bufferAttributes.bind(passEncoder)
 
       // Alternate drawing for indexed and non-indexed children
       const { index, position } = child.geometry.attributes
