@@ -1,4 +1,4 @@
-import type { Uniform } from './core/Program'
+import type { Uniform } from './core/Material'
 import type { Texture } from './core/Texture'
 
 /**

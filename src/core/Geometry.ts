@@ -1,12 +1,41 @@
 import { uuid } from '../utils'
-import type { Attribute } from './Program'
+
+export type AttributeData =
+  | Float32Array
+  | Int8Array
+  | Int16Array
+  | Int32Array
+  | Uint8Array
+  | Uint8ClampedArray
+  | Uint16Array
+  | Uint32Array
+
+/**
+ * Represents a buffer attribute.
+ */
+export interface Attribute {
+  /**
+   * Attribute data view.
+   */
+  data: AttributeData
+  /**
+   * The size (per vertex) of the data array. Used to allocate data to each vertex.
+   */
+  size: 1 | 2 | 3 | 4
+  /**
+   * Used internally to mark attribute for updates.
+   */
+  needsUpdate?: boolean
+}
+
+export interface AttributeList {
+  [name: string]: Attribute
+}
 
 /**
  * Geometry constructor parameters. Accepts an object of program attributes.
  */
-export interface GeometryOptions {
-  [name: string]: Attribute
-}
+export interface GeometryOptions extends AttributeList {}
 
 /**
  * Constructs a geometry object. Used to store program attributes.
@@ -14,7 +43,7 @@ export interface GeometryOptions {
 export class Geometry {
   readonly isGeometry = true
   readonly uuid: string
-  readonly attributes: { [name: string]: Attribute } = {}
+  readonly attributes: AttributeList = {}
 
   constructor(options?: GeometryOptions) {
     this.uuid = uuid()

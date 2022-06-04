@@ -1,14 +1,15 @@
-import { WebGLRenderer, Program, Texture } from 'opusgl'
+import { WebGLRenderer, Geometry, Material, Mesh, Texture } from 'opusgl'
 
 const renderer = new WebGLRenderer()
 renderer.setSize(window.innerWidth, window.innerHeight)
 document.body.appendChild(renderer.canvas)
 
-const program = new Program({
-  attributes: {
-    position: { size: 2, data: new Float32Array([-1, -1, 3, -1, -1, 3]) },
-    uv: { size: 2, data: new Float32Array([0, 0, 2, 0, 0, 2]) },
-  },
+const geometry = new Geometry({
+  position: { size: 2, data: new Float32Array([-1, -1, 3, -1, -1, 3]) },
+  uv: { size: 2, data: new Float32Array([0, 0, 2, 0, 0, 2]) },
+})
+
+const material = new Material({
   uniforms: {
     time: 0,
     color: await new Texture().fromData(new Uint8Array([76, 51, 128, 255]), 1, 1),
@@ -39,13 +40,15 @@ const program = new Program({
   `,
 })
 
+const mesh = new Mesh(geometry, material)
+
 window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight)
 })
 
 const animate = (time) => {
   requestAnimationFrame(animate)
-  program.uniforms.time = time / 1000
-  renderer.render(program)
+  mesh.material.uniforms.time = time / 1000
+  renderer.render(mesh)
 }
 requestAnimationFrame(animate)

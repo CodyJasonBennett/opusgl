@@ -1,5 +1,6 @@
 import { type Disposable, Compiled, Renderer } from '../core/Renderer'
-import { Program, type Uniform, type UniformList, type AttributeList, type AttributeData } from '../core/Program'
+import { type Uniform, type UniformList } from '../core/Material'
+import { type AttributeList, type AttributeData } from '../core/Geometry'
 import { Texture, type TextureOptions } from '../core/Texture'
 import type { Mesh } from '../core/Mesh'
 import type { Object3D } from '../core/Object3D'
@@ -837,24 +838,17 @@ export class WebGLRenderer extends Renderer {
     )
   }
 
-  compile(target: Mesh | Program, camera?: Camera) {
-    const isProgram = target instanceof Program
-
-    const material = isProgram ? target : target.material
-    const geometry = isProgram ? target : target.geometry
-
+  compile(target: Mesh, camera?: Camera) {
     // Update mesh built-ins
-    if (!isProgram) {
-      target.material.uniforms.modelMatrix = target.matrix
+    target.material.uniforms.modelMatrix = target.matrix
 
-      if (camera) {
-        target.material.uniforms.projectionMatrix = camera.projectionMatrix
-        target.material.uniforms.viewMatrix = camera.viewMatrix
-        target.material.uniforms.normalMatrix = target.normalMatrix
+    if (camera) {
+      target.material.uniforms.projectionMatrix = camera.projectionMatrix
+      target.material.uniforms.viewMatrix = camera.viewMatrix
+      target.material.uniforms.normalMatrix = target.normalMatrix
 
-        target.modelViewMatrix.copy(camera.viewMatrix).multiply(target.matrix)
-        target.normalMatrix.getNormalMatrix(target.modelViewMatrix)
-      }
+      target.modelViewMatrix.copy(camera.viewMatrix).multiply(target.matrix)
+      target.normalMatrix.getNormalMatrix(target.modelViewMatrix)
     }
 
     // Compile mesh VAO
@@ -867,23 +861,23 @@ export class WebGLRenderer extends Renderer {
     VAO.bind()
 
     // Compile program
-    if (!this._programs.has(material)) {
-      const program = new WebGLProgramObject(this.gl, material.vertex, material.fragment)
-      this._programs.set(material, program)
+    if (!this._programs.has(target.material)) {
+      const program = new WebGLProgramObject(this.gl, target.material.vertex, target.material.fragment)
+      this._programs.set(target.material, program)
 
       // Parse used uniforms
-      const parsed = parseUniforms(material.vertex, material.fragment)
+      const parsed = parseUniforms(target.material.vertex, target.material.fragment)
 
       // Set std140 uniforms
       if (parsed) {
-        const uniforms = parsed.reduce((acc, key) => ({ ...acc, [key]: material.uniforms[key] }), {})
+        const uniforms = parsed.reduce((acc, key) => ({ ...acc, [key]: target.material.uniforms[key] }), {})
         const UBO = new WebGLUniformBuffer(this.gl, uniforms, program.UBOs.size)
         program.UBOs.set(UBO.index, UBO)
       }
 
       // Set texture uniform samplers outside of std140
-      for (const name in material.uniforms) {
-        const uniform = material.uniforms[name]
+      for (const name in target.material.uniforms) {
+        const uniform = target.material.uniforms[name]
 
         if (uniform instanceof Texture) {
           program.setUniform(name, uniform)
@@ -899,12 +893,12 @@ export class WebGLRenderer extends Renderer {
     }
 
     // Update uniforms
-    const program = this._programs.get(material)!
-    program.UBOs.forEach((UBO) => UBO.update(material.uniforms))
+    const program = this._programs.get(target.material)!
+    program.UBOs.forEach((UBO) => UBO.update(target.material.uniforms))
 
     // Update textures outside of std140
     program.textureLocations.forEach((_, name) => {
-      const texture = material.uniforms[name] as Texture
+      const texture = target.material.uniforms[name] as Texture
       const compiled = this._textures.get(texture)!
       if (texture.needsUpdate) {
         compiled.update(texture)
@@ -913,29 +907,29 @@ export class WebGLRenderer extends Renderer {
     })
 
     // If program was invalidated, recompile buffer attributes
-    const prevBufferAttributes = this._bufferAttributes.get(geometry)
+    const prevBufferAttributes = this._bufferAttributes.get(target.geometry)
     if (prevBufferAttributes && prevBufferAttributes.program !== program) {
       prevBufferAttributes.dispose()
     }
 
     // Compile buffer attributes
-    if (!this._bufferAttributes.has(geometry)) {
+    if (!this._bufferAttributes.has(target.geometry)) {
       const bufferAttributes = new WebGLBufferAttributes(this.gl, program)
-      this._bufferAttributes.set(geometry, bufferAttributes)
+      this._bufferAttributes.set(target.geometry, bufferAttributes)
 
-      bufferAttributes.compileAttributes(geometry.attributes)
+      bufferAttributes.compileAttributes(target.geometry.attributes)
     }
 
     // Update buffer attributes
-    const bufferAttributes = this._bufferAttributes.get(geometry)!
-    bufferAttributes.updateAttributes(geometry.attributes)
+    const bufferAttributes = this._bufferAttributes.get(target.geometry)!
+    bufferAttributes.updateAttributes(target.geometry.attributes)
 
     // Update material state
-    this.setCullFace(GL_CULL_SIDES[material.side])
-    this.setDepthTest(material.depthTest)
-    this.setDepthMask(material.depthWrite)
+    this.setCullFace(GL_CULL_SIDES[target.material.side])
+    this.setDepthTest(target.material.depthTest)
+    this.setDepthMask(target.material.depthWrite)
 
-    if (material.transparent) {
+    if (target.material.transparent) {
       this.gl.enable(this.gl.BLEND)
       this.gl.blendFunc(this._params.premultipliedAlpha ? this.gl.ONE : this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA)
     } else {
@@ -999,18 +993,18 @@ export class WebGLRenderer extends Renderer {
     if (compiled) compiled.blit()
   }
 
-  render(scene: Object3D | Program, camera?: Camera) {
+  render(scene: Object3D, camera?: Camera) {
     // Clear screen
     if (this.autoClear) this.clear()
 
     // Update scene matrices
-    if (!(scene instanceof Program) && scene.autoUpdate) scene.updateMatrix()
+    if (scene.autoUpdate) scene.updateMatrix()
 
     // Update camera matrices
     if (camera?.autoUpdate && camera.parent === null) camera.updateMatrix()
 
     // Compile & render visible children
-    const renderList = scene instanceof Program ? [scene] : this.sort(scene, camera)
+    const renderList = this.sort(scene, camera)
     for (const child of renderList) {
       // Compile on first render, otherwise update
       const { VAO } = this.compile(child, camera)
@@ -1019,7 +1013,7 @@ export class WebGLRenderer extends Renderer {
       VAO.bind()
 
       // Alternate drawing for indexed and non-indexed children
-      const { index, position } = child instanceof Program ? child.attributes : child.geometry.attributes
+      const { index, position } = child.geometry.attributes
       const mode = GL_DRAW_MODES[child.mode]
       if (index) {
         this.gl.drawElements(mode, index.data.length / index.size, getDataType(index.data)!, 0)

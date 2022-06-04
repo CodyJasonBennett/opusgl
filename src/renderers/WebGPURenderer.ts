@@ -1,10 +1,9 @@
 /// <reference types="@webgpu/types" />
 import { Disposable, Compiled, Renderer } from '../core/Renderer'
-import { AttributeData, Program } from '../core/Program'
 import { Texture } from '../core/Texture'
 import type { RenderTarget } from '../core/RenderTarget'
-import type { Uniform } from '../core/Program'
-import type { Geometry } from '../core/Geometry'
+import type { Uniform } from '../core/Material'
+import type { AttributeData, Geometry } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Camera } from '../core/Camera'
 import type { Object3D } from '../core/Object3D'
@@ -169,7 +168,7 @@ export class WebGPURenderer extends Renderer {
     return buffer
   }
 
-  protected updateAttributes(geometry: Geometry | Program) {
+  protected updateAttributes(geometry: Geometry) {
     const { attributes } = this._compiled.get(geometry)!
 
     attributes.forEach((compiled, name) => {
@@ -184,18 +183,16 @@ export class WebGPURenderer extends Renderer {
     return attributes
   }
 
-  protected updateGeometry(target: Mesh | Program) {
-    const geometry = target instanceof Program ? target : target.geometry
-
+  protected updateGeometry(target: Mesh) {
     let attributes: GPUAttributeMap
 
-    if (this._compiled.has(geometry)) {
-      attributes = this.updateAttributes(geometry)
+    if (this._compiled.has(target.geometry)) {
+      attributes = this.updateAttributes(target.geometry)
     } else {
       attributes = new Map()
 
       let offset = 0
-      Object.entries(geometry.attributes).forEach(([name, attribute], index) => {
+      Object.entries(target.geometry.attributes).forEach(([name, attribute], index) => {
         if (name === 'index') {
           offset -= 1
           const buffer = this.createBuffer(attribute.data, GPUBufferUsage.INDEX)
@@ -223,29 +220,25 @@ export class WebGPURenderer extends Renderer {
         }
       })
 
-      if (!(target instanceof Program)) {
-        this._compiled.set(geometry, {
-          attributes,
-          dispose: () => {
-            attributes.forEach(({ buffer }) => buffer.destroy())
-            attributes.clear()
-          },
-        } as GPUCompiled)
-      }
+      this._compiled.set(target.geometry, {
+        attributes,
+        dispose: () => {
+          attributes.forEach(({ buffer }) => buffer.destroy())
+          attributes.clear()
+        },
+      } as GPUCompiled)
     }
 
     return attributes
   }
 
-  protected updatePipeline(target: Mesh | Program, attributes: GPUAttributeMap) {
-    const material = target instanceof Program ? target : target.material
-
+  protected updatePipeline(target: Mesh, attributes: GPUAttributeMap) {
     const pipelineState = {
-      transparent: material.transparent,
-      cullMode: GPU_CULL_SIDES[material.side],
+      transparent: target.material.transparent,
+      cullMode: GPU_CULL_SIDES[target.material.side],
       topology: GPU_DRAW_MODES[target.mode],
-      depthWriteEnabled: material.depthWrite,
-      depthCompare: (material.depthTest ? 'less' : 'always') as GPUCompareFunction,
+      depthWriteEnabled: target.material.depthWrite,
+      depthCompare: (target.material.depthTest ? 'less' : 'always') as GPUCompareFunction,
     }
 
     const compiledMesh = this._compiled.get(target)
@@ -267,12 +260,12 @@ export class WebGPURenderer extends Renderer {
 
       pipeline = this.device.createRenderPipeline({
         vertex: {
-          module: this.device.createShaderModule({ code: material.vertex }),
+          module: this.device.createShaderModule({ code: target.material.vertex }),
           entryPoint: 'main',
           buffers: buffers as GPUVertexBufferLayout[],
         },
         fragment: {
-          module: this.device.createShaderModule({ code: material.fragment }),
+          module: this.device.createShaderModule({ code: target.material.fragment }),
           entryPoint: 'main',
           targets: Array(colorAttachments).fill({
             format: this.format,
@@ -306,13 +299,11 @@ export class WebGPURenderer extends Renderer {
         },
       })
 
-      if (!(target instanceof Program)) {
-        this._compiled.set(target, {
-          ...pipelineState,
-          pipeline,
-          dispose: () => {},
-        } as unknown as GPUCompiled)
-      }
+      this._compiled.set(target, {
+        ...pipelineState,
+        pipeline,
+        dispose: () => {},
+      } as unknown as GPUCompiled)
     }
 
     return pipeline
@@ -356,10 +347,8 @@ export class WebGPURenderer extends Renderer {
     return { sampler, target }
   }
 
-  protected updateUniforms(pipeline: GPURenderPipeline, target: Mesh | Program) {
-    const material = target instanceof Program ? target : target.material
-
-    let UBO = this._compiled.get(material)?.UBO!
+  protected updateUniforms(pipeline: GPURenderPipeline, target: Mesh) {
+    let UBO = this._compiled.get(target.material)?.UBO!
 
     if (!UBO) {
       UBO = { uniforms: new Map() }
@@ -368,11 +357,11 @@ export class WebGPURenderer extends Renderer {
       const entries: GPUBindGroupEntry[] = []
 
       // Parse used uniforms for std140
-      const parsed = parseUniforms(material.vertex, material.fragment)
+      const parsed = parseUniforms(target.material.vertex, target.material.fragment)
       if (parsed) {
         // Init parsed uniforms
         for (const name of parsed) {
-          UBO.uniforms.set(name, cloneUniform(material.uniforms[name]))
+          UBO.uniforms.set(name, cloneUniform(target.material.uniforms[name]))
         }
 
         // Create UBO
@@ -388,8 +377,8 @@ export class WebGPURenderer extends Renderer {
         })
       }
 
-      for (const name in material.uniforms) {
-        const uniform = material.uniforms[name]
+      for (const name in target.material.uniforms) {
+        const uniform = target.material.uniforms[name]
         if (uniform instanceof Texture) {
           if (!this._textures.get(uniform) || uniform.needsUpdate) {
             const { sampler, target } = this.updateTexture(uniform)
@@ -423,14 +412,12 @@ export class WebGPURenderer extends Renderer {
         entries,
       })
 
-      if (!(target instanceof Program)) {
-        this._compiled.set(material, {
-          UBO,
-          dispose: () => {
-            if (UBO.buffer) UBO.buffer.destroy()
-          },
-        } as GPUCompiled)
-      }
+      this._compiled.set(target.material, {
+        UBO,
+        dispose: () => {
+          if (UBO.buffer) UBO.buffer.destroy()
+        },
+      } as GPUCompiled)
     } else {
       // Init layout
       let layoutNeedsUpdate = false
@@ -448,8 +435,8 @@ export class WebGPURenderer extends Renderer {
       }
 
       // Update textures flagged for update
-      for (const name in material.uniforms) {
-        const uniform = material.uniforms[name]
+      for (const name in target.material.uniforms) {
+        const uniform = target.material.uniforms[name]
         if (uniform instanceof Texture && uniform.needsUpdate) {
           const prev = this._textures.get(uniform)!
           if (prev) prev.dispose()
@@ -491,7 +478,7 @@ export class WebGPURenderer extends Renderer {
       // Check whether a uniform has changed
       let needsUpdate = false
       UBO.uniforms.forEach((value, name) => {
-        const uniform = material.uniforms[name]
+        const uniform = target.material.uniforms[name]
         if (!uniformsEqual(value, uniform)) {
           UBO.uniforms.set(name, cloneUniform(uniform))
           needsUpdate = true
@@ -589,21 +576,17 @@ export class WebGPURenderer extends Renderer {
     }
   }
 
-  compile(target: Mesh | Program, camera?: Camera) {
-    const isProgram = target instanceof Program
-
+  compile(target: Mesh, camera?: Camera) {
     // Update built-ins
-    if (!isProgram) {
-      target.material.uniforms.modelMatrix = target.matrix
+    target.material.uniforms.modelMatrix = target.matrix
 
-      if (camera) {
-        target.material.uniforms.projectionMatrix = camera.projectionMatrix
-        target.material.uniforms.viewMatrix = camera.viewMatrix
-        target.material.uniforms.normalMatrix = target.normalMatrix
+    if (camera) {
+      target.material.uniforms.projectionMatrix = camera.projectionMatrix
+      target.material.uniforms.viewMatrix = camera.viewMatrix
+      target.material.uniforms.normalMatrix = target.normalMatrix
 
-        target.modelViewMatrix.copy(camera.viewMatrix).multiply(target.matrix)
-        target.normalMatrix.getNormalMatrix(target.modelViewMatrix)
-      }
+      target.modelViewMatrix.copy(camera.viewMatrix).multiply(target.matrix)
+      target.normalMatrix.getNormalMatrix(target.modelViewMatrix)
     }
 
     const attributes = this.updateGeometry(target)
@@ -613,7 +596,7 @@ export class WebGPURenderer extends Renderer {
     return { attributes, pipeline, UBO }
   }
 
-  render(scene: Object3D | Program, camera?: Camera) {
+  render(scene: Object3D, camera?: Camera) {
     const commandEncoder = this.device.createCommandEncoder()
     const passEncoder = commandEncoder.beginRenderPass(
       this._renderPass ?? {
@@ -647,13 +630,13 @@ export class WebGPURenderer extends Renderer {
     passEncoder.setScissorRect(this.scissor.x, this.scissor.y, this.scissor.width, this.scissor.height)
 
     // Update scene matrices
-    if (!(scene instanceof Program)) scene.updateMatrix()
+    if (scene.autoUpdate) scene.updateMatrix()
 
     // Update camera matrices
-    if (camera) camera.updateMatrix()
+    if (camera?.autoUpdate) camera.updateMatrix()
 
     // Render children
-    const renderList = scene instanceof Program ? [scene] : this.sort(scene, camera)
+    const renderList = this.sort(scene, camera)
     for (const child of renderList) {
       // Compile on first render, otherwise update
       const compiled = this.compile(child, camera)
@@ -671,7 +654,7 @@ export class WebGPURenderer extends Renderer {
       })
 
       // Alternate drawing for indexed and non-indexed children
-      const { index, position } = child instanceof Program ? child.attributes : child.geometry.attributes
+      const { index, position } = child.geometry.attributes
       if (index) {
         passEncoder.drawIndexed(index.data.length / index.size)
       } else {

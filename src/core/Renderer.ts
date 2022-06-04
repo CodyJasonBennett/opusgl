@@ -1,5 +1,4 @@
 import { Color } from '../math/Color'
-import type { Program } from './Program'
 import type { Geometry } from './Geometry'
 import type { Material } from './Material'
 import type { Mesh } from './Mesh'
@@ -12,7 +11,7 @@ export interface Disposable {
   dispose: () => void
 }
 
-export type Compilable = Program | Geometry | Material | Mesh | Texture | RenderTarget
+export type Compilable = Geometry | Material | Mesh | Texture | RenderTarget
 
 export class Compiled<Compiled extends Disposable> extends Map<Compilable, Compiled> {
   // @ts-expect-error
@@ -142,10 +141,10 @@ export abstract class Renderer {
   /**
    * Compiles a mesh or program and sets initial uniforms.
    */
-  abstract compile(target: Mesh | Program, camera?: Camera): void
+  abstract compile(target: Mesh, camera?: Camera): void
 
   /**
    * Renders a scene of objects with an optional camera.
    */
-  abstract render(scene: Object3D | Program, camera?: Camera): void
+  abstract render(scene: Object3D, camera?: Camera): void
 }
