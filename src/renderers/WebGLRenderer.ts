@@ -1,6 +1,6 @@
 import { type Disposable, Compiled, Renderer } from '../core/Renderer'
 import { type Uniform, type UniformList } from '../core/Material'
-import { type AttributeList, type AttributeData } from '../core/Geometry'
+import { type AttributeList, type AttributeData, type Attribute } from '../core/Geometry'
 import { Texture, type TextureOptions } from '../core/Texture'
 import type { Mesh } from '../core/Mesh'
 import type { Object3D } from '../core/Object3D'
@@ -188,7 +188,8 @@ export class WebGLUniformBuffer extends WebGLBufferObject {
 export class WebGLProgramObject {
   readonly gl: WebGL2RenderingContext
   readonly program: WebGLProgram
-  readonly activeUniforms = new Map<string, { size: number; type: number; location: WebGLUniformLocation }>()
+  readonly uniforms = new Map<string, { size: number; type: number; location: WebGLUniformLocation }>()
+  readonly attributes = new Map<string, { buffer: WebGLBufferObject; location: number }>()
   readonly textureLocations = new Map<string, number>()
   readonly UBOs = new Map<number, WebGLUniformBuffer>()
 
@@ -239,7 +240,7 @@ export class WebGLProgramObject {
       if (activeUniform) {
         const { name, size, type } = activeUniform
         const location = this.getUniformLocation(name)
-        this.activeUniforms.set(name, { size, type, location })
+        this.uniforms.set(name, { size, type, location })
 
         if (type === this.gl.SAMPLER_2D) {
           this.textureLocations.set(name, textureIndex)
@@ -301,7 +302,7 @@ export class WebGLProgramObject {
    * Sets a uniform outside of std140 by name.
    */
   setUniform(name: string, value: Uniform) {
-    const uniform = this.activeUniforms.get(name)
+    const uniform = this.uniforms.get(name)
     if (!uniform) return
 
     const data = (this.textureLocations.get(name) ?? value) as number | number[]
@@ -356,10 +357,34 @@ export class WebGLProgramObject {
   }
 
   /**
+   * Sets a program buffer attribute by name.
+   */
+  setAttribute(name: string, attribute: Attribute, buffer: WebGLBufferObject) {
+    const location = this.getAttributeLocation(name)
+    if (location !== -1) {
+      this.gl.enableVertexAttribArray(location)
+
+      const dataType = getDataType(attribute.data)!
+      if (dataType === this.gl.INT || dataType === this.gl.UNSIGNED_INT) {
+        this.gl.vertexAttribIPointer(location, attribute.size, dataType, 0, 0)
+      } else {
+        this.gl.vertexAttribPointer(location, attribute.size, dataType, false, 0, 0)
+      }
+    }
+
+    this.attributes.set(name, { buffer, location })
+  }
+
+  /**
    * Disposes the program from GPU memory.
    */
   dispose() {
     this.UBOs.forEach((UBO) => UBO.dispose())
+    this.bind()
+    this.attributes.forEach(({ location }) => {
+      if (location !== -1) this.gl.disableVertexAttribArray(location)
+    })
+    this.unbind()
     this.gl.deleteProgram(this.program)
   }
 }
@@ -367,48 +392,40 @@ export class WebGLProgramObject {
 /**
  * Constructs a WebGL buffer attribute manager.
  */
-export class WebGLBufferAttributes {
+export class WebGLBufferAttributes implements Disposable {
   readonly gl: WebGL2RenderingContext
-  readonly program: WebGLProgramObject
-  readonly attributes = new Map<string, { buffer: WebGLBufferObject; location: number }>()
+  readonly buffers: Map<string, WebGLBufferObject> = new Map()
+  readonly programs: WebGLProgramObject[] = []
 
-  constructor(gl: WebGL2RenderingContext, program: WebGLProgramObject) {
+  constructor(gl: WebGL2RenderingContext) {
     this.gl = gl
-    this.program = program
   }
 
   /**
    * Compiles and binds program attributes into buffers.
    */
-  compileAttributes(attributes: AttributeList) {
+  setAttributes(program: WebGLProgramObject, attributes: AttributeList) {
     for (const name in attributes) {
       const attribute = attributes[name]
-      attribute.needsUpdate = false
 
-      const type = name === 'index' ? this.gl.ELEMENT_ARRAY_BUFFER : this.gl.ARRAY_BUFFER
-      const buffer = new WebGLBufferObject(this.gl, attribute.data, type)
-
-      const location = this.program.getAttributeLocation(name)
-      if (location !== -1) {
-        this.gl.enableVertexAttribArray(location)
-
-        const dataType = getDataType(attribute.data)!
-        if (dataType === this.gl.INT || dataType === this.gl.UNSIGNED_INT) {
-          this.gl.vertexAttribIPointer(location, attribute.size, dataType, 0, 0)
-        } else {
-          this.gl.vertexAttribPointer(location, attribute.size, dataType, false, 0, 0)
-        }
+      let buffer = this.buffers.get(name)
+      if (!buffer) {
+        const type = name === 'index' ? this.gl.ELEMENT_ARRAY_BUFFER : this.gl.ARRAY_BUFFER
+        buffer = this.buffers.get(name) ?? new WebGLBufferObject(this.gl, attribute.data, type)
+        attribute.needsUpdate = false
       }
 
-      this.attributes.set(name, { buffer, location })
+      program.setAttribute(name, attribute, buffer)
     }
+
+    this.programs.push(program)
   }
 
   /**
    * Updates program attributes flagged for update.
    */
-  updateAttributes(attributes: AttributeList) {
-    this.attributes.forEach(({ buffer }, name) => {
+  update(attributes: AttributeList) {
+    this.buffers.forEach((buffer, name) => {
       const attribute = attributes[name]
       if (attribute.needsUpdate) {
         buffer.write(attribute.data)
@@ -421,10 +438,16 @@ export class WebGLBufferAttributes {
    * Disposes of program attributes from GPU memory.
    */
   dispose() {
-    this.attributes.forEach(({ buffer, location }) => {
-      buffer.dispose()
-      if (location !== -1) this.gl.disableVertexAttribArray(location)
-    })
+    this.buffers.forEach((buffer) => buffer.dispose())
+    this.buffers.clear()
+    for (const program of this.programs) {
+      program.bind()
+      program.attributes.forEach(({ location }) => {
+        if (location !== -1) this.gl.disableVertexAttribArray(location)
+      })
+      program.unbind()
+    }
+    this.programs.slice(0, this.programs.length)
   }
 }
 
@@ -906,23 +929,16 @@ export class WebGLRenderer extends Renderer {
       }
     })
 
-    // If program was invalidated, recompile buffer attributes
-    const prevBufferAttributes = this._bufferAttributes.get(target.geometry)
-    if (prevBufferAttributes && prevBufferAttributes.program !== program) {
-      prevBufferAttributes.dispose()
-    }
-
     // Compile buffer attributes
     if (!this._bufferAttributes.has(target.geometry)) {
-      const bufferAttributes = new WebGLBufferAttributes(this.gl, program)
+      const bufferAttributes = new WebGLBufferAttributes(this.gl)
       this._bufferAttributes.set(target.geometry, bufferAttributes)
-
-      bufferAttributes.compileAttributes(target.geometry.attributes)
     }
 
-    // Update buffer attributes
+    // Bind and update buffer attributes
     const bufferAttributes = this._bufferAttributes.get(target.geometry)!
-    bufferAttributes.updateAttributes(target.geometry.attributes)
+    bufferAttributes.setAttributes(program, target.geometry.attributes)
+    bufferAttributes.update(target.geometry.attributes)
 
     // Update material state
     this.setCullFace(GL_CULL_SIDES[target.material.side])
