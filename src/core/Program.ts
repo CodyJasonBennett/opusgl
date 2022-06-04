@@ -30,14 +30,16 @@ export interface UniformList {
   [name: string]: Uniform
 }
 
+export type AttributeData = Uint8Array | Uint16Array | Uint32Array | Float32Array
+
 /**
  * Represents a program attribute.
  */
 export interface Attribute {
   /**
-   * Attribute data.
+   * Attribute data view.
    */
-  data: Float32Array | Uint32Array
+  data: AttributeData
   /**
    * The size (per vertex) of the data array. Used to allocate data to each vertex.
    */

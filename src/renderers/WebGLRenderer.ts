@@ -1,5 +1,5 @@
 import { type Disposable, Compiled, Renderer } from '../core/Renderer'
-import { Program, type Uniform, type UniformList, type AttributeList } from '../core/Program'
+import { Program, type Uniform, type UniformList, type AttributeList, type AttributeData } from '../core/Program'
 import { Texture, type TextureOptions } from '../core/Texture'
 import type { Mesh } from '../core/Mesh'
 import type { Object3D } from '../core/Object3D'
@@ -60,7 +60,7 @@ export class WebGLBufferObject implements Disposable {
 
   constructor(
     gl: WebGL2RenderingContext,
-    data: Float32Array | Uint32Array | number,
+    data: AttributeData | number,
     type = gl.ARRAY_BUFFER,
     usage = gl.STATIC_DRAW,
   ) {
@@ -91,7 +91,7 @@ export class WebGLBufferObject implements Disposable {
   /**
    * Writes binary data to buffer.
    */
-  write(data: Float32Array | Uint32Array) {
+  write(data: AttributeData) {
     this.bind()
     this.gl.bufferSubData(this.type, 0, data)
   }
@@ -991,7 +991,8 @@ export class WebGLRenderer extends Renderer {
       const { index, position } = child instanceof Program ? child.attributes : child.geometry.attributes
       const mode = GL_DRAW_MODES[child.mode]
       if (index) {
-        this.gl.drawElements(mode, index.data.length / index.size, this.gl.UNSIGNED_INT, 0)
+        const typeFromBytes: { [key: number]: GLenum } = { 1: this.gl.BYTE, 2: this.gl.SHORT, 4: this.gl.UNSIGNED_INT }
+        this.gl.drawElements(mode, index.data.length / index.size, typeFromBytes[index.data.BYTES_PER_ELEMENT], 0)
       } else {
         this.gl.drawArrays(mode, 0, position.data.length / position.size)
       }

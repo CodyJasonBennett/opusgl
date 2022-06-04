@@ -1,6 +1,6 @@
 /// <reference types="@webgpu/types" />
 import { Disposable, Compiled, Renderer } from '../core/Renderer'
-import { Program } from '../core/Program'
+import { AttributeData, Program } from '../core/Program'
 import { Texture } from '../core/Texture'
 import type { RenderTarget } from '../core/RenderTarget'
 import type { Uniform } from '../core/Program'
@@ -148,7 +148,7 @@ export class WebGPURenderer extends Renderer {
   /**
    * Creates buffer and initializes it.
    */
-  writeBuffer(buffer: GPUBuffer, data: Float32Array | Uint32Array) {
+  writeBuffer(buffer: GPUBuffer, data: AttributeData) {
     this.device.queue.writeBuffer(buffer, 0, data)
     return buffer
   }
@@ -156,7 +156,7 @@ export class WebGPURenderer extends Renderer {
   /**
    * Updates a buffer.
    */
-  createBuffer(data: Float32Array | Uint32Array, usage: GPUBufferUsageFlags) {
+  createBuffer(data: AttributeData, usage: GPUBufferUsageFlags) {
     const buffer = this.device.createBuffer({
       size: data.byteLength,
       usage: usage | GPUBufferUsage.COPY_DST,
@@ -205,15 +205,19 @@ export class WebGPURenderer extends Renderer {
           const slot = index + offset
           const buffer = this.createBuffer(attribute.data, GPUBufferUsage.VERTEX)
 
+          const arrayStride = attribute.size * attribute.data.BYTES_PER_ELEMENT
+          const formatType = attribute.data instanceof Float32Array ? 'float' : 'uint'
+          const formatBits = attribute.data.BYTES_PER_ELEMENT * 8
+
           attributes.set(name, {
             slot,
             buffer,
-            arrayStride: attribute.size * attribute.data.BYTES_PER_ELEMENT,
+            arrayStride,
             attributes: [
               {
                 shaderLocation: slot,
                 offset: 0,
-                format: `float32x${attribute.size}`,
+                format: `${formatType}${formatBits}x${attribute.size}`,
               },
             ],
           } as GPUAttribute)
