@@ -1,5 +1,5 @@
 import { type Disposable, Compiled, Renderer } from '../core/Renderer'
-import { Program, type Uniform } from '../core/Program'
+import { Program, type Uniform, type UniformList, type AttributeList } from '../core/Program'
 import { Texture, type TextureOptions } from '../core/Texture'
 import type { Mesh } from '../core/Mesh'
 import type { Object3D } from '../core/Object3D'
@@ -63,17 +63,14 @@ export class WebGLBufferObject implements Disposable {
     data: Float32Array | Uint32Array | number,
     type = gl.ARRAY_BUFFER,
     usage = gl.STATIC_DRAW,
-    index?: number,
   ) {
     this.gl = gl
     this.buffer = this.gl.createBuffer()!
     this.type = type
     this.usage = usage
 
-    if (typeof index === 'number') this.gl.bindBufferBase(this.type, index, this.buffer)
     this.bind()
-
-    // @ts-expect-error
+    // @ts-ignore
     this.gl.bufferData(this.type, data, this.usage)
   }
 
@@ -108,6 +105,58 @@ export class WebGLBufferObject implements Disposable {
 }
 
 /**
+ * Constructs a WebGL uniform buffer. Packs uniforms into a buffer via std140.
+ */
+export class WebGLUniformBuffer extends WebGLBufferObject {
+  readonly data: Float32Array
+  readonly uniforms: Map<string, Uniform>
+  readonly index: number
+
+  constructor(gl: WebGL2RenderingContext, uniforms: UniformList, index = 0) {
+    const memoizedUniforms = new Map<string, Uniform>()
+    for (const name in uniforms) {
+      const uniform = uniforms[name]
+      memoizedUniforms.set(name, cloneUniform(uniform))
+    }
+
+    const data = std140(Array.from(memoizedUniforms.values()))
+
+    super(gl, data.byteLength, gl.UNIFORM_BUFFER, gl.DYNAMIC_DRAW)
+    this.gl.bindBufferBase(this.type, index, this.buffer)
+
+    this.data = data
+    this.uniforms = memoizedUniforms
+    this.index = index
+  }
+
+  /**
+   * Updates packed uniforms.
+   */
+  update(uniforms: UniformList) {
+    // Check whether a uniform has changed
+    let needsUpdate = false
+    this.uniforms.forEach((value, name) => {
+      const uniform = uniforms[name]
+      if (uniform == null || uniformsEqual(value, uniform)) return
+
+      this.uniforms.set(name, cloneUniform(uniform))
+      needsUpdate = true
+    })
+
+    // If a uniform changed, rebuild entire buffer
+    // TODO: expand write to subdata at affected indices instead
+    if (needsUpdate) {
+      this.write(std140(Array.from(this.uniforms.values()), this.data))
+    }
+  }
+
+  dispose() {
+    super.dispose()
+    this.uniforms.clear()
+  }
+}
+
+/**
  * Constructs a WebGL program. Manages active textures and uniforms.
  */
 export class WebGLProgramObject {
@@ -115,7 +164,7 @@ export class WebGLProgramObject {
   readonly program: WebGLProgram
   readonly activeUniforms = new Map<string, { size: number; type: number; location: WebGLUniformLocation }>()
   readonly textureLocations = new Map<string, number>()
-  readonly UBOs = new Map<number, { data: Float32Array; buffer: WebGLBufferObject; uniforms: Map<string, Uniform> }>()
+  readonly UBOs = new Map<number, WebGLUniformBuffer>()
 
   constructor(gl: WebGL2RenderingContext, vertex: string, fragment: string) {
     this.gl = gl
@@ -281,50 +330,10 @@ export class WebGLProgramObject {
   }
 
   /**
-   * Compiles uniforms at an optional index into a uniform buffer.
-   */
-  compileUniforms(uniforms: Program['uniforms'], index = 0) {
-    const memoizedUniforms = new Map()
-    for (const name in uniforms) {
-      const uniform = uniforms[name]
-      memoizedUniforms.set(name, cloneUniform(uniform))
-    }
-
-    const data = std140(Array.from(memoizedUniforms.values()))
-    const buffer = new WebGLBufferObject(this.gl, data.byteLength, this.gl.UNIFORM_BUFFER, this.gl.DYNAMIC_DRAW, 0)
-
-    this.UBOs.set(index, { data, buffer, uniforms: memoizedUniforms })
-  }
-
-  /**
-   * Updates changed uniforms in a uniform buffer by an optional index.
-   */
-  updateUniforms(uniforms: Program['uniforms'], index = 0) {
-    const UBO = this.UBOs.get(index)
-    if (!UBO) return
-
-    // Check whether a uniform has changed
-    let needsUpdate = false
-    UBO.uniforms.forEach((value, name) => {
-      const uniform = uniforms[name]
-      if (uniformsEqual(value, uniform)) return
-
-      UBO.uniforms.set(name, cloneUniform(uniform))
-      needsUpdate = true
-    })
-
-    // If a uniform changed, rebuild entire buffer
-    // TODO: expand write to subdata at affected indices instead
-    if (needsUpdate) {
-      UBO.buffer.write(std140(Array.from(UBO.uniforms.values()), UBO.data))
-    }
-  }
-
-  /**
    * Disposes the program from GPU memory.
    */
   dispose() {
-    this.UBOs.forEach(({ buffer }) => buffer.dispose())
+    this.UBOs.forEach((UBO) => UBO.dispose())
     this.gl.deleteProgram(this.program)
   }
 }
@@ -345,7 +354,7 @@ export class WebGLBufferAttributes {
   /**
    * Compiles and binds program attributes into buffers.
    */
-  compileAttributes(attributes: Program['attributes']) {
+  compileAttributes(attributes: AttributeList) {
     for (const name in attributes) {
       const attribute = attributes[name]
       attribute.needsUpdate = false
@@ -366,7 +375,7 @@ export class WebGLBufferAttributes {
   /**
    * Updates program attributes flagged for update.
    */
-  updateAttributes(attributes: Program['attributes']) {
+  updateAttributes(attributes: AttributeList) {
     this.attributes.forEach(({ buffer }, name) => {
       const attribute = attributes[name]
       if (attribute.needsUpdate) {
@@ -837,7 +846,8 @@ export class WebGLRenderer extends Renderer {
       // Set std140 uniforms
       if (parsed) {
         const uniforms = parsed.reduce((acc, key) => ({ ...acc, [key]: material.uniforms[key] }), {})
-        program.compileUniforms(uniforms)
+        const UBO = new WebGLUniformBuffer(this.gl, uniforms, program.UBOs.size)
+        program.UBOs.set(UBO.index, UBO)
       }
 
       // Set texture uniform samplers outside of std140
@@ -859,7 +869,7 @@ export class WebGLRenderer extends Renderer {
 
     // Update uniforms
     const program = this._programs.get(material)!
-    program.updateUniforms(material.uniforms)
+    program.UBOs.forEach((UBO) => UBO.update(material.uniforms))
 
     // Update textures outside of std140
     program.textureLocations.forEach((_, name) => {

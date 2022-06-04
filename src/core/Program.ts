@@ -26,6 +26,10 @@ export type Uniform =
   | Vector4
   | Texture
 
+export interface UniformList {
+  [name: string]: Uniform
+}
+
 /**
  * Represents a program attribute.
  */
@@ -44,18 +48,22 @@ export interface Attribute {
   needsUpdate?: boolean
 }
 
+export interface AttributeList {
+  [name: string]: Attribute
+}
+
 /**
  * Program constructor parameters. Accepts shaders, their attributes & uniforms, and various blending & culling options.
  */
 export interface ProgramOptions {
   /**
-   * User-defined program attributes.
-   */
-  attributes?: { [name: string]: Attribute }
-  /**
    * User-defined program uniforms.
    */
-  uniforms?: { [name: string]: Uniform }
+  uniforms?: UniformList
+  /**
+   * User-defined program attributes.
+   */
+  attributes?: AttributeList
   /**
    * Stringified vertex shader code. Must be specified alongside `fragment`.
    */
