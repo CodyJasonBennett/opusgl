@@ -30,7 +30,7 @@ export class Vector3 extends Float32Array {
     this[2] = z
   }
 
-  // @ts-expect-error
+  // @ts-ignore
   set(x: number, y: number = x, z: number = x) {
     this.x = x
     this.y = y

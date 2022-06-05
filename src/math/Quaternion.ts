@@ -46,7 +46,7 @@ export class Quaternion extends Float32Array {
     this.onChange?.()
   }
 
-  // @ts-expect-error
+  // @ts-ignore
   set(x: number, y: number, z: number, w: number) {
     this.x = x
     this.y = y

@@ -34,7 +34,7 @@ export class Color extends Float32Array {
     this[2] = b
   }
 
-  // @ts-expect-error
+  // @ts-ignore
   set(r: ColorRepresentation, g?: number, b?: number) {
     if (typeof r === 'number' && typeof g === 'number' && typeof b === 'number') {
       this.r = r

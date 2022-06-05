@@ -38,7 +38,7 @@ export class Vector4 extends Float32Array {
     this[3] = w
   }
 
-  // @ts-expect-error
+  // @ts-ignore
   set(x: number, y: number, z: number, w: number) {
     this.x = x
     this.y = y

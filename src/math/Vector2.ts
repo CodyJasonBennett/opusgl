@@ -22,7 +22,7 @@ export class Vector2 extends Float32Array {
     this[1] = y
   }
 
-  // @ts-expect-error
+  // @ts-ignore
   set(x: number, y: number = x) {
     this.x = x
     this.y = y

@@ -42,7 +42,7 @@ export class Euler extends Float32Array {
     this.onChange?.()
   }
 
-  // @ts-expect-error
+  // @ts-ignore
   set(x: number, y: number = x, z: number = x) {
     this.x = x
     this.y = y

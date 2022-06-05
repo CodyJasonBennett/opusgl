@@ -9,7 +9,7 @@ export class Matrix3 extends Float32Array {
     this.set(m00, m01, m02, m10, m11, m12, m20, m21, m22)
   }
 
-  // @ts-expect-error
+  // @ts-ignore
   set(
     m00: number,
     m01: number,

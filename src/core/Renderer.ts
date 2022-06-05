@@ -14,7 +14,7 @@ export interface Disposable {
 export type Compilable = Geometry | Material | Mesh | Texture | RenderTarget
 
 export class Compiled<Compiled extends Disposable> extends Map<Compilable, Compiled> {
-  // @ts-expect-error
+  // @ts-ignore
   set(object: Compilable, compiled: Compiled) {
     super.set(object, compiled)
 

@@ -502,7 +502,7 @@ export class WebGPURenderer extends Renderer {
       mappedAtCreation: true,
     })
 
-    // @ts-expect-error Map packed buffer
+    // @ts-ignore Map packed buffer
     new data.constructor(buffer.getMappedRange()).set(data)
     buffer.unmap()
 
