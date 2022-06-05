@@ -56,17 +56,18 @@ export const std140 = (uniforms: Uniform[], buffer?: Float32Array) => {
  * Compares two uniforms, preferring to use math `equals` methods if available.
  */
 export const uniformsEqual = (a: Uniform, b: Uniform) => {
-  // @ts-expect-error
-  if (a?.constructor === b?.constructor && typeof b?.equals === 'function') return b.equals(a) as boolean
+  // @ts-ignore Compare math classes
+  if (a.constructor === b.constructor && typeof b.equals === 'function') return b.equals(a) as boolean
+  // Atomically compare literals
   return a === b
 }
 
 /**
  * Clones a uniform's value into memory.
  */
-export const cloneUniform = (uniform: Uniform) => {
-  // @ts-expect-error
-  return uniform?.clone?.() ?? uniform
+export const cloneUniform = (uniform: Uniform, prev?: Uniform) => {
+  // @ts-ignore
+  return (prev ? prev.copy?.(uniform) : uniform.clone?.()) ?? uniform
 }
 
 /**

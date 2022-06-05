@@ -167,7 +167,7 @@ export class WebGLUniformBuffer extends WebGLBufferObject {
       const uniform = uniforms[name]
       if (uniform == null || uniformsEqual(value, uniform)) return
 
-      this.uniforms.set(name, cloneUniform(uniform))
+      this.uniforms.set(name, cloneUniform(uniform, value))
       needsUpdate = true
     })
 
@@ -190,7 +190,7 @@ export class WebGLUniformBuffer extends WebGLBufferObject {
 export class WebGLProgramObject {
   readonly gl: WebGL2RenderingContext
   readonly program: WebGLProgram
-  readonly uniforms = new Map<string, { size: number; type: number; location: WebGLUniformLocation }>()
+  readonly uniforms = new Map<string, { size: number; type: number; location: WebGLUniformLocation; value?: Uniform }>()
   readonly attributes = new Map<string, { buffer: WebGLBufferObject; location: number }>()
   readonly textureLocations = new Map<string, number>()
   readonly UBOs = new Map<number, WebGLUniformBuffer>()
@@ -304,9 +304,11 @@ export class WebGLProgramObject {
    * Sets a uniform outside of std140 by name.
    */
   setUniform(name: string, value: Uniform) {
+    // Skip unused uniforms
     const uniform = this.uniforms.get(name)
     if (!uniform) return
 
+    // Set texture locations for texture uniforms
     const data = (this.textureLocations.get(name) ?? value) as number | number[]
 
     if (typeof data === 'number') {
@@ -354,6 +356,9 @@ export class WebGLProgramObject {
           break
       }
     }
+
+    // Memoize previous uniform values for diffing
+    uniform.value = cloneUniform(value, uniform.value)
 
     return uniform
   }
@@ -890,44 +895,47 @@ export class WebGLRenderer extends Renderer {
       const program = new WebGLProgramObject(this.gl, target.material.vertex, target.material.fragment)
       this._programs.set(target.material, program)
 
-      // Parse used uniforms
+      // Set uniform buffers
       const parsed = parseUniforms(target.material.vertex, target.material.fragment)
-
-      // Set std140 uniforms
       if (parsed) {
         const uniforms = parsed.reduce((acc, key) => ({ ...acc, [key]: target.material.uniforms[key] }), {})
         const UBO = new WebGLUniformBuffer(this.gl, uniforms, program.UBOs.size)
         program.UBOs.set(UBO.index, UBO)
       }
 
-      // Set texture uniform samplers outside of std140
-      for (const name in target.material.uniforms) {
-        const uniform = target.material.uniforms[name]
-
-        if (uniform instanceof Texture) {
+      // Set global uniforms
+      program.uniforms.forEach(({ location }, name) => {
+        if (location !== -1) {
+          const uniform = target.material.uniforms[name]
           program.setUniform(name, uniform)
 
-          if (!this._textures.has(uniform)) {
-            this._textures.set(uniform, new WebGLTextureObject(this.gl))
-          }
+          if (uniform instanceof Texture) {
+            if (!this._textures.has(uniform)) {
+              this._textures.set(uniform, new WebGLTextureObject(this.gl))
+            }
 
-          const compiled = this._textures.get(uniform)!
-          program.activateTexture(name, compiled)
+            const compiled = this._textures.get(uniform)!
+            program.activateTexture(name, compiled)
+          }
         }
-      }
+      })
     }
 
-    // Update uniforms
+    // Update uniform buffers
     const program = this._programs.get(target.material)!
     program.UBOs.forEach((UBO) => UBO.update(target.material.uniforms))
 
-    // Update textures outside of std140
-    program.textureLocations.forEach((_, name) => {
-      const texture = target.material.uniforms[name] as Texture
-      const compiled = this._textures.get(texture)!
-      if (texture.needsUpdate) {
-        compiled.update(texture)
-        texture.needsUpdate = false
+    // Update global uniforms
+    program.uniforms.forEach(({ location, value }, name) => {
+      const uniform = target.material.uniforms[name]
+      if (location !== -1) {
+        if (uniform instanceof Texture && uniform.needsUpdate) {
+          const compiled = this._textures.get(uniform)!
+          compiled.update(uniform)
+          uniform.needsUpdate = false
+        } else if (!(uniform instanceof Texture) && !uniformsEqual(value!, uniform)) {
+          program.setUniform(name, uniform)
+        }
       }
     })
 

@@ -31,10 +31,6 @@ describe('utils/std140', () => {
 
 describe('utils/uniformsEqual', () => {
   it('can compare uniforms', () => {
-    // Compares initial uniforms
-    expect(uniformsEqual(undefined, 0)).toBe(false)
-    expect(uniformsEqual(undefined, undefined)).toBe(true)
-
     // Compares math classes via #equals
     expect(uniformsEqual(new Vector2(1), new Vector2(1))).toBe(true)
     expect(uniformsEqual(new Vector2(1), new Vector2(2))).toBe(false)
