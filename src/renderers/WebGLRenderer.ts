@@ -16,7 +16,7 @@ import {
   GL_CULL_SIDES,
   GL_DRAW_MODES,
 } from '../constants'
-import { cloneUniform, std140, uniformsEqual, parseUniforms } from '../utils'
+import { cloneUniform, uniformsEqual } from '../utils'
 
 /**
  * Gets the appropriate WebGL data type for a data view.
@@ -137,24 +137,19 @@ export class WebGLBufferObject implements Disposable {
  */
 export class WebGLUniformBuffer extends WebGLBufferObject {
   readonly data: Float32Array
-  readonly uniforms: Map<string, Uniform>
+  readonly program: WebGLProgramObject
   readonly index: number
+  readonly name: string
 
-  constructor(gl: WebGL2RenderingContext, uniforms: UniformList, index = 0) {
-    const memoizedUniforms = new Map<string, Uniform>()
-    for (const name in uniforms) {
-      const uniform = uniforms[name]
-      memoizedUniforms.set(name, cloneUniform(uniform))
-    }
-
-    const data = std140(Array.from(memoizedUniforms.values()))
-
-    super(gl, data.byteLength, gl.UNIFORM_BUFFER, gl.DYNAMIC_DRAW)
+  constructor(gl: WebGL2RenderingContext, program: WebGLProgramObject, index = 0) {
+    const byteLength = gl.getActiveUniformBlockParameter(program.program, index, gl.UNIFORM_BLOCK_DATA_SIZE)
+    super(gl, byteLength, gl.UNIFORM_BUFFER, gl.DYNAMIC_DRAW)
     this.gl.bindBufferBase(this.type, index, this.buffer)
 
-    this.data = data
-    this.uniforms = memoizedUniforms
+    this.data = new Float32Array(byteLength / Float32Array.BYTES_PER_ELEMENT)
+    this.program = program
     this.index = index
+    this.name = gl.getActiveUniformBlockName(this.program.program, index)!
   }
 
   /**
@@ -163,25 +158,41 @@ export class WebGLUniformBuffer extends WebGLBufferObject {
   update(uniforms: UniformList) {
     // Check whether a uniform has changed
     let needsUpdate = false
-    this.uniforms.forEach((value, name) => {
-      const uniform = uniforms[name]
-      if (uniform == null || uniformsEqual(value, uniform)) return
+    this.program.uniforms.forEach((memoized, name) => {
+      // Only set uniforms in block
+      if (memoized.blockIndex !== this.index) return
 
-      this.uniforms.set(name, cloneUniform(uniform, value))
+      // Skip unchanged uniforms
+      const uniform = uniforms[name.replace(`${this.name}.`, '')] as Exclude<Uniform, Texture>
+      if (memoized.value != null && uniformsEqual(memoized.value, uniform)) return
+
+      // Update buffer storage
+      const offset = memoized.offset / Float32Array.BYTES_PER_ELEMENT
+      if (typeof uniform === 'number') this.data[offset] = uniform
+      else this.data.set(uniform, offset)
+
+      // Memoize new values, flag UBO for update
+      memoized.value = cloneUniform(uniform, memoized.value)
       needsUpdate = true
     })
 
-    // If a uniform changed, rebuild entire buffer
+    // If a uniform changed, update entire buffer
     // TODO: expand write to subdata at affected indices instead
-    if (needsUpdate) {
-      this.write(std140(Array.from(this.uniforms.values()), this.data))
-    }
+    if (needsUpdate) this.write(this.data)
   }
 
   dispose() {
     super.dispose()
-    this.uniforms.clear()
   }
+}
+
+export interface WebGLActiveUniform {
+  size: number
+  type: number
+  location: WebGLUniformLocation
+  blockIndex: number
+  offset: number
+  value?: Uniform
 }
 
 /**
@@ -190,7 +201,7 @@ export class WebGLUniformBuffer extends WebGLBufferObject {
 export class WebGLProgramObject {
   readonly gl: WebGL2RenderingContext
   readonly program: WebGLProgram
-  readonly uniforms = new Map<string, { size: number; type: number; location: WebGLUniformLocation; value?: Uniform }>()
+  readonly uniforms = new Map<string, WebGLActiveUniform>()
   readonly attributes = new Map<string, { buffer: WebGLBufferObject; location: number }>()
   readonly textureLocations = new Map<string, number>()
   readonly UBOs = new Map<number, WebGLUniformBuffer>()
@@ -242,7 +253,9 @@ export class WebGLProgramObject {
       if (activeUniform) {
         const { name, size, type } = activeUniform
         const location = this.getUniformLocation(name)
-        this.uniforms.set(name, { size, type, location })
+        const [blockIndex] = this.gl.getActiveUniforms(this.program, [i], this.gl.UNIFORM_BLOCK_INDEX)
+        const [offset] = this.gl.getActiveUniforms(this.program, [i], this.gl.UNIFORM_OFFSET)
+        this.uniforms.set(name, { size, type, location, blockIndex, offset })
 
         if (type === this.gl.SAMPLER_2D) {
           this.textureLocations.set(name, textureIndex)
@@ -306,7 +319,7 @@ export class WebGLProgramObject {
   setUniform(name: string, value: Uniform) {
     // Skip unused uniforms
     const uniform = this.uniforms.get(name)
-    if (!uniform) return
+    if (!uniform || uniform.location === -1) return
 
     // Set texture locations for texture uniforms
     const data = (this.textureLocations.get(name) ?? value) as number | number[]
@@ -895,17 +908,12 @@ export class WebGLRenderer extends Renderer {
       const program = new WebGLProgramObject(this.gl, target.material.vertex, target.material.fragment)
       this._programs.set(target.material, program)
 
-      // Set uniform buffers
-      const parsed = parseUniforms(target.material.vertex, target.material.fragment)
-      if (parsed) {
-        const uniforms = parsed.reduce((acc, key) => ({ ...acc, [key]: target.material.uniforms[key] }), {})
-        const UBO = new WebGLUniformBuffer(this.gl, uniforms, program.UBOs.size)
-        program.UBOs.set(UBO.index, UBO)
-      }
+      // Keep track of defined UBOs
+      let numUBOs = 0
 
       // Set global uniforms
-      program.uniforms.forEach(({ location }, name) => {
-        if (location !== -1) {
+      program.uniforms.forEach((activeUniform, name) => {
+        if (activeUniform.location !== -1) {
           const uniform = target.material.uniforms[name]
           program.setUniform(name, uniform)
 
@@ -917,8 +925,16 @@ export class WebGLRenderer extends Renderer {
             const compiled = this._textures.get(uniform)!
             program.activateTexture(name, compiled)
           }
+        } else if (activeUniform.blockIndex !== -1) {
+          numUBOs = Math.max(numUBOs, activeUniform.blockIndex + 1)
         }
       })
+
+      // Create UBOs
+      for (let i = 0; i < numUBOs; i++) {
+        const UBO = new WebGLUniformBuffer(this.gl, program, i)
+        program.UBOs.set(i, UBO)
+      }
     }
 
     // Update uniform buffers
