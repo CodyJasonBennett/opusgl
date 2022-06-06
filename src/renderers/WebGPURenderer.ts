@@ -10,7 +10,7 @@ import type { Camera } from '../core/Camera'
 import type { Object3D } from '../core/Object3D'
 import type { Uniform, UniformList } from '../core/Material'
 import { GPU_CULL_SIDES, GPU_DRAW_MODES, GPU_TEXTURE_FILTERS, GPU_TEXTURE_WRAPPINGS } from '../constants'
-import { cloneUniform, parseUniforms, std140, uniformsEqual } from '../utils'
+import { cloneUniform, std140, uniformsEqual } from '../utils'
 
 export class WebGPUBufferObject implements Disposable {
   readonly device: GPUDevice
@@ -153,6 +153,32 @@ export class WebGPUUniformBuffer extends WebGPUBufferObject {
   }
 }
 
+export interface BindGroupInfoStructMember {
+  name: string
+  type: any
+}
+export interface BindGroupInfoStruct {
+  name: string
+  type: 'struct'
+  children: BindGroupInfoStructMember[]
+}
+export interface BindGroupInfoResource {
+  name: string
+  type: any
+  binding: number
+  group: number
+}
+export interface BindGroupInfoGroup {
+  samplers: BindGroupInfoResource[]
+  textures: BindGroupInfoResource[]
+  buffers: BindGroupInfoResource[]
+}
+export interface BindGroupInfo {
+  structs: Map<string, BindGroupInfoStruct>
+  resources: Map<string, BindGroupInfoResource>
+  groups: Map<number, BindGroupInfoGroup>
+}
+
 export class WebGPURenderPipeline implements Disposable {
   readonly device: GPUDevice
   readonly format: GPUTextureFormat
@@ -166,7 +192,7 @@ export class WebGPURenderPipeline implements Disposable {
   public pipeline!: GPURenderPipeline
   readonly bindGroups: Map<number, GPUBindGroup> = new Map()
   readonly bindGroupEntries: Map<number, GPUBindGroupEntry[]> = new Map()
-  readonly UBOs: Map<number, WebGPUUniformBuffer> = new Map()
+  readonly UBOs: Map<string, WebGPUUniformBuffer> = new Map()
 
   constructor(device: GPUDevice, format: GPUTextureFormat) {
     this.device = device
@@ -260,32 +286,55 @@ export class WebGPURenderPipeline implements Disposable {
     })
   }
 
-  setBindGroup(resources: (WebGPUBufferObject | WebGPUTextureObject)[], index = 0) {
-    const entries = []
-    let binding = entries.length
+  getBindGroupInfo(...shaders: string[]): BindGroupInfo {
+    // Remove comments from shaders
+    const shaderSource = shaders.join('\n').replace(/\/\*(?:[^*]|\**[^*/])*\*+\/|\/\/.*/g, '')
 
-    for (const resource of resources) {
-      if (resource instanceof WebGPUBufferObject) {
-        binding = entries.push({
-          binding,
-          resource: {
-            buffer: resource.buffer,
-          },
-        })
-      } else if (resource instanceof WebGPUTextureObject) {
-        binding = entries.push(
-          {
-            binding,
-            resource: resource.sampler!,
-          },
-          {
-            binding: binding + 1,
-            resource: resource.target!.createView(),
-          },
-        )
+    // Parse struct defs
+    const structs = new Map<string, BindGroupInfoStruct>()
+    for (const struct of shaderSource.matchAll(/struct\s*(\w+)\s*\{([^\}]+)\}/g)) {
+      const [, name, content] = struct
+
+      const children: BindGroupInfoStructMember[] = []
+      for (const child of Array.from(content.matchAll(/(\w+)(?:\s*:\s*)(\w+)/g))) {
+        const [, name, type] = child
+        children.push({ name, type })
       }
+
+      structs.set(name, { name, type: 'struct', children })
     }
 
+    // Parse resource defs
+    const resources = new Map<string, BindGroupInfoResource>()
+    for (const resource of shaderSource.matchAll(/@binding\((\d+)\)\s*@group\((\d+)\).*\s(\w+)\s*:\s*(\w+)/g)) {
+      const [, binding, group, name, type] = resource
+      resources.set(name, {
+        name,
+        type,
+        binding: Number(binding),
+        group: Number(group),
+      })
+    }
+
+    // Filter resources by group and type
+    const groups = new Map<number, BindGroupInfoGroup>()
+    resources.forEach((resource) => {
+      if (!groups.has(resource.group)) groups.set(resource.group, { samplers: [], textures: [], buffers: [] })
+      const group = groups.get(resource.group)!
+
+      if (resource.type === 'sampler') {
+        group.samplers.push(resource)
+      } else if (resource.type === 'texture_2d') {
+        group.textures.push(resource)
+      } else if (structs.has(resource.type)) {
+        group.buffers.push(resource)
+      }
+    })
+
+    return { structs, resources, groups }
+  }
+
+  setBindGroupEntries(entries: GPUBindGroupEntry[], index = 0) {
     this.bindGroupEntries.set(index, entries)
   }
 
@@ -527,22 +576,16 @@ export class WebGPURenderer extends Renderer {
       const pipeline = new WebGPURenderPipeline(this.device, this.format)
       this._pipelines.set(target, pipeline)
 
-      // Layout resources
-      const resources = []
+      const bindInfo = pipeline.getBindGroupInfo(target.material.vertex, target.material.fragment)
+      bindInfo.groups.forEach((group, groupIndex) => {
+        const entries: GPUBindGroupEntry[] = []
 
-      // Init UBO
-      const parsed = parseUniforms(target.material.vertex, target.material.fragment)
-      if (parsed) {
-        const uniforms = parsed.reduce((acc, key) => ({ ...acc, [key]: target.material.uniforms[key] }), {})
-        const UBO = new WebGPUUniformBuffer(this.device, uniforms)
-        pipeline.UBOs.set(0, UBO)
-        resources.push(UBO)
-      }
+        // Bind textures and their samplers
+        for (const textureResource of group.textures) {
+          const textureIndex = group.textures.indexOf(textureResource)
+          const sampler = group.samplers[textureIndex]
 
-      // Init textures
-      for (const name in target.material.uniforms) {
-        const uniform = target.material.uniforms[name]
-        if (uniform instanceof Texture) {
+          const uniform = target.material.uniforms[textureResource.name] as Texture
           if (!this._textures.has(uniform)) {
             const texture = new WebGPUTextureObject(this.device, this.format)
             this._textures.set(uniform, texture)
@@ -554,11 +597,33 @@ export class WebGPURenderer extends Renderer {
             uniform.needsUpdate = false
           }
 
-          resources.push(texture)
+          entries.push(
+            {
+              binding: sampler.binding,
+              resource: texture.sampler!,
+            },
+            {
+              binding: textureResource.binding,
+              resource: texture.target!.createView(),
+            },
+          )
         }
-      }
 
-      pipeline.setBindGroup(resources, 0)
+        // Bind UBOs
+        for (const buffer of group.buffers) {
+          const struct = bindInfo.structs.get(buffer.type)!
+          const uniforms = Array.from(struct.children).reduce(
+            (acc, { name }) => ({ ...acc, [name]: target.material.uniforms[name] }),
+            {},
+          )
+
+          const UBO = new WebGPUUniformBuffer(this.device, uniforms)
+          pipeline.UBOs.set(buffer.name, UBO)
+          entries.push({ binding: buffer.binding, resource: { buffer: UBO.buffer } })
+        }
+
+        pipeline.setBindGroupEntries(entries, groupIndex)
+      })
     }
 
     // Create buffer attribute collection on first compile
@@ -579,7 +644,7 @@ export class WebGPURenderer extends Renderer {
 
     for (const name in target.material.uniforms) {
       const uniform = target.material.uniforms[name]
-      if (uniform instanceof Texture) {
+      if (uniform instanceof Texture && this._textures.has(uniform)) {
         const texture = this._textures.get(uniform)!
 
         if (uniform.needsUpdate) {

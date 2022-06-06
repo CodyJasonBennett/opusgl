@@ -1,0 +1,70 @@
+// Vitest Snapshot v1
+
+exports[`renderers/WebGPURenderer/WebGPURenderPipeline > can parse bind group info from shader source 1`] = `
+{
+  "groups": Map {
+    0 => {
+      "buffers": [
+        {
+          "binding": 0,
+          "group": 0,
+          "name": "uniforms",
+          "type": "Uniforms",
+        },
+      ],
+      "samplers": [
+        {
+          "binding": 1,
+          "group": 0,
+          "name": "sample",
+          "type": "sampler",
+        },
+      ],
+      "textures": [
+        {
+          "binding": 2,
+          "group": 0,
+          "name": "texture",
+          "type": "texture_2d",
+        },
+      ],
+    },
+  },
+  "resources": Map {
+    "uniforms" => {
+      "binding": 0,
+      "group": 0,
+      "name": "uniforms",
+      "type": "Uniforms",
+    },
+    "sample" => {
+      "binding": 1,
+      "group": 0,
+      "name": "sample",
+      "type": "sampler",
+    },
+    "texture" => {
+      "binding": 2,
+      "group": 0,
+      "name": "texture",
+      "type": "texture_2d",
+    },
+  },
+  "structs": Map {
+    "Uniforms" => {
+      "children": [
+        {
+          "name": "time",
+          "type": "f32",
+        },
+        {
+          "name": "color",
+          "type": "vec3",
+        },
+      ],
+      "name": "Uniforms",
+      "type": "struct",
+    },
+  },
+}
+`;

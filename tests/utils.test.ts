@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { uuid, std140, Vector2, uniformsEqual, parseUniforms } from '../src'
+import { uuid, std140, uniformsEqual, Vector2 } from '../src'
 
 describe('utils/uuid', () => {
   it('is UUID RFC compliant', () => {
@@ -38,46 +38,5 @@ describe('utils/uniformsEqual', () => {
     // Atomically compares numbers
     expect(uniformsEqual(1, 1)).toBe(true)
     expect(uniformsEqual(1, 2)).toBe(false)
-  })
-})
-
-describe('utils/parseUniforms', () => {
-  it('can parse uniform definitions from GLSL', () => {
-    const names = parseUniforms(
-      `
-      /*
-        layout(std140) uniform Uniforms {};
-      */
-
-      layout(std140) uniform Uniforms {
-        // bool test;
-        float time;
-        vec3 color;
-      };
-    `,
-      '',
-    )
-
-    expect(names).toMatchSnapshot()
-  })
-
-  it('can parse uniform definitions from WGSL', () => {
-    const names = parseUniforms(
-      `
-      /*
-        @binding(0) @group(0) var<uniform> uniforms: Foo;
-      */
-
-      struct Uniforms {
-        // bool test,
-        time: f32,
-        color: vec3<f32>
-      };
-      @binding(0) @group(0) var<uniform> uniforms: Uniforms;
-    `,
-      '',
-    )
-
-    expect(names).toMatchSnapshot()
   })
 })

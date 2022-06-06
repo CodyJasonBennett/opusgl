@@ -1,5 +1,5 @@
 import { beforeEach, describe, it, expect } from 'vitest'
-import { Geometry, Material, Mesh, PerspectiveCamera, WebGPURenderer } from '../../src'
+import { Geometry, Material, Mesh, PerspectiveCamera, WebGPURenderer, WebGPURenderPipeline } from '../../src'
 
 let mesh!: Mesh
 let camera!: PerspectiveCamera
@@ -20,5 +20,28 @@ describe('renderers/WebGPURenderer', () => {
       renderer.render(mesh, camera)
       mesh.dispose()
     }).not.toThrow()
+  })
+})
+
+describe('renderers/WebGPURenderer/WebGPURenderPipeline', () => {
+  it('can parse bind group info from shader source', () => {
+    // @ts-ignore
+    const renderPipeline = new WebGPURenderPipeline()
+    const bindGroupInfo = renderPipeline.getBindGroupInfo(
+      `
+        /*
+          @binding(0) @group(0) var<uniform> uniforms: Foo;
+        */
+        struct Uniforms {
+          // bool test,
+          time: f32,
+          color: vec3<f32>
+        };
+        @binding(0) @group(0) var<uniform> uniforms: Uniforms;
+        @binding(1) @group(0) var sample: sampler;
+        @binding(2) @group(0) var texture: texture_2d<f32>;
+      `,
+    )
+    expect(bindGroupInfo).toMatchSnapshot()
   })
 })
