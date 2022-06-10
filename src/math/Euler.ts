@@ -1,6 +1,5 @@
 import { Matrix4 } from './Matrix4'
 import type { Quaternion } from './Quaternion'
-import { clamp } from '../utils'
 
 export type EulerOrder = 'XYZ' | 'XZY' | 'YXZ' | 'YZX' | 'ZXY' | 'ZYX'
 
@@ -142,7 +141,7 @@ export class Euler extends Float32Array {
 
     switch (this.order) {
       case 'XYZ':
-        this[1] = Math.asin(clamp(m13, [-1, 1]))
+        this[1] = Math.asin(Math.max(-1, Math.min(1, m13)))
 
         if (Math.abs(m13) < 1 - Number.EPSILON) {
           this[0] = Math.atan2(-m23, m33)
@@ -155,7 +154,7 @@ export class Euler extends Float32Array {
         break
 
       case 'YXZ':
-        this[0] = Math.asin(-clamp(m23, [-1, 1]))
+        this[0] = Math.asin(-Math.max(-1, Math.min(1, m23)))
 
         if (Math.abs(m23) < 1 - Number.EPSILON) {
           this[1] = Math.atan2(m13, m33)
@@ -168,7 +167,7 @@ export class Euler extends Float32Array {
         break
 
       case 'ZXY':
-        this[0] = Math.asin(clamp(m32, [-1, 1]))
+        this[0] = Math.asin(Math.max(-1, Math.min(1, m32)))
 
         if (Math.abs(m32) < 1 - Number.EPSILON) {
           this[1] = Math.atan2(-m31, m33)
@@ -181,7 +180,7 @@ export class Euler extends Float32Array {
         break
 
       case 'ZYX':
-        this[1] = Math.asin(-clamp(m31, [-1, 1]))
+        this[1] = Math.asin(-Math.max(-1, Math.min(1, m31)))
 
         if (Math.abs(m31) < 1 - Number.EPSILON) {
           this[0] = Math.atan2(m32, m33)
@@ -194,7 +193,7 @@ export class Euler extends Float32Array {
         break
 
       case 'YZX':
-        this[2] = Math.asin(clamp(m21, [-1, 1]))
+        this[2] = Math.asin(Math.max(-1, Math.min(1, m21)))
 
         if (Math.abs(m21) < 1 - Number.EPSILON) {
           this[0] = Math.atan2(-m23, m22)
@@ -207,7 +206,7 @@ export class Euler extends Float32Array {
         break
 
       case 'XZY':
-        this[2] = Math.asin(-clamp(m12, [-1, 1]))
+        this[2] = Math.asin(-Math.max(-1, Math.min(1, m12)))
 
         if (Math.abs(m12) < 1 - Number.EPSILON) {
           this[0] = Math.atan2(m32, m22)

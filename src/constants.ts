@@ -26,11 +26,6 @@ export const GPU_DRAW_MODES = {
   triangleStrip: 'triangle-strip',
 } as const
 
-export const GL_SHADER_TEMPLATES = {
-  vertex: '#version 300 es\nprecision highp float;\nprecision highp int;',
-  fragment: '#version 300 es\nprecision highp float;\nprecision highp int;',
-} as const
-
 export const GL_TEXTURE_FILTERS = {
   nearest: 9728,
   linear: 9729,

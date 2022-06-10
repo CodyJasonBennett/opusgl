@@ -26,6 +26,8 @@ const material = new Material({
     }
   `,
   fragment: `
+    precision highp float;
+
     layout(std140) uniform Uniforms {
       float time;
     };

@@ -10,8 +10,11 @@ import type { Camera } from '../core/Camera'
 import type { Object3D } from '../core/Object3D'
 import type { Uniform, UniformList } from '../core/Material'
 import { GPU_CULL_SIDES, GPU_DRAW_MODES, GPU_TEXTURE_FILTERS, GPU_TEXTURE_WRAPPINGS } from '../constants'
-import { cloneUniform, std140, uniformsEqual } from '../utils'
+import { cloneUniform, uniformsEqual } from '../utils'
 
+/**
+ * Constructs a WebGPU buffer. Can be used to transmit binary data to the GPU.
+ */
 export class WebGPUBufferObject implements Disposable {
   readonly device: GPUDevice
   readonly buffer: GPUBuffer
@@ -30,12 +33,93 @@ export class WebGPUBufferObject implements Disposable {
     this.buffer.unmap()
   }
 
+  /**
+   * Writes binary data to buffer.
+   */
   write(data: AttributeData) {
     this.device.queue.writeBuffer(this.buffer, 0, data)
   }
 
+  /**
+   * Disposes the buffer from GPU memory.
+   */
   dispose() {
     this.buffer.destroy()
+  }
+}
+
+// Pad to 16 byte chunks of 2, 4 (std140 layout)
+const pad2 = (n: number) => n + (n % 2)
+const pad4 = (n: number) => n + ((4 - (n % 4)) % 4)
+
+/**
+ * Constructs a WebGPU uniform buffer. Packs uniforms into a buffer via std140.
+ */
+export class WebGPUUniformBuffer extends WebGPUBufferObject {
+  readonly uniforms: Map<string, Exclude<Uniform, Texture>>
+  readonly data: Float32Array
+
+  constructor(device: GPUDevice, uniforms: UniformList) {
+    // Memoize uniforms
+    const memoizedUniforms = new Map<string, Exclude<Uniform, Texture>>()
+    for (const name in uniforms) {
+      if (uniforms[name] instanceof Texture) continue
+      const uniform = cloneUniform(uniforms[name])
+      memoizedUniforms.set(name, uniform)
+    }
+
+    // Calculate packing byte-length
+    const length = pad4(
+      Array.from(memoizedUniforms.values()).reduce(
+        (n: number, u) => n + (typeof u === 'number' ? 1 : u.length <= 2 ? pad2(u.length) : pad4(u.length)),
+        0,
+      ),
+    )
+    const data = new Float32Array(length)
+
+    super(device, data, GPUBufferUsage.UNIFORM)
+
+    this.uniforms = memoizedUniforms
+    this.data = data
+  }
+
+  /**
+   * Updates packed uniforms.
+   */
+  update(uniforms: UniformList) {
+    // Check whether a uniform has changed
+    let needsUpdate = false
+    this.uniforms.forEach((value, name) => {
+      const uniform = uniforms[name]
+      if (!uniformsEqual(value, uniform)) {
+        this.uniforms.set(name, cloneUniform(uniform))
+        needsUpdate = true
+      }
+    })
+
+    // If a uniform changed, rebuild entire buffer
+    // TODO: expand write to subdata at affected indices instead
+    if (needsUpdate) {
+      let offset = 0
+      for (const uniform of Array.from(this.uniforms.values())) {
+        if (typeof uniform === 'number') {
+          this.data[offset] = uniform
+          offset += 1 // leave empty space to stack primitives
+        } else {
+          const pad = uniform.length <= 2 ? pad2 : pad4
+          offset = pad(offset) // fill in empty space
+          this.data.set(uniform, offset)
+          offset += pad(uniform.length)
+        }
+      }
+
+      this.write(this.data)
+    }
+  }
+
+  dispose() {
+    super.dispose()
+    this.uniforms.clear()
   }
 }
 
@@ -45,6 +129,9 @@ export interface WebGPUBufferAttribute extends Partial<GPUVertexBufferLayout> {
   buffer: WebGPUBufferObject
 }
 
+/**
+ * Constructs a WebGPU buffer attribute manager.
+ */
 export class WebGPUBufferAttributes implements Disposable {
   readonly device: GPUDevice
   readonly attributes = new Map<string, WebGPUBufferAttribute>()
@@ -92,6 +179,9 @@ export class WebGPUBufferAttributes implements Disposable {
     })
   }
 
+  /**
+   * Updates attributes flagged for update.
+   */
   update(attributes: AttributeList) {
     this.attributes.forEach(({ buffer }, name) => {
       if (name === 'index') return
@@ -104,52 +194,12 @@ export class WebGPUBufferAttributes implements Disposable {
     })
   }
 
+  /**
+   * Disposes of attributes from GPU memory.
+   */
   dispose() {
-    this.attributes.forEach(({ buffer }) => {
-      buffer.dispose()
-    })
-  }
-}
-
-export class WebGPUUniformBuffer extends WebGPUBufferObject {
-  readonly uniforms: Map<string, Uniform>
-  readonly data: Float32Array
-
-  constructor(device: GPUDevice, uniforms: UniformList) {
-    const memoizedUniforms = new Map<string, Uniform>()
-    for (const name in uniforms) {
-      const uniform = cloneUniform(uniforms[name])
-      memoizedUniforms.set(name, uniform)
-    }
-
-    const data = std140(Array.from(memoizedUniforms.values()))
-    super(device, data, GPUBufferUsage.UNIFORM)
-
-    this.uniforms = memoizedUniforms
-    this.data = data
-  }
-
-  update(uniforms: UniformList) {
-    // Check whether a uniform has changed
-    let needsUpdate = false
-    this.uniforms.forEach((value, name) => {
-      const uniform = uniforms[name]
-      if (!uniformsEqual(value, uniform)) {
-        this.uniforms.set(name, cloneUniform(uniform))
-        needsUpdate = true
-      }
-    })
-
-    // If a uniform changed, rebuild entire buffer
-    // TODO: expand write to subdata at affected indices instead
-    if (needsUpdate) {
-      this.write(std140(Array.from(this.uniforms.values()), this.data))
-    }
-  }
-
-  dispose() {
-    super.dispose()
-    this.uniforms.clear()
+    this.attributes.forEach(({ buffer }) => buffer.dispose())
+    this.attributes.clear()
   }
 }
 
@@ -179,6 +229,9 @@ export interface BindGroupInfo {
   groups: Map<number, BindGroupInfoGroup>
 }
 
+/**
+ * Constructs a WebGPU render pipeline. Manages program state and bindings.
+ */
 export class WebGPURenderPipeline implements Disposable {
   readonly device: GPUDevice
   readonly format: GPUTextureFormat
@@ -199,6 +252,9 @@ export class WebGPURenderPipeline implements Disposable {
     this.format = format
   }
 
+  /**
+   * Binds the render pipeline and its attachments to a render pass encoder.
+   */
   bind(passEncoder: GPURenderPassEncoder) {
     passEncoder.setPipeline(this.pipeline)
     this.bindGroups.forEach((bindGroup, index) => {
@@ -206,6 +262,9 @@ export class WebGPURenderPipeline implements Disposable {
     })
   }
 
+  /**
+   * Updates pipeline state against a mesh and its attributes.
+   */
   update(target: Mesh, bufferAttributes: WebGPUBufferAttributes, colorAttachments = 1) {
     const transparent = target.material.transparent
     const cullMode = GPU_CULL_SIDES[target.material.side]
@@ -286,6 +345,9 @@ export class WebGPURenderPipeline implements Disposable {
     })
   }
 
+  /**
+   * Parses bind group info for a group of shaders.
+   */
   getBindGroupInfo(...shaders: string[]): BindGroupInfo {
     // Remove comments from shaders
     const shaderSource = shaders.join('\n').replace(/\/\*(?:[^*]|\**[^*/])*\*+\/|\/\/.*/g, '')
@@ -334,16 +396,25 @@ export class WebGPURenderPipeline implements Disposable {
     return { structs, resources, groups }
   }
 
+  /**
+   * Sets bind group resources at an index.
+   */
   setBindGroupEntries(entries: GPUBindGroupEntry[], index = 0) {
     this.bindGroupEntries.set(index, entries)
   }
 
+  /**
+   * Disposes of render pipeline resources from GPU memory.
+   */
   dispose() {
     this.bindGroupEntries.clear()
     this.bindGroups.clear()
   }
 }
 
+/**
+ * Constructs a WebGPU texture.
+ */
 export class WebGPUTextureObject implements Disposable {
   readonly device: GPUDevice
   readonly format: GPUTextureFormat
@@ -355,6 +426,9 @@ export class WebGPUTextureObject implements Disposable {
     this.format = format
   }
 
+  /**
+   * Updates the texture from `TextureOptions` with an optional `width` and `height`.
+   */
   update(options: Texture | TextureOptions, width = options.image?.width ?? 0, height = options.image?.height ?? 0) {
     this.sampler = this.device.createSampler({
       addressModeU: GPU_TEXTURE_WRAPPINGS[options.wrapS] as GPUAddressMode,
@@ -386,11 +460,17 @@ export class WebGPUTextureObject implements Disposable {
     }
   }
 
+  /**
+   * Disposes of the texture from GPU memory.
+   */
   dispose() {
     this.target?.destroy()
   }
 }
 
+/**
+ * Constructs a WebGPU FBO with MRT and multi-sampling.
+ */
 export class WebGPUFBO implements Disposable {
   readonly device: GPUDevice
   readonly width: number
@@ -423,6 +503,9 @@ export class WebGPUFBO implements Disposable {
     this.views = textures.map((texture) => texture.target!.createView())
   }
 
+  /**
+   * Disposes of the FBO from GPU memory.
+   */
   dispose() {
     this.depthTexture.destroy()
   }

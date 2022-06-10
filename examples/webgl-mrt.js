@@ -20,6 +20,8 @@ const compute = new Mesh(
       }
     `,
     fragment: `
+      precision highp float;
+
       layout(location = 0) out vec4 color0;
       layout(location = 1) out vec4 color1;
       layout(location = 2) out vec4 color2;
@@ -76,6 +78,8 @@ const composite = new Mesh(
       }
     `,
     fragment: `
+      precision highp float;
+
       uniform sampler2D texture0;
       uniform sampler2D texture1;
       uniform sampler2D texture2;

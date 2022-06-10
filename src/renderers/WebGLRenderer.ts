@@ -9,7 +9,6 @@ import type { Object3D } from '../core/Object3D'
 import type { Camera } from '../core/Camera'
 import type { RenderTarget } from '../core/RenderTarget'
 import {
-  GL_SHADER_TEMPLATES,
   GL_TEXTURE_FILTERS,
   GL_TEXTURE_MIPMAP_FILTERS,
   GL_TEXTURE_WRAPPINGS,
@@ -125,7 +124,7 @@ export class WebGLBufferObject implements Disposable {
   }
 
   /**
-   * Disposes the VAO from GPU memory.
+   * Disposes the buffer from GPU memory.
    */
   dispose() {
     this.gl.deleteBuffer(this.buffer)
@@ -133,7 +132,7 @@ export class WebGLBufferObject implements Disposable {
 }
 
 /**
- * Constructs a WebGL uniform buffer. Packs uniforms into a buffer via std140.
+ * Constructs a WebGL uniform buffer. Packs uniforms into a buffer.
  */
 export class WebGLUniformBuffer extends WebGLBufferObject {
   readonly data: Float32Array
@@ -180,10 +179,6 @@ export class WebGLUniformBuffer extends WebGLBufferObject {
     // TODO: expand write to subdata at affected indices instead
     if (needsUpdate) this.write(this.data)
   }
-
-  dispose() {
-    super.dispose()
-  }
 }
 
 export interface WebGLActiveUniform {
@@ -215,13 +210,12 @@ export class WebGLProgramObject {
       const target = type === 'vertex' ? this.gl.VERTEX_SHADER : this.gl.FRAGMENT_SHADER
       const shader = this.gl.createShader(target)!
 
-      const template = GL_SHADER_TEMPLATES[type as keyof typeof GL_SHADER_TEMPLATES]
-      this.gl.shaderSource(shader, template + source)
-
+      this.gl.shaderSource(shader, '#version 300 es\n' + source)
       this.gl.compileShader(shader)
-      if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-        const error = this.gl.getShaderInfoLog(shader)
-        throw `Error compiling ${type} shader: ${error}`
+
+      if (gl.getShaderInfoLog(shader)?.length) {
+        let i = 0
+        throw `${gl.getShaderInfoLog(shader)}\n${type.toUpperCase()}:\n${source.replace(/^/gm, () => `${i++}:`)}`
       }
 
       return shader
@@ -422,7 +416,7 @@ export class WebGLBufferAttributes implements Disposable {
   }
 
   /**
-   * Compiles and binds program attributes into buffers.
+   * Compiles and binds attributes into buffers.
    */
   setAttributes(program: WebGLProgramObject, attributes: AttributeList) {
     for (const name in attributes) {
@@ -442,7 +436,7 @@ export class WebGLBufferAttributes implements Disposable {
   }
 
   /**
-   * Updates program attributes flagged for update.
+   * Updates attributes flagged for update.
    */
   update(attributes: AttributeList) {
     this.buffers.forEach((buffer, name) => {
@@ -455,7 +449,7 @@ export class WebGLBufferAttributes implements Disposable {
   }
 
   /**
-   * Disposes of program attributes from GPU memory.
+   * Disposes of attributes from GPU memory.
    */
   dispose() {
     this.buffers.forEach((buffer) => buffer.dispose())
