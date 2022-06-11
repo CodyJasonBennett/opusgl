@@ -136,7 +136,6 @@ const mesh = new Mesh(geometry, material)
 window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight)
   camera.aspect = window.innerWidth / window.innerHeight
-  camera.updateProjectionMatrix()
 })
 
 const animate = (time) => {
@@ -254,7 +253,6 @@ const mesh = new Mesh(geometry, material)
 window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight)
   camera.aspect = window.innerWidth / window.innerHeight
-  camera.updateProjectionMatrix()
 })
 
 const animate = (time) => {

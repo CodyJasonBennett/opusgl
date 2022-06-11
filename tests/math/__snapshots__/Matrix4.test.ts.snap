@@ -42,6 +42,27 @@ Matrix4 [
 ]
 `;
 
+exports[`math/Matrix4 > can be set from orthogonal 2`] = `
+Matrix4 [
+  1,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  -0.10000000149011612,
+  0,
+  -0,
+  -0,
+  -0,
+  1,
+]
+`;
+
 exports[`math/Matrix4 > can be set from perspective 1`] = `
 Matrix4 [
   Infinity,
@@ -59,6 +80,27 @@ Matrix4 [
   0,
   0,
   -0.20202019810676575,
+  0,
+]
+`;
+
+exports[`math/Matrix4 > can be set from perspective 2`] = `
+Matrix4 [
+  Infinity,
+  0,
+  0,
+  0,
+  0,
+  1.7320507764816284,
+  0,
+  0,
+  0,
+  0,
+  -1.0101009607315063,
+  -1,
+  0,
+  0,
+  -0.10101009905338287,
   0,
 ]
 `;

@@ -3,8 +3,6 @@ import { COLORS } from '../constants'
 export type ColorRepresentation = keyof typeof COLORS | number
 
 export class Color extends Float32Array {
-  readonly isColor = true
-
   constructor(r: ColorRepresentation = 0xffffff, g?: number, b?: number) {
     super(3)
     this.set(r, g, b)

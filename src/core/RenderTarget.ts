@@ -30,7 +30,6 @@ export class RenderTarget implements RenderTargetOptions {
   readonly count: number = 1
   readonly samples: number = 0
   readonly textures: Texture[] = []
-  readonly isRenderTarget = true
 
   constructor(options: RenderTargetOptions) {
     this.uuid = uuid()

@@ -1,6 +1,6 @@
 // Vitest Snapshot v1
 
-exports[`core/Renderer > can sort a list of meshes by visibility 1`] = `
+exports[`core/Renderer > can create a view matrix 1`] = `
 [
   0.907407283782959,
   -0.21900221705436707,

@@ -2,7 +2,6 @@ import type { Euler } from './Euler'
 import type { Vector3 } from './Vector3'
 
 export class Quaternion extends Float32Array {
-  readonly isQuaternion = true
   public onChange?: () => any
 
   constructor(x = 0, y = 0, z = 0, w = 1) {

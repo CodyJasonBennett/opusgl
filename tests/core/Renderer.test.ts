@@ -40,6 +40,7 @@ describe('core/Renderer', () => {
       new Material(),
     )
     const camera = new PerspectiveCamera(45, 2)
+    camera.updateProjectionMatrix(true)
 
     camera.position.z = 5
     camera.updateMatrix()

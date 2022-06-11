@@ -17,12 +17,9 @@ export class OrthographicCamera extends Camera {
     this.right = right
     this.bottom = bottom
     this.top = top
-
-    this.updateProjectionMatrix()
   }
 
-  updateProjectionMatrix() {
-    this.projectionMatrix.orthogonal(this.left, this.right, this.bottom, this.top, this.near, this.far)
-    this.updateFrustum()
+  updateProjectionMatrix(normalized: boolean) {
+    this.projectionMatrix.orthogonal(this.left, this.right, this.bottom, this.top, this.near, this.far, normalized)
   }
 }

@@ -1,6 +1,4 @@
 export class Vector3 extends Float32Array {
-  readonly isVector3 = true
-
   constructor(x = 0, y = x, z = x) {
     super(3)
     this.set(x, y, z)

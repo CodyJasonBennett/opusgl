@@ -1037,7 +1037,10 @@ export class WebGLRenderer extends Renderer {
     if (scene.autoUpdate) scene.updateMatrix()
 
     // Update camera matrices
-    if (camera?.autoUpdate && camera.parent === null) camera.updateMatrix()
+    if (camera?.autoUpdate) {
+      if (camera.parent === null) camera.updateMatrix()
+      camera.updateProjectionMatrix(true)
+    }
 
     // Compile & render visible children
     const renderList = this.sort(scene, camera)

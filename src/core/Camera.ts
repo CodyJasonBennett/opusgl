@@ -34,8 +34,10 @@ export abstract class Camera extends Object3D {
 
   /**
    * Used internally to calculate a projection matrix.
+   *
+   * Accepts a `normalized` argument, when true creates an WebGL [-1, 1] clipping space, and when false creates a WebGPU [0, 1] clipping space.
    */
-  abstract updateProjectionMatrix(): void
+  abstract updateProjectionMatrix(normalized: boolean): void
 
   /**
    * Updates camera's frustum planes.

@@ -2,7 +2,6 @@ import { Vector3 } from './Vector3'
 import type { Quaternion } from './Quaternion'
 
 export class Matrix4 extends Float32Array {
-  readonly isMatrix4 = true
   private _zero = new Vector3(0, 0, 0)
   private _one = new Vector3(1, 1, 1)
 
@@ -208,7 +207,7 @@ export class Matrix4 extends Float32Array {
     )
   }
 
-  perspective(fov: number, aspect: number, near: number, far: number) {
+  perspective(fov: number, aspect: number, near: number, far: number, normalized: boolean) {
     // Degrees to radians
     fov *= Math.PI / 180
 
@@ -225,17 +224,23 @@ export class Matrix4 extends Float32Array {
     this[7] = 0
     this[8] = 0
     this[9] = 0
-    this[10] = (far + near) * depth
     this[11] = -1
     this[12] = 0
     this[13] = 0
-    this[14] = 2 * far * near * depth
     this[15] = 0
+
+    if (normalized) {
+      this[10] = (far + near) * depth
+      this[14] = 2 * far * near * depth
+    } else {
+      this[10] = far * depth
+      this[14] = far * near * depth
+    }
 
     return this
   }
 
-  orthogonal(left: number, right: number, bottom: number, top: number, near: number, far: number) {
+  orthogonal(left: number, right: number, bottom: number, top: number, near: number, far: number, normalized: boolean) {
     const horizontal = 1 / (left - right)
     const vertical = 1 / (bottom - top)
     const depth = 1 / (near - far)
@@ -250,12 +255,18 @@ export class Matrix4 extends Float32Array {
     this[7] = 0
     this[8] = 0
     this[9] = 0
-    this[10] = 2 * depth
     this[11] = 0
     this[12] = (left + right) * horizontal
     this[13] = (top + bottom) * vertical
-    this[14] = (far + near) * depth
     this[15] = 1
+
+    if (normalized) {
+      this[10] = 2 * depth
+      this[14] = (far + near) * depth
+    } else {
+      this[10] = depth
+      this[14] = near * depth
+    }
 
     return this
   }

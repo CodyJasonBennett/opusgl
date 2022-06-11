@@ -10,7 +10,6 @@ export type TraverseCallback = (object: Object3D) => boolean | void
  * Constructs a 3D object. Useful for calculating transform matrices.
  */
 export class Object3D {
-  readonly isObject3D = true
   readonly uuid: string
   /**
    * Combined transforms of the object in world space.

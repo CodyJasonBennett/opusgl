@@ -48,15 +48,19 @@ describe('math/Matrix4', () => {
   })
 
   it('can be set from perspective', () => {
-    const matrix = new Matrix4().perspective(60, 0, 0.1, 10)
+    const matrixGL = new Matrix4().perspective(60, 0, 0.1, 10, true)
+    const matrixGPU = new Matrix4().perspective(60, 0, 0.1, 10, false)
 
-    expect(matrix).toMatchSnapshot()
+    expect(matrixGL).toMatchSnapshot()
+    expect(matrixGPU).toMatchSnapshot()
   })
 
   it('can be set from orthogonal', () => {
-    const matrix = new Matrix4().orthogonal(-1, 1, -1, 1, 0, 10)
+    const matrixGL = new Matrix4().orthogonal(-1, 1, -1, 1, 0, 10, true)
+    const matrixGPU = new Matrix4().orthogonal(-1, 1, -1, 1, 0, 10, false)
 
-    expect(matrix).toMatchSnapshot()
+    expect(matrixGL).toMatchSnapshot()
+    expect(matrixGPU).toMatchSnapshot()
   })
 
   it('can lookAt a set of vectors', () => {

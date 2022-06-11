@@ -6,7 +6,7 @@ class CameraImpl extends Camera {
 }
 
 describe('core/Renderer', () => {
-  it('can sort a list of meshes by visibility', () => {
+  it('can create a view matrix', () => {
     const camera = new CameraImpl()
     camera.position.set(1, 2, 3)
     camera.rotation.set(0.4)

@@ -837,17 +837,22 @@ export class WebGPURenderer extends Renderer {
     if (scene.autoUpdate) scene.updateMatrix()
 
     // Update camera matrices
-    if (camera?.autoUpdate) camera.updateMatrix()
+    if (camera?.autoUpdate) {
+      if (camera.parent === null) camera.updateMatrix()
+      camera.updateProjectionMatrix(false)
+    }
 
-    // Render children
+    // Sort and compile children
     const renderList = this.sort(scene, camera)
-    for (const child of renderList) {
-      // Compile on first render, otherwise update
-      const compiled = this.compile(child, camera)
+    const compiled = renderList.map((child) => this.compile(child, camera))
+
+    for (let i = 0; i < renderList.length; i++) {
+      const child = renderList[i]
+      const { pipeline, bufferAttributes } = compiled[i]
 
       // Bind
-      compiled.pipeline.bind(passEncoder)
-      compiled.bufferAttributes.bind(passEncoder)
+      pipeline.bind(passEncoder)
+      bufferAttributes.bind(passEncoder)
 
       // Alternate drawing for indexed and non-indexed children
       const { index, position } = child.geometry.attributes

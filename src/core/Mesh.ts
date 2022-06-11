@@ -9,7 +9,6 @@ import type { GL_DRAW_MODES } from '../constants'
  * Constructs a mesh object. Describes an object with geometry and material.
  */
 export class Mesh extends Object3D {
-  readonly isMesh = true
   /**
    * Normalized directional transforms. Useful for physics or lighting.
    */

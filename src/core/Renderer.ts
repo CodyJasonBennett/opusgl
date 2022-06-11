@@ -1,7 +1,7 @@
 import { Color } from '../math/Color'
+import { Mesh } from './Mesh'
 import type { Geometry } from './Geometry'
 import type { Material } from './Material'
-import type { Mesh } from './Mesh'
 import type { Texture } from './Texture'
 import type { RenderTarget } from './RenderTarget'
 import type { Object3D } from './Object3D'
@@ -114,6 +114,8 @@ export abstract class Renderer {
    * Returns a list of visible meshes. Will frustum cull and depth-sort with a camera if available.
    */
   sort(scene: Object3D, camera?: Camera) {
+    if (camera?.autoUpdate) camera.updateFrustum()
+
     const meshes: Mesh[] = []
 
     scene.traverse((node) => {
@@ -122,7 +124,7 @@ export abstract class Renderer {
 
       // Filter to meshes
       const mesh = node as Mesh
-      if (!mesh.isMesh) return
+      if (!(mesh instanceof Mesh)) return
 
       // Frustum cull if able
       if (camera && mesh.frustumCulled) {

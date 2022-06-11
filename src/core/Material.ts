@@ -68,7 +68,6 @@ export interface MaterialOptions {
  * Constructs a material object. Used to store program shaders and uniforms.
  */
 export class Material implements MaterialOptions {
-  readonly isMaterial = true
   readonly uuid: string
   readonly uniforms: { [name: string]: Uniform } = {}
   public vertex!: string

@@ -55,7 +55,6 @@ export class Texture implements TextureOptions {
   public flipY = true
   public anisotropy = 1
   public needsUpdate = true
-  readonly isTexture = true
 
   constructor(options?: Partial<TextureOptions>) {
     this.uuid = uuid()

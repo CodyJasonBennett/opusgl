@@ -28,30 +28,25 @@ export interface Attribute {
   needsUpdate?: boolean
 }
 
+/**
+ * Represents a list of attributes.
+ */
 export interface AttributeList {
   [name: string]: Attribute
 }
 
 /**
- * Geometry constructor parameters. Accepts an object of program attributes.
- */
-export interface GeometryOptions extends AttributeList {}
-
-/**
  * Constructs a geometry object. Used to store program attributes.
  */
 export class Geometry {
-  readonly isGeometry = true
   readonly uuid: string
   readonly attributes: AttributeList = {}
 
-  constructor(options?: GeometryOptions) {
+  constructor(attributes?: AttributeList) {
     this.uuid = uuid()
 
-    if (options) {
-      Object.entries(options).forEach(([name, attribute]) => {
-        this.setAttribute(name, attribute)
-      })
+    for (const name in attributes) {
+      this.setAttribute(name, attributes[name])
     }
   }
 

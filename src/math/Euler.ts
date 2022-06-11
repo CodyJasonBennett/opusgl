@@ -4,7 +4,6 @@ import type { Quaternion } from './Quaternion'
 export type EulerOrder = 'XYZ' | 'XZY' | 'YXZ' | 'YZX' | 'ZXY' | 'ZYX'
 
 export class Euler extends Float32Array {
-  readonly isEuler = true
   public order: EulerOrder = 'YXZ'
   public onChange?: () => any
   private _m = new Matrix4()
