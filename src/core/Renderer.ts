@@ -1,36 +1,50 @@
 import { Color } from '../math/Color'
 import { Mesh } from './Mesh'
-import type { Geometry } from './Geometry'
-import type { Material } from './Material'
-import type { Texture } from './Texture'
-import type { RenderTarget } from './RenderTarget'
 import type { Object3D } from './Object3D'
 import type { Camera } from './Camera'
 
 export interface Disposable {
-  dispose: () => void
+  dispose(): void
 }
 
-export type Compilable = Geometry | Material | Mesh | Texture | RenderTarget
+export class Compiled<Compilable extends Disposable, Compiled extends Disposable> {
+  readonly objects = new Map<Compilable, Compiled>()
 
-export class Compiled<Compiled extends Disposable> extends Map<Compilable, Compiled> {
-  // @ts-ignore
+  has(object: Compilable) {
+    return this.objects.has(object)
+  }
+
+  get(object: Compilable) {
+    return this.objects.get(object)
+  }
+
   set(object: Compilable, compiled: Compiled) {
-    super.set(object, compiled)
+    this.objects.set(object, compiled)
 
     const dispose = object.dispose.bind(object)
     object.dispose = () => {
       dispose()
 
-      compiled.dispose?.()
+      compiled.dispose()
       object.dispose = dispose
-      this.delete(object)
+      this.objects.delete(object)
     }
   }
 }
 
-export type Viewport = { x: number; y: number; width: number; height: number }
-export type Scissor = { x: number; y: number; width: number; height: number }
+export interface Viewport {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface Scissor {
+  x: number
+  y: number
+  width: number
+  height: number
+}
 
 /**
  * Constructs a renderer object. Can be extended to draw to a canvas.

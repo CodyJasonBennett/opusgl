@@ -4,7 +4,7 @@ import { Texture } from '../core/Texture'
 import type { Disposable } from '../core/Renderer'
 import type { TextureOptions } from '../core/Texture'
 import type { RenderTarget } from '../core/RenderTarget'
-import type { AttributeData, AttributeList } from '../core/Geometry'
+import type { AttributeData, AttributeList, Geometry } from '../core/Geometry'
 import type { Mesh } from '../core/Mesh'
 import type { Camera } from '../core/Camera'
 import type { Object3D } from '../core/Object3D'
@@ -552,10 +552,10 @@ export class WebGPURenderer extends Renderer {
   public format!: GPUTextureFormat
 
   protected _params: Partial<Omit<WebGPURendererOptions, 'canvas'>>
-  protected _bufferAttributes = new Compiled<WebGPUBufferAttributes>()
-  protected _pipelines = new Compiled<WebGPURenderPipeline>()
-  protected _textures = new Compiled<WebGPUTextureObject>()
-  protected _FBOs = new Compiled<WebGPUFBO>()
+  protected _bufferAttributes = new Compiled<Geometry, WebGPUBufferAttributes>()
+  protected _pipelines = new Compiled<Mesh, WebGPURenderPipeline>()
+  protected _textures = new Compiled<Texture, WebGPUTextureObject>()
+  protected _FBOs = new Compiled<RenderTarget, WebGPUFBO>()
   private _depthTexture!: GPUTexture
   private _depthTextureView!: GPUTextureView
   private _renderPass: GPURenderPassDescriptor | null = null

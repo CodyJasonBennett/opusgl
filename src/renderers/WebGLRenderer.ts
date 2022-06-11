@@ -1,8 +1,8 @@
 import { Compiled, Renderer } from '../core/Renderer'
 import { Texture } from '../core/Texture'
 import type { Disposable } from '../core/Renderer'
-import type { Uniform, UniformList } from '../core/Material'
-import type { AttributeList, AttributeData, Attribute } from '../core/Geometry'
+import type { Material, Uniform, UniformList } from '../core/Material'
+import type { AttributeList, AttributeData, Attribute, Geometry } from '../core/Geometry'
 import type { TextureOptions } from '../core/Texture'
 import type { Mesh } from '../core/Mesh'
 import type { Object3D } from '../core/Object3D'
@@ -758,11 +758,11 @@ export class WebGLRenderer extends Renderer {
   public autoClear = true
 
   protected _params: Partial<Omit<WebGLRendererOptions, 'canvas' | 'context'>>
-  protected _VAOs = new Compiled<WebGLVAO>()
-  protected _programs = new Compiled<WebGLProgramObject>()
-  protected _bufferAttributes = new Compiled<WebGLBufferAttributes>()
-  protected _textures = new Compiled<WebGLTextureObject>()
-  protected _FBOs = new Compiled<WebGLFBO>()
+  protected _VAOs = new Compiled<Mesh, WebGLVAO>()
+  protected _programs = new Compiled<Material, WebGLProgramObject>()
+  protected _bufferAttributes = new Compiled<Geometry, WebGLBufferAttributes>()
+  protected _textures = new Compiled<Texture, WebGLTextureObject>()
+  protected _FBOs = new Compiled<RenderTarget, WebGLFBO>()
 
   constructor({
     canvas = document.createElement('canvas'),

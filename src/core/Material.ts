@@ -39,13 +39,13 @@ export interface MaterialOptions {
    */
   uniforms?: UniformList
   /**
-   * Stringified vertex shader code. Must be specified alongside `fragment`.
+   * Stringified vertex shader code.
    */
-  vertex?: string
+  vertex: string
   /**
-   * Stringified fragment shader code. Must be specified alongside `vertex`.
+   * Stringified fragment shader code.
    */
-  fragment?: string
+  fragment: string
   /**
    * Which sides of faces should be rendered. Default is `front`.
    */
