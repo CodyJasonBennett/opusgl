@@ -1,7 +1,7 @@
 import type { Euler } from './Euler'
 import type { Vector3 } from './Vector3'
 
-export class Quaternion extends Float32Array {
+export class Quaternion extends Array {
   public onChange?: () => any
 
   constructor(x = 0, y = 0, z = 0, w = 1) {
@@ -45,7 +45,6 @@ export class Quaternion extends Float32Array {
     this.onChange?.()
   }
 
-  // @ts-ignore
   set(x: number, y: number, z: number, w: number) {
     this.x = x
     this.y = y
@@ -156,6 +155,32 @@ export class Quaternion extends Float32Array {
 
   dot(q: Quaternion) {
     return this.x * q.x + this.y * q.y + this.z * q.z + this.w * q.w
+  }
+
+  slerp(q: Quaternion, t: number) {
+    let cosom = this.x * q.x + this.y * q.y + this.z * q.z + this.w * q.w
+    if (cosom < 0) cosom *= -1
+
+    let scale0 = 1 - t
+    let scale1 = t
+
+    if (1 - cosom > Number.EPSILON) {
+      const omega = Math.acos(cosom)
+      const sinom = Math.sin(omega)
+      scale0 = Math.sin((1 - t) * omega) / sinom
+      scale1 = Math.sin(t * omega) / sinom
+    }
+
+    if (cosom < 0) scale1 *= -1
+
+    this.set(
+      scale0 * this.x + scale1 * q.x,
+      scale0 * this.y + scale1 * q.y,
+      scale0 * this.z + scale1 * q.z,
+      scale0 * this.w + scale1 * q.w,
+    )
+
+    return this
   }
 
   getAxisAngle(axis: Vector3) {

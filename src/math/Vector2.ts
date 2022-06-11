@@ -1,4 +1,4 @@
-export class Vector2 extends Float32Array {
+export class Vector2 extends Array {
   constructor(x = 0, y = x) {
     super(2)
     this.set(x, y)
@@ -20,7 +20,6 @@ export class Vector2 extends Float32Array {
     this[1] = y
   }
 
-  // @ts-ignore
   set(x: number, y: number = x) {
     this.x = x
     this.y = y
@@ -97,6 +96,10 @@ export class Vector2 extends Float32Array {
 
   negate() {
     return this.multiply(-1)
+  }
+
+  lengthSq() {
+    return this.x * this.x + this.y * this.y
   }
 
   getLength() {

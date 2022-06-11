@@ -1,7 +1,7 @@
 import { Vector3 } from './Vector3'
 import type { Quaternion } from './Quaternion'
 
-export class Matrix4 extends Float32Array {
+export class Matrix4 extends Array {
   private _zero = new Vector3(0, 0, 0)
   private _one = new Vector3(1, 1, 1)
 
@@ -27,7 +27,6 @@ export class Matrix4 extends Float32Array {
     this.set(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33)
   }
 
-  // @ts-ignore
   set(
     m00: number,
     m01: number,

@@ -1,4 +1,4 @@
-export class Vector3 extends Float32Array {
+export class Vector3 extends Array {
   constructor(x = 0, y = x, z = x) {
     super(3)
     this.set(x, y, z)
@@ -28,7 +28,6 @@ export class Vector3 extends Float32Array {
     this[2] = z
   }
 
-  // @ts-ignore
   set(x: number, y: number = x, z: number = x) {
     this.x = x
     this.y = y

@@ -3,7 +3,7 @@ import type { Quaternion } from './Quaternion'
 
 export type EulerOrder = 'XYZ' | 'XZY' | 'YXZ' | 'YZX' | 'ZXY' | 'ZYX'
 
-export class Euler extends Float32Array {
+export class Euler extends Array {
   public order: EulerOrder = 'YXZ'
   public onChange?: () => any
   private _m = new Matrix4()
@@ -40,7 +40,6 @@ export class Euler extends Float32Array {
     this.onChange?.()
   }
 
-  // @ts-ignore
   set(x: number, y: number = x, z: number = x) {
     this.x = x
     this.y = y

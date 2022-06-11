@@ -2,7 +2,7 @@ import { COLORS } from '../constants'
 
 export type ColorRepresentation = keyof typeof COLORS | number
 
-export class Color extends Float32Array {
+export class Color extends Array {
   constructor(r: ColorRepresentation = 0xffffff, g?: number, b?: number) {
     super(3)
     this.set(r, g, b)
@@ -32,7 +32,6 @@ export class Color extends Float32Array {
     this[2] = b
   }
 
-  // @ts-ignore
   set(r: ColorRepresentation, g?: number, b?: number) {
     if (typeof r === 'number' && typeof g === 'number' && typeof b === 'number') {
       this.r = r

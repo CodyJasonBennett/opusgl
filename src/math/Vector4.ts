@@ -1,4 +1,4 @@
-export class Vector4 extends Float32Array {
+export class Vector4 extends Array {
   constructor(x = 0, y = 0, z = 0, w = 1) {
     super(4)
     this.set(x, y, z, w)
@@ -36,7 +36,6 @@ export class Vector4 extends Float32Array {
     this[3] = w
   }
 
-  // @ts-ignore
   set(x: number, y: number, z: number, w: number) {
     this.x = x
     this.y = y
@@ -137,6 +136,10 @@ export class Vector4 extends Float32Array {
     return this.multiply(-1)
   }
 
+  lengthSq() {
+    return this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w
+  }
+
   getLength() {
     return Math.hypot(this.x, this.y, this.z, this.w)
   }
@@ -147,6 +150,19 @@ export class Vector4 extends Float32Array {
 
   normalize() {
     return this.divide(this.getLength() || 1)
+  }
+
+  distanceTo(v: Vector4) {
+    return v.getLength() - this.getLength()
+  }
+
+  inverse() {
+    this.x = 1 / this.x
+    this.y = 1 / this.y
+    this.z = 1 / this.z
+    this.w = 1 / this.w
+
+    return this
   }
 
   dot(v: Vector4) {
