@@ -87,7 +87,7 @@ const geometry = new Geometry({
   },
   index: {
     size: 1,
-    data: new Uint32Array([
+    data: new Uint16Array([
       0, 2, 1, 2, 3, 1, 4, 6, 5, 6, 7, 5, 8, 10, 9, 10, 11, 9, 12, 14, 13, 14, 15, 13, 16, 18, 17, 18, 19, 17, 20, 22,
       21, 22, 23, 21,
     ]),
@@ -119,6 +119,8 @@ const material = new Material({
     }
   `,
   fragment: `
+    precision highp float;
+
     in vec3 vNormal;
     in vec3 vColor;
     out vec4 pc_fragColor;
@@ -187,7 +189,7 @@ const geometry = new Geometry({
   },
   index: {
     size: 1,
-    data: new Uint32Array([
+    data: new Uint16Array([
       0, 2, 1, 2, 3, 1, 4, 6, 5, 6, 7, 5, 8, 10, 9, 10, 11, 9, 12, 14, 13, 14, 15, 13, 16, 18, 17, 18, 19, 17, 20, 22,
       21, 22, 23, 21,
     ]),
@@ -303,6 +305,8 @@ const material = new Material({
     }
   `,
   fragment: `
+    precision highp float;
+
     layout(std140) uniform Uniforms {
       float time;
     };

@@ -27,9 +27,7 @@ export abstract class Camera extends Object3D {
 
   updateMatrix(updateChildren?: boolean, updateParents?: boolean) {
     super.updateMatrix(updateChildren, updateParents)
-
     this.viewMatrix.copy(this.matrix).invert()
-    this.updateFrustum()
   }
 
   /**
