@@ -89,7 +89,7 @@ export class WebGLBufferObject implements Disposable {
     gl: WebGL2RenderingContext,
     data: AttributeData | number,
     type = gl.ARRAY_BUFFER,
-    usage = gl.STATIC_DRAW,
+    usage = gl.DYNAMIC_DRAW,
   ) {
     this.gl = gl
     this.buffer = this.gl.createBuffer()!
@@ -142,7 +142,7 @@ export class WebGLUniformBuffer extends WebGLBufferObject {
 
   constructor(gl: WebGL2RenderingContext, program: WebGLProgramObject, index = 0) {
     const byteLength = gl.getActiveUniformBlockParameter(program.program, index, gl.UNIFORM_BLOCK_DATA_SIZE)
-    super(gl, byteLength, gl.UNIFORM_BUFFER, gl.DYNAMIC_DRAW)
+    super(gl, byteLength, gl.UNIFORM_BUFFER)
     this.gl.bindBufferBase(this.type, index, this.buffer)
 
     this.data = new Float32Array(byteLength / Float32Array.BYTES_PER_ELEMENT)
