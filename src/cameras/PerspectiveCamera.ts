@@ -1,18 +1,20 @@
 import { Camera } from '../core/Camera'
 
+/**
+ * Constructs a camera with an perspective projection. Useful for 3D rendering.
+ */
 export class PerspectiveCamera extends Camera {
-  public fov: number
-  public aspect: number
-  public near: number
-  public far: number
-
-  constructor(fov = 75, aspect = 0, near = 0.1, far = 1000) {
+  constructor(
+    /** Vertical field of view in degrees. Default is `75` */
+    public fov = 75,
+    /** Frustum aspect ratio. Default is `1` */
+    public aspect = 1,
+    /** Frustum near plane (minimum). Default is `0.1` */
+    public near = 0.1,
+    /** Frustum far plane (maximum). Default is `1000` */
+    public far = 1000,
+  ) {
     super()
-
-    this.fov = fov
-    this.aspect = aspect
-    this.near = near
-    this.far = far
   }
 
   updateProjectionMatrix(normalized: boolean) {

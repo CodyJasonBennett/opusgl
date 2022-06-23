@@ -30,15 +30,15 @@ export interface TextureOptions {
   /**
    * Whether to generate mipmaps for increased perceived quality. Default is `true`.
    */
-  generateMipmaps?: boolean
+  generateMipmaps: boolean
   /**
    * Vertically flips the texture when uploading to the GPU. Default is `true`.
    */
-  flipY?: boolean
+  flipY: boolean
   /**
    * Number of samples for anisotropic filtering. Eliminates aliasing at oblique angles. Default is `1`.
    */
-  anisotropy?: number
+  anisotropy: number
 }
 
 /**

@@ -1,5 +1,8 @@
 import { uuid } from '../utils'
 
+/**
+ * Represents an attribute data view.
+ */
 export type AttributeData =
   | Float32Array
   | Int8Array
@@ -11,7 +14,7 @@ export type AttributeData =
   | Uint32Array
 
 /**
- * Represents a buffer attribute.
+ * Represents a geometry attribute.
  */
 export interface Attribute {
   /**

@@ -26,6 +26,9 @@ export type Uniform =
   | Vector4
   | Texture
 
+/**
+ * Represents a list of uniforms.
+ */
 export interface UniformList {
   [name: string]: Uniform
 }

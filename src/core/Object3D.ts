@@ -36,15 +36,15 @@ export class Object3D {
    */
   readonly rotation = new Euler()
   /**
-   * Local rotation for this object and its descendants.
+   * Local quaternion for this object and its descendants. Default is `0, 0, 0, 1`.
    */
   readonly quaternion = new Quaternion()
   /**
-   * Whether to automatically update transform matrices for this object and its descendants.
+   * Whether to automatically update transform matrices for this object and its descendants. Default is `true`.
    */
   public autoUpdate = true
   /**
-   * Whether to automatically update local transform from position/rotation/scale properties.
+   * Whether to automatically update local transform from position/rotation/scale properties. Default is `true`.
    */
   public matrixAutoUpdate = true
   /**
@@ -60,7 +60,7 @@ export class Object3D {
    */
   public visible = true
   /**
-   * Whether to cull from rendering when out of view of a camera, if able.
+   * Whether to cull from rendering when out of view of a camera, if able. Default is `true`.
    */
   public frustumCulled = true
   /**
