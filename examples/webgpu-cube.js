@@ -65,7 +65,7 @@ const material = new Material({
       @location(1) normal: vec3<f32>,
     };
 
-    @stage(vertex)
+    @vertex
     fn main(input: VertexIn) -> VertexOut {
       var out: VertexOut;
       out.position = uniforms.projectionMatrix * uniforms.viewMatrix * uniforms.modelMatrix * vec4(input.position, 1.0);
@@ -84,7 +84,7 @@ const material = new Material({
       @location(0) color: vec4<f32>,
     };
 
-    @stage(fragment)
+    @fragment
     fn main(input: FragmentIn) -> FragmentOut {
       var out: FragmentOut;
       var lighting = dot(input.normal, normalize(vec3(10.0)));

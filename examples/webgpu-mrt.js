@@ -21,7 +21,7 @@ const compute = new Mesh(
         @builtin(position) position: vec4<f32>,
       };
 
-      @stage(vertex)
+      @vertex
       fn main(input: VertexIn) -> VertexOut {
         var out: VertexOut;
         out.position = vec4(input.position, 1.0);
@@ -36,7 +36,7 @@ const compute = new Mesh(
         @location(3) color3: vec4<f32>,
       };
 
-      @stage(fragment)
+      @fragment
       fn main() -> FragmentOut {
         var out: FragmentOut;
         out.color0 = vec4(0.9, 0.3, 0.4, 1.0);
@@ -79,7 +79,7 @@ const composite = new Mesh(
         @location(0) uv: vec2<f32>,
       };
 
-      @stage(vertex)
+      @vertex
       fn main(input: VertexIn) -> VertexOut {
         var out: VertexOut;
         out.position = vec4(input.position, 1.0);
@@ -108,7 +108,7 @@ const composite = new Mesh(
         @location(0) color: vec4<f32>,
       };
 
-      @stage(fragment)
+      @fragment
       fn main(input: FragmentIn) -> FragmentOut {
         var out: FragmentOut;
 

@@ -23,17 +23,17 @@
   "types": "dist/index.d.ts",
   "sideEffects": false,
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^5.27.1",
-    "@typescript-eslint/parser": "^5.27.1",
-    "eslint": "^8.17.0",
-    "jsdom": "^19.0.0",
-    "np": "^7.6.1",
-    "typescript": "^4.7.3",
-    "vite": "^2.9.10",
-    "vitest": "^0.14.1"
+    "@typescript-eslint/eslint-plugin": "^5.29.0",
+    "@typescript-eslint/parser": "^5.29.0",
+    "eslint": "^8.18.0",
+    "jsdom": "^20.0.0",
+    "np": "^7.6.2",
+    "typescript": "^4.7.4",
+    "vite": "^2.9.12",
+    "vitest": "^0.15.2"
   },
   "dependencies": {
-    "@webgpu/types": "^0.1.19"
+    "@webgpu/types": "^0.1.20"
   },
   "scripts": {
     "dev": "vite",
