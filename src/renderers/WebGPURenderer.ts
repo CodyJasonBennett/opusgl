@@ -1,7 +1,6 @@
 /// <reference types="@webgpu/types" />
 import { Compiled, Renderer } from '../core/Renderer'
 import { Texture } from '../core/Texture'
-import type { Disposable } from '../core/Renderer'
 import type { TextureOptions } from '../core/Texture'
 import type { RenderTarget } from '../core/RenderTarget'
 import type { AttributeData, AttributeList, Geometry } from '../core/Geometry'
@@ -15,7 +14,7 @@ import { cloneUniform, uniformsEqual } from '../utils'
 /**
  * Constructs a WebGPU buffer. Can be used to transmit binary data to the GPU.
  */
-export class WebGPUBufferObject implements Disposable {
+export class WebGPUBufferObject {
   readonly device: GPUDevice
   readonly buffer: GPUBuffer
 
@@ -123,6 +122,9 @@ export class WebGPUUniformBuffer extends WebGPUBufferObject {
   }
 }
 
+/**
+ * Represents a WebGPU buffer attribute and its layout properties.
+ */
 export interface WebGPUBufferAttribute extends Partial<GPUVertexBufferLayout> {
   slot?: number
   indexFormat?: GPUIndexFormat
@@ -132,7 +134,7 @@ export interface WebGPUBufferAttribute extends Partial<GPUVertexBufferLayout> {
 /**
  * Constructs a WebGPU buffer attribute manager.
  */
-export class WebGPUBufferAttributes implements Disposable {
+export class WebGPUBufferAttributes {
   readonly device: GPUDevice
   readonly attributes = new Map<string, WebGPUBufferAttribute>()
 
@@ -203,26 +205,38 @@ export class WebGPUBufferAttributes implements Disposable {
   }
 }
 
-export interface BindGroupInfoStructMember {
+/**
+ * Represents a bind group node entry.
+ */
+export interface BindGroupInfoNode {
   name: string
-  type: any
+  type: string
 }
-export interface BindGroupInfoStruct {
-  name: string
+/**
+ * Represents a bind group struct and its descendants.
+ */
+export interface BindGroupInfoStruct extends Omit<BindGroupInfoNode, 'type'> {
   type: 'struct'
-  children: BindGroupInfoStructMember[]
+  children: BindGroupInfoNode[]
 }
-export interface BindGroupInfoResource {
-  name: string
-  type: any
+/**
+ * Represents a bind group resource and its layout properties
+ */
+export interface BindGroupInfoResource extends BindGroupInfoNode {
   binding: number
   group: number
 }
+/**
+ * Represents a bind group and its entries by type.
+ */
 export interface BindGroupInfoGroup {
   samplers: BindGroupInfoResource[]
   textures: BindGroupInfoResource[]
   buffers: BindGroupInfoResource[]
 }
+/**
+ * Represents pipeline bind group info.
+ */
 export interface BindGroupInfo {
   structs: Map<string, BindGroupInfoStruct>
   resources: Map<string, BindGroupInfoResource>
@@ -232,20 +246,13 @@ export interface BindGroupInfo {
 /**
  * Constructs a WebGPU render pipeline. Manages program state and bindings.
  */
-export class WebGPURenderPipeline implements Disposable {
+export class WebGPURenderPipeline {
   readonly device: GPUDevice
   readonly format: GPUTextureFormat
-  public pipelineState!: {
-    transparent: boolean
-    cullMode: typeof GPU_CULL_SIDES[keyof typeof GPU_CULL_SIDES]
-    topology: typeof GPU_DRAW_MODES[keyof typeof GPU_DRAW_MODES]
-    depthWriteEnabled: boolean
-    depthCompare: GPUCompareFunction
-  }
-  public pipeline!: GPURenderPipeline
   readonly bindGroups: Map<number, GPUBindGroup> = new Map()
   readonly bindGroupEntries: Map<number, GPUBindGroupEntry[]> = new Map()
   readonly UBOs: Map<string, WebGPUUniformBuffer> = new Map()
+  public pipeline?: GPURenderPipeline
 
   constructor(device: GPUDevice, format: GPUTextureFormat) {
     this.device = device
@@ -256,6 +263,8 @@ export class WebGPURenderPipeline implements Disposable {
    * Binds the render pipeline and its attachments to a render pass encoder.
    */
   bind(passEncoder: GPURenderPassEncoder) {
+    if (!this.pipeline) return
+
     passEncoder.setPipeline(this.pipeline)
     this.bindGroups.forEach((bindGroup, index) => {
       passEncoder.setBindGroup(index, bindGroup)
@@ -266,28 +275,17 @@ export class WebGPURenderPipeline implements Disposable {
    * Updates pipeline state against a mesh and its attributes.
    */
   update(target: Mesh, bufferAttributes: WebGPUBufferAttributes, colorAttachments = 1) {
-    const transparent = target.material.transparent
-    const cullMode = GPU_CULL_SIDES[target.material.side]
-    const topology = GPU_DRAW_MODES[target.mode]
-    const depthWriteEnabled = target.material.depthWrite
-    const depthCompare = (target.material.depthTest ? 'less' : 'always') as GPUCompareFunction
-
-    if (
-      transparent === this.pipelineState?.transparent &&
-      cullMode === this.pipelineState?.cullMode &&
-      topology === this.pipelineState?.topology &&
-      depthWriteEnabled === this.pipelineState?.depthWriteEnabled &&
-      depthCompare === this.pipelineState?.depthCompare
-    )
-      return
-
-    this.pipelineState = {
-      transparent,
-      cullMode,
-      topology,
-      depthWriteEnabled,
-      depthCompare,
+    const pipelineState = {
+      transparent: target.material.transparent,
+      cullMode: GPU_CULL_SIDES[target.material.side],
+      topology: GPU_DRAW_MODES[target.mode],
+      depthWriteEnabled: target.material.depthWrite,
+      depthCompare: (target.material.depthTest ? 'less' : 'always') as GPUCompareFunction,
+      attributeCount: Array.from(bufferAttributes.attributes.keys()),
+      colorAttachments,
     }
+    const pipelineCacheKey = JSON.stringify(pipelineState)
+    if (this.pipeline?.label === pipelineCacheKey) return
 
     const buffers: GPUVertexBufferLayout[] = []
     bufferAttributes.attributes.forEach((attribute, name) => {
@@ -296,6 +294,7 @@ export class WebGPURenderPipeline implements Disposable {
     })
 
     this.pipeline = this.device.createRenderPipeline({
+      label: pipelineCacheKey,
       vertex: {
         module: this.device.createShaderModule({ code: target.material.vertex }),
         entryPoint: 'main',
@@ -306,7 +305,7 @@ export class WebGPURenderPipeline implements Disposable {
         entryPoint: 'main',
         targets: Array(colorAttachments).fill({
           format: this.format,
-          blend: this.pipelineState.transparent
+          blend: pipelineState.transparent
             ? {
                 alpha: {
                   srcFactor: 'one',
@@ -325,12 +324,12 @@ export class WebGPURenderPipeline implements Disposable {
       },
       primitive: {
         frontFace: 'ccw',
-        cullMode: this.pipelineState.cullMode,
-        topology: this.pipelineState.topology,
+        cullMode: pipelineState.cullMode,
+        topology: pipelineState.topology,
       },
       depthStencil: {
-        depthWriteEnabled: this.pipelineState.depthWriteEnabled,
-        depthCompare: this.pipelineState.depthCompare,
+        depthWriteEnabled: pipelineState.depthWriteEnabled,
+        depthCompare: pipelineState.depthCompare,
         format: 'depth24plus-stencil8',
       },
       layout: 'auto',
@@ -338,7 +337,7 @@ export class WebGPURenderPipeline implements Disposable {
 
     this.bindGroupEntries.forEach((entries, index) => {
       const bindGroup = this.device.createBindGroup({
-        layout: this.pipeline.getBindGroupLayout(index),
+        layout: this.pipeline!.getBindGroupLayout(index),
         entries,
       })
       this.bindGroups.set(index, bindGroup)
@@ -357,7 +356,7 @@ export class WebGPURenderPipeline implements Disposable {
     for (const struct of shaderSource.matchAll(/struct\s*(\w+)\s*\{([^\}]+)\}/g)) {
       const [, name, content] = struct
 
-      const children: BindGroupInfoStructMember[] = []
+      const children: BindGroupInfoNode[] = []
       for (const child of Array.from(content.matchAll(/(\w+)(?:\s*:\s*)(\w+)/g))) {
         const [, name, type] = child
         children.push({ name, type })
@@ -415,7 +414,7 @@ export class WebGPURenderPipeline implements Disposable {
 /**
  * Constructs a WebGPU texture.
  */
-export class WebGPUTextureObject implements Disposable {
+export class WebGPUTextureObject {
   readonly device: GPUDevice
   readonly format: GPUTextureFormat
   public sampler?: GPUSampler
@@ -471,7 +470,7 @@ export class WebGPUTextureObject implements Disposable {
 /**
  * Constructs a WebGPU FBO with MRT and multi-sampling.
  */
-export class WebGPUFBO implements Disposable {
+export class WebGPUFBO {
   readonly device: GPUDevice
   readonly width: number
   readonly height: number

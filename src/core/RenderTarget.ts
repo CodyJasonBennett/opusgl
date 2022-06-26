@@ -1,6 +1,9 @@
 import { Texture } from './Texture'
 import { uuid } from '../utils'
 
+/**
+ * RenderTarget constructor parameters. Accepts drawing dimensions, attachment and sample size.
+ */
 export interface RenderTargetOptions {
   /**
    * Drawing buffer width.
@@ -18,6 +21,10 @@ export interface RenderTargetOptions {
    * Number of samples for multi-sampling. Default is `0`.
    */
   samples?: number
+  /**
+   * Textures to write color attachments to. Default is created with `linear` filtering.
+   */
+  textures?: Texture[]
 }
 
 /**
@@ -35,9 +42,16 @@ export class RenderTarget implements RenderTargetOptions {
     this.uuid = uuid()
     Object.assign(this, options)
 
-    for (let i = 0; i < this.count; i++) {
-      const texture = new Texture({ minFilter: 'nearest', magFilter: 'nearest', flipY: false, generateMipmaps: false })
-      this.textures.push(texture)
+    if (!this.textures?.length) {
+      for (let i = 0; i < this.count; i++) {
+        const texture = new Texture({
+          minFilter: 'nearest',
+          magFilter: 'nearest',
+          flipY: false,
+          generateMipmaps: false,
+        })
+        this.textures.push(texture)
+      }
     }
   }
 

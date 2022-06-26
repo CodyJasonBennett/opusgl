@@ -1,6 +1,9 @@
 import type { GL_TEXTURE_FILTERS, GL_TEXTURE_WRAPPINGS } from '../constants'
 import { uuid } from '../utils'
 
+/**
+ * Represents a texture image source.
+ */
 export type ImageRepresentation = ImageBitmap | HTMLCanvasElement
 
 /**

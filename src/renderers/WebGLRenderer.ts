@@ -1,6 +1,5 @@
 import { Compiled, Renderer } from '../core/Renderer'
 import { Texture } from '../core/Texture'
-import type { Disposable } from '../core/Renderer'
 import type { Material, Uniform, UniformList } from '../core/Material'
 import type { AttributeList, AttributeData, Attribute, Geometry } from '../core/Geometry'
 import type { TextureOptions } from '../core/Texture'
@@ -45,7 +44,7 @@ const getDataType = (data: AttributeData) => {
 /**
  * Constructs a WebGL VAO. Can be used to memoize gl state.
  */
-export class WebGLVAO implements Disposable {
+export class WebGLVAO {
   readonly gl: WebGL2RenderingContext
   readonly VAO: WebGLVertexArrayObject
 
@@ -79,7 +78,7 @@ export class WebGLVAO implements Disposable {
 /**
  * Constructs a WebGL buffer. Can be used to transmit binary data to the GPU.
  */
-export class WebGLBufferObject implements Disposable {
+export class WebGLBufferObject {
   readonly gl: WebGL2RenderingContext
   readonly buffer: WebGLBuffer
   readonly type: number
@@ -181,6 +180,9 @@ export class WebGLUniformBuffer extends WebGLBufferObject {
   }
 }
 
+/**
+ * Represents a WebGL active uniform and its layout properties.
+ */
 export interface WebGLActiveUniform {
   size: number
   type: number
@@ -406,7 +408,7 @@ export class WebGLProgramObject {
 /**
  * Constructs a WebGL buffer attribute manager.
  */
-export class WebGLBufferAttributes implements Disposable {
+export class WebGLBufferAttributes {
   readonly gl: WebGL2RenderingContext
   readonly buffers: Map<string, WebGLBufferObject> = new Map()
   readonly programs: WebGLProgramObject[] = []
@@ -468,7 +470,7 @@ export class WebGLBufferAttributes implements Disposable {
 /**
  * Constructs a WebGL texture.
  */
-export class WebGLTextureObject implements Disposable {
+export class WebGLTextureObject {
   readonly gl: WebGL2RenderingContext
   readonly target: WebGLTexture
 
@@ -544,7 +546,7 @@ export class WebGLTextureObject implements Disposable {
 /**
  * Constructs a WebGL FBO with MRT and multi-sampling.
  */
-export class WebGLFBO implements Disposable {
+export class WebGLFBO {
   readonly gl: WebGL2RenderingContext
   readonly width: number
   readonly height: number

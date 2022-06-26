@@ -4,6 +4,9 @@ import { Euler } from '../math/Euler'
 import { Quaternion } from '../math/Quaternion'
 import { uuid } from '../utils'
 
+/**
+ * Represents an Object3D traversal callback.
+ */
 export type TraverseCallback = (object: Object3D) => boolean | void
 
 /**

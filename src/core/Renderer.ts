@@ -3,23 +3,29 @@ import { Mesh } from './Mesh'
 import type { Object3D } from './Object3D'
 import type { Camera } from './Camera'
 
+/**
+ * Represents a compilable object that implements a dispose method.
+ */
 export interface Disposable {
   dispose(): void
 }
 
+/**
+ * A collection of disposable objects and their compiled GPU resource.
+ */
 export class Compiled<Compilable extends Disposable, Compiled extends Disposable> {
-  readonly objects = new Map<Compilable, Compiled>()
+  private _objects = new Map<Compilable, Compiled>()
 
   has(object: Compilable) {
-    return this.objects.has(object)
+    return this._objects.has(object)
   }
 
   get(object: Compilable) {
-    return this.objects.get(object)
+    return this._objects.get(object)
   }
 
   set(object: Compilable, compiled: Compiled) {
-    this.objects.set(object, compiled)
+    this._objects.set(object, compiled)
 
     const dispose = object.dispose.bind(object)
     object.dispose = () => {
@@ -27,11 +33,14 @@ export class Compiled<Compilable extends Disposable, Compiled extends Disposable
 
       compiled.dispose()
       object.dispose = dispose
-      this.objects.delete(object)
+      this._objects.delete(object)
     }
   }
 }
 
+/**
+ * Represents renderer viewport state.
+ */
 export interface Viewport {
   x: number
   y: number
@@ -39,6 +48,9 @@ export interface Viewport {
   height: number
 }
 
+/**
+ * Represents renderer scissor state.
+ */
 export interface Scissor {
   x: number
   y: number
@@ -64,8 +76,8 @@ export abstract class Renderer {
   public clearAlpha = 0
 
   private _pixelRatio = 1
-  private _viewport!: Viewport
-  private _scissor!: Scissor
+  private _viewport: Viewport = { x: 0, y: 0, width: 0, height: 0 }
+  private _scissor: Scissor = { x: 0, y: 0, width: 0, height: 0 }
 
   /**
    * Sets the canvas size. Will reset viewport and scissor state.
