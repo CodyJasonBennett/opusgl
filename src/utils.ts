@@ -9,11 +9,11 @@ export const uuid = () =>
   )
 
 /**
- * Compares two uniforms, preferring to use math `equals` methods if available.
+ * Compares two uniforms by keys or reference.
  */
-export const uniformsEqual = (a: Uniform, b: Uniform) => {
-  // @ts-ignore Compare math classes
-  if (a.constructor === b.constructor && typeof b.equals === 'function') return b.equals(a) as boolean
+export const uniformsEqual = (a: Uniform, b: Uniform): boolean => {
+  // Recursively compare array uniforms
+  if (a instanceof Array && b instanceof Array) return a.every((v, i) => uniformsEqual(v, b[i]))
   // Atomically compare literals
   return a === b
 }

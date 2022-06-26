@@ -16,7 +16,9 @@ describe('utils/uuid', () => {
 
 describe('utils/uniformsEqual', () => {
   it('can compare uniforms', () => {
-    // Compares math classes via #equals
+    // Compares array uniforms
+    expect(uniformsEqual([0], [0])).toBe(true)
+    expect(uniformsEqual([0], [1])).toBe(false)
     expect(uniformsEqual(new Vector2(1), new Vector2(1))).toBe(true)
     expect(uniformsEqual(new Vector2(1), new Vector2(2))).toBe(false)
 
