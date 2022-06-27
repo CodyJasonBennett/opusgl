@@ -1,10 +1,13 @@
 import { Vector3 } from './Vector3'
 import type { Quaternion } from './Quaternion'
 
-export class Matrix4 extends Array {
-  private _zero = new Vector3(0, 0, 0)
-  private _one = new Vector3(1, 1, 1)
+const _zero = new Vector3(0, 0, 0)
+const _one = new Vector3(1, 1, 1)
 
+/**
+ * Calculates a 4x4 matrix.
+ */
+export class Matrix4 extends Array {
   constructor(
     m00 = 1,
     m01 = 0,
@@ -27,6 +30,9 @@ export class Matrix4 extends Array {
     this.set(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33)
   }
 
+  /**
+   * Sets this matrix's elements.
+   */
   set(
     m00: number,
     m01: number,
@@ -68,6 +74,9 @@ export class Matrix4 extends Array {
     return this
   }
 
+  /**
+   * Copies elements from another `Matrix4`.
+   */
   copy(m: Matrix4) {
     this[0] = m[0]
     this[1] = m[1]
@@ -92,14 +101,23 @@ export class Matrix4 extends Array {
     return this
   }
 
+  /**
+   * Constructs a new `Matrix4` with identical elements.
+   */
   clone() {
     return new Matrix4().copy(this)
   }
 
+  /**
+   * Resets to an identity matrix.
+   */
   identity() {
     return this.set(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
   }
 
+  /**
+   * Multiplies a scalar or `Matrix4`.
+   */
   multiply(t: number | Matrix4) {
     if (typeof t === 'number') {
       this[0] *= t
@@ -145,6 +163,9 @@ export class Matrix4 extends Array {
     return this
   }
 
+  /**
+   * Checks for strict equality with another `Matrix4`.
+   */
   equals(m: Matrix4) {
     // prettier-ignore
     return (
@@ -170,6 +191,9 @@ export class Matrix4 extends Array {
     )
   }
 
+  /**
+   * Returns the determinant of this matrix.
+   */
   determinant() {
     const b0 = this[0] * this[5] - this[1] * this[4]
     const b1 = this[0] * this[6] - this[2] * this[4]
@@ -185,6 +209,9 @@ export class Matrix4 extends Array {
     return this[7] * b6 - this[3] * b7 + this[15] * b8 - this[11] * b9
   }
 
+  /**
+   * Transposes this matrix in place over its diagonal.
+   */
   transpose() {
     return this.set(
       this[0],
@@ -206,6 +233,11 @@ export class Matrix4 extends Array {
     )
   }
 
+  /**
+   * Calculates a perspective projection matrix.
+   *
+   * Accepts a `normalized` argument, when true creates an WebGL `[-1, 1]` clipping space, and when false creates a WebGPU `[0, 1]` clipping space.
+   */
   perspective(fov: number, aspect: number, near: number, far: number, normalized: boolean) {
     // Degrees to radians
     fov *= Math.PI / 180
@@ -239,6 +271,11 @@ export class Matrix4 extends Array {
     return this
   }
 
+  /**
+   * Calculates an orthographic projection matrix.
+   *
+   * Accepts a `normalized` argument, when true creates an WebGL `[-1, 1]` clipping space, and when false creates a WebGPU `[0, 1]` clipping space.
+   */
   orthogonal(left: number, right: number, bottom: number, top: number, near: number, far: number, normalized: boolean) {
     const horizontal = 1 / (left - right)
     const vertical = 1 / (bottom - top)
@@ -270,6 +307,9 @@ export class Matrix4 extends Array {
     return this
   }
 
+  /**
+   * Calculates a rotation matrix from `eye` to `target`, assuming `up` as world-space up.
+   */
   lookAt(eye: Vector3, target: Vector3, up: Vector3) {
     const z = eye.clone().sub(target)
 
@@ -320,6 +360,9 @@ export class Matrix4 extends Array {
     return this
   }
 
+  /**
+   * Translates this matrix with a `Vector3`.
+   */
   translate(v: Vector3) {
     this[12] += this[0] * v.x + this[4] * v.y + this[8] * v.z
     this[13] += this[1] * v.x + this[5] * v.y + this[9] * v.z
@@ -329,6 +372,9 @@ export class Matrix4 extends Array {
     return this
   }
 
+  /**
+   * Scales this matrix with a `Vector3`.
+   */
   scale(v: Vector3) {
     this[0] *= v.x
     this[1] *= v.x
@@ -346,6 +392,9 @@ export class Matrix4 extends Array {
     return this
   }
 
+  /**
+   * Rotates this matrix with an angle in radians against an axis.
+   */
   rotate(radians: number, axis: Vector3) {
     const length = axis.getLength()
 
@@ -387,18 +436,19 @@ export class Matrix4 extends Array {
     )
   }
 
+  /**
+   * Composes this matrix's elements from position, quaternion, and scale properties.
+   */
   compose(position: Vector3, quaternion: Quaternion, scale: Vector3) {
-    const { x, y, z, w } = quaternion
-
-    const xx = x * (x + x)
-    const xy = x * (y + y)
-    const xz = x * (z + z)
-    const yy = y * (y + y)
-    const yz = y * (z + z)
-    const zz = z * (z + z)
-    const wx = w * (x + x)
-    const wy = w * (y + y)
-    const wz = w * (z + z)
+    const xx = quaternion.x * (quaternion.x + quaternion.x)
+    const xy = quaternion.x * (quaternion.y + quaternion.y)
+    const xz = quaternion.x * (quaternion.z + quaternion.z)
+    const yy = quaternion.y * (quaternion.y + quaternion.y)
+    const yz = quaternion.y * (quaternion.z + quaternion.z)
+    const zz = quaternion.z * (quaternion.z + quaternion.z)
+    const wx = quaternion.w * (quaternion.x + quaternion.x)
+    const wy = quaternion.w * (quaternion.y + quaternion.y)
+    const wz = quaternion.w * (quaternion.z + quaternion.z)
 
     this[0] = (1 - (yy + zz)) * scale.x
     this[1] = (xy + wz) * scale.x
@@ -420,6 +470,9 @@ export class Matrix4 extends Array {
     return this
   }
 
+  /**
+   * Decomposes this matrix into position, quaternion, and scale properties.
+   */
   decompose(position: Vector3, quaternion: Quaternion, scale: Vector3) {
     position.set(this[12], this[13], this[14])
 
@@ -468,6 +521,9 @@ export class Matrix4 extends Array {
     return this
   }
 
+  /**
+   * Calculates the inverse of this matrix (no-op with determinant of `0`).
+   */
   invert() {
     const b00 = this[0] * this[5] - this[1] * this[4]
     const b01 = this[0] * this[6] - this[2] * this[4]
@@ -508,7 +564,10 @@ export class Matrix4 extends Array {
     ).multiply(invDet)
   }
 
+  /**
+   * Calculates a rotation matrix from a `Quaternion`.
+   */
   fromQuaternion(q: Quaternion) {
-    return this.compose(this._zero, q, this._one)
+    return this.compose(_zero, q, _one)
   }
 }

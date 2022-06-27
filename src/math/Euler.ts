@@ -1,16 +1,22 @@
 import { Matrix4 } from './Matrix4'
 import type { Quaternion } from './Quaternion'
 
+const _m = new Matrix4()
+
+/**
+ * Represents an axis order or the order of rotations around local space.
+ */
 export type EulerOrder = 'XYZ' | 'XZY' | 'YXZ' | 'YZX' | 'ZXY' | 'ZYX'
 
+/**
+ * Calculates a Euler angle with a defined axis order.
+ */
 export class Euler extends Array {
   public order: EulerOrder = 'YXZ'
-  public onChange?: () => any
-  private _m = new Matrix4()
 
-  constructor(x = 0, y = x, z = x) {
+  constructor(x = 0, y = x, z = x, order?: EulerOrder) {
     super(3)
-    this.set(x, y, z)
+    this.set(x, y, z, order)
   }
 
   get x() {
@@ -19,7 +25,6 @@ export class Euler extends Array {
 
   set x(x) {
     this[0] = x
-    this.onChange?.()
   }
 
   get y() {
@@ -28,7 +33,6 @@ export class Euler extends Array {
 
   set y(y) {
     this[1] = y
-    this.onChange?.()
   }
 
   get z() {
@@ -37,17 +41,23 @@ export class Euler extends Array {
 
   set z(z) {
     this[2] = z
-    this.onChange?.()
   }
 
-  set(x: number, y: number = x, z: number = x) {
+  /**
+   * Sets this euler's x, y, z, and order properties.
+   */
+  set(x: number, y: number = x, z: number = x, order: EulerOrder = this.order) {
     this.x = x
     this.y = y
     this.z = z
+    this.order = order
 
     return this
   }
 
+  /**
+   * Copies properties from another `Euler`.
+   */
   copy(e: Euler) {
     this.x = e.x
     this.y = e.y
@@ -57,10 +67,16 @@ export class Euler extends Array {
     return this
   }
 
+  /**
+   * Constructs a new `Euler` with identical properties.
+   */
   clone() {
     return new Euler().copy(this)
   }
 
+  /**
+   * Adds a scalar or `Euler`.
+   */
   add(t: number | Euler) {
     if (typeof t === 'number') {
       this.x += t
@@ -75,6 +91,9 @@ export class Euler extends Array {
     return this
   }
 
+  /**
+   * Subtracts a scalar or `Euler`.
+   */
   sub(t: number | Euler) {
     if (typeof t === 'number') {
       this.x -= t
@@ -89,6 +108,9 @@ export class Euler extends Array {
     return this
   }
 
+  /**
+   * Multiplies a scalar or `Euler`.
+   */
   multiply(t: number | Euler) {
     if (typeof t === 'number') {
       this.x *= t
@@ -103,6 +125,9 @@ export class Euler extends Array {
     return this
   }
 
+  /**
+   * Divides a scalar of `Euler`.
+   */
   divide(t: number | Euler) {
     if (typeof t === 'number') {
       this.x /= t
@@ -117,15 +142,22 @@ export class Euler extends Array {
     return this
   }
 
+  /**
+   * Checks for strict equality with another `Euler`.
+   */
   equals(e: Euler) {
     // prettier-ignore
     return (
       this.x === e.x &&
       this.y === e.y &&
-      this.z === e.z
+      this.z === e.z &&
+      this.order === e.order
     )
   }
 
+  /**
+   * Sets this euler's properties from a `Matrix4`.
+   */
   fromMatrix4(m: Matrix4) {
     const m11 = m[0]
     const m12 = m[4]
@@ -220,7 +252,10 @@ export class Euler extends Array {
     return this
   }
 
+  /**
+   * Sets this euler's properties from a `Quaternion`.
+   */
   fromQuaternion(q: Quaternion) {
-    return this.fromMatrix4(this._m.fromQuaternion(q))
+    return this.fromMatrix4(_m.fromQuaternion(q))
   }
 }
