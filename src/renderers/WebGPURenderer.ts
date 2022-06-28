@@ -36,7 +36,7 @@ export class WebGPUBufferObject {
    * Writes binary data to buffer.
    */
   write(data: AttributeData) {
-    this.device.queue.writeBuffer(this.buffer, 0, data)
+    this.device.queue.writeBuffer(this.buffer, data.byteOffset, data)
   }
 
   /**
@@ -55,25 +55,30 @@ const pad4 = (n: number) => n + ((4 - (n % 4)) % 4)
  * Constructs a WebGPU uniform buffer. Packs uniforms into a buffer via std140.
  */
 export class WebGPUUniformBuffer extends WebGPUBufferObject {
-  readonly uniforms: Map<string, Exclude<Uniform, Texture>>
+  readonly uniforms: Map<string, { offset: number; value?: Uniform }>
   readonly data: Float32Array
 
   constructor(device: GPUDevice, uniforms: UniformList) {
     // Memoize uniforms
-    const memoizedUniforms = new Map<string, Exclude<Uniform, Texture>>()
+    const memoizedUniforms = new Map()
+    let offset = 0
     for (const name in uniforms) {
-      if (uniforms[name] instanceof Texture) continue
-      const uniform = cloneUniform(uniforms[name])
-      memoizedUniforms.set(name, uniform)
+      const uniform = uniforms[name]
+      if (uniform instanceof Texture) continue
+
+      if (typeof uniform === 'number') {
+        memoizedUniforms.set(name, { offset })
+        offset += 1
+      } else {
+        const pad = uniform.length <= 2 ? pad2 : pad4
+        offset = pad(offset)
+
+        memoizedUniforms.set(name, { offset })
+        offset += pad(uniform.length)
+      }
     }
 
-    // Calculate packing byte-length
-    const length = pad4(
-      Array.from(memoizedUniforms.values()).reduce(
-        (n: number, u) => n + (typeof u === 'number' ? 1 : u.length <= 2 ? pad2(u.length) : pad4(u.length)),
-        0,
-      ),
-    )
+    const length = pad4(offset)
     const data = new Float32Array(length)
 
     super(device, data, GPUBufferUsage.UNIFORM)
@@ -86,34 +91,21 @@ export class WebGPUUniformBuffer extends WebGPUBufferObject {
    * Updates packed uniforms.
    */
   update(uniforms: UniformList) {
-    // Check whether a uniform has changed
-    let needsUpdate = false
-    this.uniforms.forEach((value, name) => {
-      const uniform = uniforms[name]
-      if (!uniformsEqual(value, uniform)) {
-        this.uniforms.set(name, cloneUniform(uniform))
-        needsUpdate = true
-      }
+    this.uniforms.forEach((memoized, name) => {
+      // Skip textures and unchanged uniforms
+      const uniform = uniforms[name] as Exclude<Uniform, Texture>
+      if (memoized.value != null && uniformsEqual(memoized.value, uniform)) return
+
+      // Memoize new values
+      memoized.value = cloneUniform(uniform, memoized.value)
+
+      const length = typeof uniform === 'number' ? 1 : uniform.length
+
+      if (typeof uniform === 'number') this.data[memoized.offset] = uniform
+      else this.data.set(uniform, memoized.offset)
+
+      this.write(this.data.subarray(memoized.offset, pad4(memoized.offset + length)))
     })
-
-    // If a uniform changed, rebuild entire buffer
-    // TODO: expand write to subdata at affected indices instead
-    if (needsUpdate) {
-      let offset = 0
-      for (const uniform of Array.from(this.uniforms.values())) {
-        if (typeof uniform === 'number') {
-          this.data[offset] = uniform
-          offset += 1 // leave empty space to stack primitives
-        } else {
-          const pad = uniform.length <= 2 ? pad2 : pad4
-          offset = pad(offset) // fill in empty space
-          this.data.set(uniform, offset)
-          offset += pad(uniform.length)
-        }
-      }
-
-      this.write(this.data)
-    }
   }
 
   dispose() {
@@ -408,6 +400,7 @@ export class WebGPURenderPipeline {
   dispose() {
     this.bindGroupEntries.clear()
     this.bindGroups.clear()
+    this.UBOs.clear()
   }
 }
 

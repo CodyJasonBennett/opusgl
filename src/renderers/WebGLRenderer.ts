@@ -81,23 +81,16 @@ export class WebGLVAO {
 export class WebGLBufferObject {
   readonly gl: WebGL2RenderingContext
   readonly buffer: WebGLBuffer
-  readonly type: number
-  readonly usage: number
+  public type: number
+  public usage: number
 
-  constructor(
-    gl: WebGL2RenderingContext,
-    data: AttributeData | number,
-    type = gl.ARRAY_BUFFER,
-    usage = gl.DYNAMIC_DRAW,
-  ) {
+  constructor(gl: WebGL2RenderingContext, data: AttributeData, type = gl.ARRAY_BUFFER, usage = gl.STATIC_DRAW) {
     this.gl = gl
     this.buffer = this.gl.createBuffer()!
     this.type = type
     this.usage = usage
 
-    this.bind()
-    // @ts-ignore
-    this.gl.bufferData(this.type, data, this.usage)
+    this.write(data)
   }
 
   /**
@@ -119,7 +112,15 @@ export class WebGLBufferObject {
    */
   write(data: AttributeData) {
     this.bind()
-    this.gl.bufferSubData(this.type, 0, data)
+
+    const byteLength = this.gl.getBufferParameter(this.type, this.gl.BUFFER_SIZE)
+    const usage = this.gl.getBufferParameter(this.type, this.gl.BUFFER_USAGE)
+
+    if (data.byteOffset === 0 && (data.byteLength > byteLength || this.usage !== usage)) {
+      this.gl.bufferData(this.type, data, this.usage)
+    } else {
+      this.gl.bufferSubData(this.type, data.byteOffset, data)
+    }
   }
 
   /**
@@ -141,10 +142,12 @@ export class WebGLUniformBuffer extends WebGLBufferObject {
 
   constructor(gl: WebGL2RenderingContext, program: WebGLProgramObject, index = 0) {
     const byteLength = gl.getActiveUniformBlockParameter(program.program, index, gl.UNIFORM_BLOCK_DATA_SIZE)
-    super(gl, byteLength, gl.UNIFORM_BUFFER)
+    const data = new Float32Array(byteLength / Float32Array.BYTES_PER_ELEMENT)
+
+    super(gl, data, gl.UNIFORM_BUFFER, gl.DYNAMIC_DRAW)
     this.gl.bindBufferBase(this.type, index, this.buffer)
 
-    this.data = new Float32Array(byteLength / Float32Array.BYTES_PER_ELEMENT)
+    this.data = data
     this.program = program
     this.index = index
     this.name = gl.getActiveUniformBlockName(this.program.program, index)!
@@ -154,29 +157,26 @@ export class WebGLUniformBuffer extends WebGLBufferObject {
    * Updates packed uniforms.
    */
   update(uniforms: UniformList) {
-    // Check whether a uniform has changed
-    let needsUpdate = false
     this.program.uniforms.forEach((memoized, name) => {
       // Only set uniforms in block
       if (memoized.blockIndex !== this.index) return
 
-      // Skip unchanged uniforms
+      // Skip textures and unchanged uniforms
       const uniform = uniforms[name.replace(`${this.name}.`, '')] as Exclude<Uniform, Texture>
-      if (memoized.value != null && uniformsEqual(memoized.value, uniform)) return
+      if (memoized.value != null && uniformsEqual(memoized.value!, uniform)) return
+
+      // Memoize new values
+      memoized.value = cloneUniform(uniform, memoized.value)
 
       // Update buffer storage
-      const offset = memoized.offset / Float32Array.BYTES_PER_ELEMENT
-      if (typeof uniform === 'number') this.data[offset] = uniform
-      else this.data.set(uniform, offset)
+      const length = typeof uniform === 'number' ? 1 : uniform.length
 
-      // Memoize new values, flag UBO for update
-      memoized.value = cloneUniform(uniform, memoized.value)
-      needsUpdate = true
+      if (typeof uniform === 'number') this.data[memoized.offset] = uniform
+      else this.data.set(uniform, memoized.offset)
+
+      // Write to buffer
+      this.write(this.data.subarray(memoized.offset, memoized.offset + length))
     })
-
-    // If a uniform changed, update entire buffer
-    // TODO: expand write to subdata at affected indices instead
-    if (needsUpdate) this.write(this.data)
   }
 }
 
@@ -199,7 +199,7 @@ export class WebGLProgramObject {
   readonly gl: WebGL2RenderingContext
   readonly program: WebGLProgram
   readonly uniforms = new Map<string, WebGLActiveUniform>()
-  readonly attributes = new Map<string, { buffer: WebGLBufferObject; location: number }>()
+  readonly attributeLocations = new Map<string, number>()
   readonly textureLocations = new Map<string, number>()
   readonly UBOs = new Map<number, WebGLUniformBuffer>()
 
@@ -249,8 +249,9 @@ export class WebGLProgramObject {
       if (activeUniform) {
         const { name, size, type } = activeUniform
         const location = this.getUniformLocation(name)
-        const [blockIndex] = this.gl.getActiveUniforms(this.program, [i], this.gl.UNIFORM_BLOCK_INDEX)
-        const [offset] = this.gl.getActiveUniforms(this.program, [i], this.gl.UNIFORM_OFFSET)
+        const blockIndex = this.gl.getActiveUniforms(this.program, [i], this.gl.UNIFORM_BLOCK_INDEX)[0]
+        const offset =
+          this.gl.getActiveUniforms(this.program, [i], this.gl.UNIFORM_OFFSET)[0] / Float32Array.BYTES_PER_ELEMENT
         this.uniforms.set(name, { size, type, location, blockIndex, offset })
 
         if (type === this.gl.SAMPLER_2D) {
@@ -377,30 +378,30 @@ export class WebGLProgramObject {
    */
   setAttribute(name: string, attribute: Attribute, buffer: WebGLBufferObject) {
     const location = this.getAttributeLocation(name)
-    if (location !== -1) {
-      this.gl.enableVertexAttribArray(location)
+    if (location === -1) return
 
-      const dataType = getDataType(attribute.data)!
-      if (dataType === this.gl.INT || dataType === this.gl.UNSIGNED_INT) {
-        this.gl.vertexAttribIPointer(location, attribute.size, dataType, 0, 0)
-      } else {
-        this.gl.vertexAttribPointer(location, attribute.size, dataType, false, 0, 0)
-      }
+    buffer.bind()
+
+    this.gl.enableVertexAttribArray(location)
+
+    const dataType = getDataType(attribute.data)!
+    if (dataType === this.gl.INT || dataType === this.gl.UNSIGNED_INT) {
+      this.gl.vertexAttribIPointer(location, attribute.size, dataType, 0, 0)
+    } else {
+      this.gl.vertexAttribPointer(location, attribute.size, dataType, false, 0, 0)
     }
 
-    this.attributes.set(name, { buffer, location })
+    this.attributeLocations.set(name, location)
   }
 
   /**
    * Disposes the program from GPU memory.
    */
   dispose() {
+    this.uniforms.clear()
+    this.attributeLocations.clear()
+    this.textureLocations.clear()
     this.UBOs.forEach((UBO) => UBO.dispose())
-    this.bind()
-    this.attributes.forEach(({ location }) => {
-      if (location !== -1) this.gl.disableVertexAttribArray(location)
-    })
-    this.unbind()
     this.gl.deleteProgram(this.program)
   }
 }
@@ -411,7 +412,6 @@ export class WebGLProgramObject {
 export class WebGLBufferAttributes {
   readonly gl: WebGL2RenderingContext
   readonly buffers: Map<string, WebGLBufferObject> = new Map()
-  readonly programs: WebGLProgramObject[] = []
 
   constructor(gl: WebGL2RenderingContext) {
     this.gl = gl
@@ -424,30 +424,32 @@ export class WebGLBufferAttributes {
     for (const name in attributes) {
       const attribute = attributes[name]
 
-      let buffer = this.buffers.get(name)
-      if (!buffer) {
+      if (!this.buffers.has(name)) {
         const type = name === 'index' ? this.gl.ELEMENT_ARRAY_BUFFER : this.gl.ARRAY_BUFFER
-        buffer = this.buffers.get(name) ?? new WebGLBufferObject(this.gl, attribute.data, type)
+        const buffer = new WebGLBufferObject(this.gl, attribute.data, type)
+        this.buffers.set(name, buffer)
         attribute.needsUpdate = false
       }
 
-      program.setAttribute(name, attribute, buffer)
+      if (!program.attributeLocations.has(name)) {
+        const buffer = this.buffers.get(name)!
+        program.setAttribute(name, attribute, buffer)
+      }
     }
-
-    this.programs.push(program)
   }
 
   /**
    * Updates attributes flagged for update.
    */
   update(attributes: AttributeList) {
-    this.buffers.forEach((buffer, name) => {
+    for (const name in attributes) {
       const attribute = attributes[name]
-      if (attribute.needsUpdate) {
+      if (attribute.needsUpdate && this.buffers.has(name)) {
+        const buffer = this.buffers.get(name)!
         buffer.write(attribute.data)
         attribute.needsUpdate = false
       }
-    })
+    }
   }
 
   /**
@@ -456,14 +458,6 @@ export class WebGLBufferAttributes {
   dispose() {
     this.buffers.forEach((buffer) => buffer.dispose())
     this.buffers.clear()
-    for (const program of this.programs) {
-      program.bind()
-      program.attributes.forEach(({ location }) => {
-        if (location !== -1) this.gl.disableVertexAttribArray(location)
-      })
-      program.unbind()
-    }
-    this.programs.slice(0, this.programs.length)
   }
 }
 
