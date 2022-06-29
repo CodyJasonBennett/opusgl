@@ -56,14 +56,14 @@ export class Geometry {
   /**
    * Gets an attribute by name.
    */
-  getAttribute(name: string) {
+  getAttribute(name: string): Attribute {
     return this.attributes[name]
   }
 
   /**
    * Sets an attribute by name. Will update existing attributes.
    */
-  setAttribute(name: string, attribute: Attribute) {
+  setAttribute(name: string, attribute: Attribute): void {
     attribute.needsUpdate = !!this.attributes[name]
     this.attributes[name] = attribute
   }
@@ -71,7 +71,7 @@ export class Geometry {
   /**
    * Disposes geometry from GPU memory.
    */
-  dispose() {
+  dispose(): void {
     // Implemented by renderer
   }
 }

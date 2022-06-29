@@ -19,7 +19,7 @@ import { cloneUniform, uniformsEqual } from '../utils'
 /**
  * Gets the appropriate WebGL data type for a data view.
  */
-const getDataType = (data: AttributeData) => {
+const getDataType = (data: AttributeData): number | null => {
   switch (data.constructor) {
     case Float32Array:
       return 5126 // FLOAT
@@ -56,21 +56,21 @@ export class WebGLVAO {
   /**
    * Binds the VAO. Further modifications to global gl state are memoized.
    */
-  bind() {
+  bind(): void {
     this.gl.bindVertexArray(this.VAO)
   }
 
   /**
    * Unbinds the VAO. Further state is not memoized.
    */
-  unbind() {
+  unbind(): void {
     this.gl.bindVertexArray(null)
   }
 
   /**
    * Disposes the VAO from GPU memory.
    */
-  dispose() {
+  dispose(): void {
     this.gl.deleteVertexArray(this.VAO)
   }
 }
@@ -96,21 +96,21 @@ export class WebGLBufferObject {
   /**
    * Binds the buffer. Will be affected by further read/write ops.
    */
-  bind() {
+  bind(): void {
     this.gl.bindBuffer(this.type, this.buffer)
   }
 
   /**
    * Unbinds the buffer. Not affected by further read/write ops.
    */
-  unbind() {
+  unbind(): void {
     this.gl.bindBuffer(this.type, null)
   }
 
   /**
    * Writes binary data to buffer.
    */
-  write(data: AttributeData) {
+  write(data: AttributeData): void {
     this.bind()
 
     const byteLength = this.gl.getBufferParameter(this.type, this.gl.BUFFER_SIZE)
@@ -126,7 +126,7 @@ export class WebGLBufferObject {
   /**
    * Disposes the buffer from GPU memory.
    */
-  dispose() {
+  dispose(): void {
     this.gl.deleteBuffer(this.buffer)
   }
 }
@@ -156,7 +156,7 @@ export class WebGLUniformBuffer extends WebGLBufferObject {
   /**
    * Updates packed uniforms.
    */
-  update(uniforms: UniformList) {
+  update(uniforms: UniformList): void {
     this.program.uniforms.forEach((memoized, name) => {
       // Only set uniforms in block
       if (memoized.blockIndex !== this.index) return
@@ -267,42 +267,42 @@ export class WebGLProgramObject {
   /**
    * Binds the program.
    */
-  bind() {
+  bind(): void {
     this.gl.useProgram(this.program)
   }
 
   /**
    * Unbinds the program.
    */
-  unbind() {
+  unbind(): void {
     this.gl.useProgram(null)
   }
 
   /**
    * Returns an active attribute's location by name. Will return `-1` if not found.
    */
-  getAttributeLocation(name: string) {
+  getAttributeLocation(name: string): number {
     return this.gl.getAttribLocation(this.program, name)
   }
 
   /**
    * Returns an active uniform's location by name. Will return `-1` if not found.
    */
-  getUniformLocation(name: string) {
+  getUniformLocation(name: string): WebGLUniformLocation | -1 {
     return this.gl.getUniformLocation(this.program, name) ?? -1
   }
 
   /**
    * Returns an active texture's location by name. Will return `-1` if not found.
    */
-  getTextureLocation(name: string) {
+  getTextureLocation(name: string): number {
     return this.textureLocations.get(name) ?? -1
   }
 
   /**
    * Binds and activates a texture by name.
    */
-  activateTexture(name: string, texture: WebGLTextureObject) {
+  activateTexture(name: string, texture: WebGLTextureObject): void {
     const location = this.getTextureLocation(name)
     if (location !== -1) {
       this.gl.activeTexture(this.gl.TEXTURE0 + location)
@@ -313,7 +313,7 @@ export class WebGLProgramObject {
   /**
    * Sets a uniform outside of std140 by name.
    */
-  setUniform(name: string, value: Uniform) {
+  setUniform(name: string, value: Uniform): void {
     // Skip unused uniforms
     const uniform = this.uniforms.get(name)
     if (!uniform || uniform.location === -1) return
@@ -369,14 +369,12 @@ export class WebGLProgramObject {
 
     // Memoize previous uniform values for diffing
     uniform.value = cloneUniform(value, uniform.value)
-
-    return uniform
   }
 
   /**
    * Sets a program buffer attribute by name.
    */
-  setAttribute(name: string, attribute: Attribute, buffer: WebGLBufferObject) {
+  setAttribute(name: string, attribute: Attribute, buffer: WebGLBufferObject): void {
     const location = this.getAttributeLocation(name)
     if (location === -1) return
 
@@ -397,7 +395,7 @@ export class WebGLProgramObject {
   /**
    * Disposes the program from GPU memory.
    */
-  dispose() {
+  dispose(): void {
     this.uniforms.clear()
     this.attributeLocations.clear()
     this.textureLocations.clear()
@@ -420,7 +418,7 @@ export class WebGLBufferAttributes {
   /**
    * Compiles and binds attributes into buffers.
    */
-  setAttributes(program: WebGLProgramObject, attributes: AttributeList) {
+  setAttributes(program: WebGLProgramObject, attributes: AttributeList): void {
     for (const name in attributes) {
       const attribute = attributes[name]
 
@@ -441,7 +439,7 @@ export class WebGLBufferAttributes {
   /**
    * Updates attributes flagged for update.
    */
-  update(attributes: AttributeList) {
+  update(attributes: AttributeList): void {
     for (const name in attributes) {
       const attribute = attributes[name]
       if (attribute.needsUpdate && this.buffers.has(name)) {
@@ -455,7 +453,7 @@ export class WebGLBufferAttributes {
   /**
    * Disposes of attributes from GPU memory.
    */
-  dispose() {
+  dispose(): void {
     this.buffers.forEach((buffer) => buffer.dispose())
     this.buffers.clear()
   }
@@ -476,21 +474,21 @@ export class WebGLTextureObject {
   /**
    * Binds the texture.
    */
-  bind() {
+  bind(): void {
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.target)
   }
 
   /**
    * Unbinds the texture.
    */
-  unbind() {
+  unbind(): void {
     this.gl.bindTexture(this.gl.TEXTURE_2D, null)
   }
 
   /**
    * Updates the texture from `TextureOptions` with an optional `width` and `height`.
    */
-  update(options: Texture | TextureOptions, width = 0, height = 0) {
+  update(options: Texture | TextureOptions, width = 0, height = 0): void {
     this.bind()
 
     if (options.image) {
@@ -525,14 +523,12 @@ export class WebGLTextureObject {
 
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, GL_TEXTURE_WRAPPINGS[options.wrapS])
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, GL_TEXTURE_WRAPPINGS[options.wrapT])
-
-    return this
   }
 
   /**
    * Disposes of the texture from GPU memory.
    */
-  dispose() {
+  dispose(): void {
     this.gl.deleteTexture(this.target)
   }
 }
@@ -603,21 +599,21 @@ export class WebGLFBO {
   /**
    * Binds the FBO.
    */
-  bind(type = this.gl.FRAMEBUFFER, multisampled = this.samples) {
+  bind(type = this.gl.FRAMEBUFFER, multisampled = this.samples): void {
     this.gl.bindFramebuffer(type, multisampled ? this.multisampleFrameBuffer : this.frameBuffer)
   }
 
   /**
    * Unbinds the FBO.
    */
-  unbind(type = this.gl.FRAMEBUFFER) {
+  unbind(type = this.gl.FRAMEBUFFER): void {
     this.gl.bindFramebuffer(type, null)
   }
 
   /**
    * Downsamples the FBO and its attachments to be readable via `blitFramebuffer`. Supports MRT.
    */
-  blit() {
+  blit(): void {
     // blitFramebuffer can only copy the first color attachment to another FBO
     // so we unbind FBO attachments and copy renderBuffers to textures one by one
     // (See issue #12): https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_framebuffer_blit.txt
@@ -693,7 +689,7 @@ export class WebGLFBO {
   /**
    * Disposes of the FBO from GPU memory.
    */
-  dispose() {
+  dispose(): void {
     this.gl.deleteFramebuffer(this.frameBuffer)
     this.gl.deleteFramebuffer(this.multisampleFrameBuffer)
     for (const renderBuffer of this.renderBuffers) this.gl.deleteRenderbuffer(renderBuffer)
@@ -795,7 +791,7 @@ export class WebGLRenderer extends Renderer {
     this.setSize(canvas.width, canvas.height)
   }
 
-  setViewport(x: number, y: number, width: number, height: number) {
+  setViewport(x: number, y: number, width: number, height: number): void {
     super.setViewport(x, y, width, height)
 
     const scaledWidth = Math.floor(width * this.pixelRatio)
@@ -803,7 +799,7 @@ export class WebGLRenderer extends Renderer {
     this.gl.viewport(x, y, scaledWidth, scaledHeight)
   }
 
-  setScissor(x: number, y: number, width: number, height: number) {
+  setScissor(x: number, y: number, width: number, height: number): void {
     super.setScissor(x, y, width, height)
     this.gl.scissor(x, y, width, height)
   }
@@ -811,7 +807,7 @@ export class WebGLRenderer extends Renderer {
   /**
    * Enables scissor test. Useful for toggling rendering in certain regions.
    */
-  setScissorTest(enabled: boolean) {
+  setScissorTest(enabled: boolean): void {
     if (enabled) {
       this.gl.enable(this.gl.SCISSOR_TEST)
     } else {
@@ -822,7 +818,7 @@ export class WebGLRenderer extends Renderer {
   /**
    * Sets cull face mode. Useful for reducing drawn faces at runtime.
    */
-  setCullFace(cullMode: typeof GL_CULL_SIDES[keyof typeof GL_CULL_SIDES]) {
+  setCullFace(cullMode: typeof GL_CULL_SIDES[keyof typeof GL_CULL_SIDES]): void {
     if (cullMode) {
       this.gl.enable(this.gl.CULL_FACE)
       this.gl.cullFace(cullMode)
@@ -834,7 +830,7 @@ export class WebGLRenderer extends Renderer {
   /**
    * Enables depth test. Useful for controlling occlusion behavior.
    */
-  setDepthTest(enabled: boolean) {
+  setDepthTest(enabled: boolean): void {
     if (enabled) {
       this.gl.enable(this.gl.DEPTH_TEST)
     } else {
@@ -845,21 +841,21 @@ export class WebGLRenderer extends Renderer {
   /**
    * Toggles depthmask. Useful for controlling objects can occlude others.
    */
-  setDepthMask(enabled: boolean) {
+  setDepthMask(enabled: boolean): void {
     this.gl.depthMask(enabled)
   }
 
   /**
    * Sets the active frameBuffer to render to.
    */
-  setFrameBuffer(frameBuffer: WebGLFramebuffer | null, target = this.gl.FRAMEBUFFER) {
+  setFrameBuffer(frameBuffer: WebGLFramebuffer | null, target = this.gl.FRAMEBUFFER): void {
     this.gl.bindFramebuffer(target, frameBuffer)
   }
 
   /**
    * Clears color and depth buffers.
    */
-  clear() {
+  clear(): void {
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT)
 
     const multiplier = this._params.premultipliedAlpha ? this.clearAlpha : 1
@@ -871,7 +867,7 @@ export class WebGLRenderer extends Renderer {
     )
   }
 
-  compile(target: Mesh, camera?: Camera) {
+  compile(target: Mesh, camera?: Camera): void {
     // Update mesh built-ins
     target.material.uniforms.modelMatrix = target.matrix
 
@@ -970,14 +966,12 @@ export class WebGLRenderer extends Renderer {
 
     // Cleanup
     VAO.unbind()
-
-    return { VAO, program, bufferAttributes }
   }
 
   /**
    * Compiles and binds a render target to render into.
    */
-  setRenderTarget(renderTarget: RenderTarget | null) {
+  setRenderTarget(renderTarget: RenderTarget | null): void {
     if (!renderTarget) {
       this.setViewport(this.viewport.x, this.viewport.y, this.viewport.width, this.viewport.height)
       return this.setFrameBuffer(null)
@@ -1020,12 +1014,12 @@ export class WebGLRenderer extends Renderer {
   /**
    * Downsamples a multi-sampled render target and its attachments to be readable via `blitFramebuffer`. Supports MRT.
    */
-  blitRenderTarget(renderTarget: RenderTarget) {
+  blitRenderTarget(renderTarget: RenderTarget): void {
     const compiled = this._FBOs.get(renderTarget)
     if (compiled) compiled.blit()
   }
 
-  render(scene: Object3D, camera?: Camera) {
+  render(scene: Object3D, camera?: Camera): void {
     // Clear screen
     if (this.autoClear) this.clear()
 
@@ -1042,9 +1036,10 @@ export class WebGLRenderer extends Renderer {
     const renderList = this.sort(scene, camera)
     for (const child of renderList) {
       // Compile on first render, otherwise update
-      const { VAO } = this.compile(child, camera)
+      this.compile(child, camera)
 
       // Bind
+      const VAO = this._VAOs.get(child)!
       VAO.bind()
 
       // Alternate drawing for indexed and non-indexed children

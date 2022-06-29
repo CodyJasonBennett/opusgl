@@ -19,7 +19,7 @@ export class Euler extends Array {
     this.set(x, y, z, order)
   }
 
-  get x() {
+  get x(): number {
     return this[0]
   }
 
@@ -27,7 +27,7 @@ export class Euler extends Array {
     this[0] = x
   }
 
-  get y() {
+  get y(): number {
     return this[1]
   }
 
@@ -35,7 +35,7 @@ export class Euler extends Array {
     this[1] = y
   }
 
-  get z() {
+  get z(): number {
     return this[2]
   }
 
@@ -46,7 +46,7 @@ export class Euler extends Array {
   /**
    * Sets this euler's x, y, z, and order properties.
    */
-  set(x: number, y: number = x, z: number = x, order: EulerOrder = this.order) {
+  set(x: number, y: number = x, z: number = x, order: EulerOrder = this.order): this {
     this.x = x
     this.y = y
     this.z = z
@@ -58,7 +58,7 @@ export class Euler extends Array {
   /**
    * Copies properties from another `Euler`.
    */
-  copy(e: Euler) {
+  copy(e: Euler): this {
     this.x = e.x
     this.y = e.y
     this.z = e.z
@@ -70,14 +70,14 @@ export class Euler extends Array {
   /**
    * Constructs a new `Euler` with identical properties.
    */
-  clone() {
+  clone(): Euler {
     return new Euler().copy(this)
   }
 
   /**
    * Adds a scalar or `Euler`.
    */
-  add(t: number | Euler) {
+  add(t: number | Euler): this {
     if (typeof t === 'number') {
       this.x += t
       this.y += t
@@ -94,7 +94,7 @@ export class Euler extends Array {
   /**
    * Subtracts a scalar or `Euler`.
    */
-  sub(t: number | Euler) {
+  sub(t: number | Euler): this {
     if (typeof t === 'number') {
       this.x -= t
       this.y -= t
@@ -111,7 +111,7 @@ export class Euler extends Array {
   /**
    * Multiplies a scalar or `Euler`.
    */
-  multiply(t: number | Euler) {
+  multiply(t: number | Euler): this {
     if (typeof t === 'number') {
       this.x *= t
       this.y *= t
@@ -128,7 +128,7 @@ export class Euler extends Array {
   /**
    * Divides a scalar of `Euler`.
    */
-  divide(t: number | Euler) {
+  divide(t: number | Euler): this {
     if (typeof t === 'number') {
       this.x /= t
       this.y /= t
@@ -145,7 +145,7 @@ export class Euler extends Array {
   /**
    * Checks for strict equality with another `Euler`.
    */
-  equals(e: Euler) {
+  equals(e: Euler): boolean {
     // prettier-ignore
     return (
       this.x === e.x &&
@@ -158,7 +158,7 @@ export class Euler extends Array {
   /**
    * Sets this euler's properties from a `Matrix4`.
    */
-  fromMatrix4(m: Matrix4) {
+  fromMatrix4(m: Matrix4): this {
     const m11 = m[0]
     const m12 = m[4]
     const m13 = m[8]
@@ -255,7 +255,7 @@ export class Euler extends Array {
   /**
    * Sets this euler's properties from a `Quaternion`.
    */
-  fromQuaternion(q: Quaternion) {
+  fromQuaternion(q: Quaternion): this {
     return this.fromMatrix4(_m.fromQuaternion(q))
   }
 }

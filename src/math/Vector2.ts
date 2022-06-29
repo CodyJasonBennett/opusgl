@@ -7,7 +7,7 @@ export class Vector2 extends Array {
     this.set(x, y)
   }
 
-  get x() {
+  get x(): number {
     return this[0]
   }
 
@@ -15,7 +15,7 @@ export class Vector2 extends Array {
     this[0] = x
   }
 
-  get y() {
+  get y(): number {
     return this[1]
   }
 
@@ -26,7 +26,7 @@ export class Vector2 extends Array {
   /**
    * Sets this vector's x, and y properties.
    */
-  set(x: number, y: number = x) {
+  set(x: number, y: number = x): this {
     this.x = x
     this.y = y
 
@@ -36,7 +36,7 @@ export class Vector2 extends Array {
   /**
    * Copies properties from another `Vector2`.
    */
-  copy(v: Vector2) {
+  copy(v: Vector2): this {
     this.x = v.x
     this.y = v.y
 
@@ -46,14 +46,14 @@ export class Vector2 extends Array {
   /**
    * Constructs a new `Vector2` with identical properties.
    */
-  clone() {
+  clone(): Vector2 {
     return new Vector2().copy(this)
   }
 
   /**
    * Adds a scalar or `Vector2`.
    */
-  add(t: number | Vector2) {
+  add(t: number | Vector2): this {
     if (typeof t === 'number') {
       this.x += t
       this.y += t
@@ -68,7 +68,7 @@ export class Vector2 extends Array {
   /**
    * Subtracts a scalar or `Vector2`.
    */
-  sub(t: number | Vector2) {
+  sub(t: number | Vector2): this {
     if (typeof t === 'number') {
       this.x -= t
       this.y -= t
@@ -83,7 +83,7 @@ export class Vector2 extends Array {
   /**
    * Multiplies a scalar or `Vector2`.
    */
-  multiply(t: number | Vector2) {
+  multiply(t: number | Vector2): this {
     if (typeof t === 'number') {
       this.x *= t
       this.y *= t
@@ -98,7 +98,7 @@ export class Vector2 extends Array {
   /**
    * Divides a scalar of `Vector2`.
    */
-  divide(t: number | Vector2) {
+  divide(t: number | Vector2): this {
     if (typeof t === 'number') {
       this.x /= t
       this.y /= t
@@ -113,7 +113,7 @@ export class Vector2 extends Array {
   /**
    * Checks for strict equality with another `Vector2`.
    */
-  equals(v: Vector2) {
+  equals(v: Vector2): boolean {
     // prettier-ignore
     return (
       this.x === v.x &&
@@ -124,63 +124,63 @@ export class Vector2 extends Array {
   /**
    * Negates or calculates the inverse of this vector.
    */
-  negate() {
+  negate(): this {
     return this.multiply(-1)
   }
 
   /**
    * Calculates the square of the Euclidean length of this vector.
    */
-  lengthSq() {
+  lengthSq(): number {
     return this.x * this.x + this.y * this.y
   }
 
   /**
    * Calculates the Euclidean length of this vector.
    */
-  getLength() {
+  getLength(): number {
     return Math.hypot(this.x, this.y)
   }
 
   /**
    * Sets this vector to a length of `l` with the same direction.
    */
-  setLength(l: number) {
+  setLength(l: number): this {
     return this.normalize().multiply(l)
   }
 
   /**
    * Normalizes this vector.
    */
-  normalize() {
+  normalize(): this {
     return this.divide(this.getLength() || 1)
   }
 
   /**
    * Returns the distance to another `Vector2`.
    */
-  distanceTo(v: Vector2) {
+  distanceTo(v: Vector2): number {
     return v.getLength() - this.getLength()
   }
 
   /**
    * Calculates the dot product between another `Vector2`.
    */
-  dot(v: Vector2) {
+  dot(v: Vector2): number {
     return this.x * v.x + this.y * v.y
   }
 
   /**
    * Calculates the cross product between another `Vector2`.
    */
-  cross(v: Vector2) {
+  cross(v: Vector2): number {
     return this.x * v.y - this.y * v.x
   }
 
   /**
    * Lerps between another `Vector2` with a given alpha (`t`).
    */
-  lerp(v: Vector2, t: number) {
+  lerp(v: Vector2, t: number): this {
     this.x += t * (v.x - this.x)
     this.x += t * (v.y - this.y)
 

@@ -14,7 +14,7 @@ export class Color extends Array {
     this.set(r, g, b)
   }
 
-  get r() {
+  get r(): number {
     return this[0]
   }
 
@@ -22,7 +22,7 @@ export class Color extends Array {
     this[0] = r
   }
 
-  get g() {
+  get g(): number {
     return this[1]
   }
 
@@ -30,7 +30,7 @@ export class Color extends Array {
     this[1] = g
   }
 
-  get b() {
+  get b(): number {
     return this[2]
   }
 
@@ -41,7 +41,7 @@ export class Color extends Array {
   /**
    * Sets this color's r, g, b properties from a `ColorRepresentation` or individual components.
    */
-  set(r: ColorRepresentation, g?: number, b?: number) {
+  set(r: ColorRepresentation, g?: number, b?: number): this {
     if (typeof r === 'number' && typeof g === 'number' && typeof b === 'number') {
       this.r = r
       this.g = g
@@ -58,7 +58,7 @@ export class Color extends Array {
   /**
    * Copies properties from another `Color`.
    */
-  copy(c: Color) {
+  copy(c: Color): this {
     this.r = c.r
     this.g = c.g
     this.b = c.b
@@ -69,14 +69,14 @@ export class Color extends Array {
   /**
    * Constructs a new `Color` with identical properties.
    */
-  clone() {
+  clone(): Color {
     return new Color().copy(this)
   }
 
   /**
    * Checks for strict equality with another `Color`.
    */
-  equals(c: Color) {
+  equals(c: Color): boolean {
     // prettier-ignore
     return (
       this.r === c.r &&
@@ -88,7 +88,7 @@ export class Color extends Array {
   /**
    * Sets color from a CSS color name.
    */
-  fromString(s: keyof typeof COLORS) {
+  fromString(s: keyof typeof COLORS): this {
     const hex = COLORS[s] ?? 0xffffff
     return this.fromHex(hex)
   }
@@ -96,7 +96,7 @@ export class Color extends Array {
   /**
    * Sets color from a hexadecimal.
    */
-  fromHex(h: number) {
+  fromHex(h: number): this {
     const r = ((h >> 16) & 255) / 255
     const g = ((h >> 8) & 255) / 255
     const b = (h & 255) / 255

@@ -16,19 +16,19 @@ export interface Disposable {
 export class Compiled<Compilable extends Disposable, Compiled extends Disposable> {
   private _objects = new Map<Compilable, Compiled>()
 
-  has(object: Compilable) {
+  has(object: Compilable): boolean {
     return this._objects.has(object)
   }
 
-  get(object: Compilable) {
+  get(object: Compilable): Compiled | undefined {
     return this._objects.get(object)
   }
 
-  set(object: Compilable, compiled: Compiled) {
+  set(object: Compilable, compiled: Compiled): void {
     this._objects.set(object, compiled)
 
     const dispose = object.dispose.bind(object)
-    object.dispose = () => {
+    object.dispose = (): void => {
       dispose()
 
       compiled.dispose()
@@ -82,7 +82,7 @@ export abstract class Renderer {
   /**
    * Sets the canvas size. Will reset viewport and scissor state.
    */
-  setSize(width: number, height: number) {
+  setSize(width: number, height: number): void {
     this.canvas.width = Math.floor(width * this._pixelRatio)
     this.canvas.height = Math.floor(height * this._pixelRatio)
 
@@ -96,14 +96,14 @@ export abstract class Renderer {
   /**
    * Gets the current pixel ratio.
    */
-  get pixelRatio() {
+  get pixelRatio(): number {
     return this._pixelRatio
   }
 
   /**
    * Interpolates a pixel ratio and resizes accordingly.
    */
-  setPixelRatio(pixelRatio: number) {
+  setPixelRatio(pixelRatio: number): void {
     this._pixelRatio = pixelRatio
     this.setSize(this._viewport.width, this._viewport.height)
   }
@@ -111,35 +111,35 @@ export abstract class Renderer {
   /**
    * Gets the current viewport state.
    */
-  get viewport() {
+  get viewport(): Viewport {
     return this._viewport
   }
 
   /**
    * Sets the global drawing region. Useful for manipulating the drawing area outside of the DOM.
    */
-  setViewport(x: number, y: number, width: number, height: number) {
+  setViewport(x: number, y: number, width: number, height: number): void {
     this._viewport = { x, y, width, height }
   }
 
   /**
    * Gets the current scissor state.
    */
-  get scissor() {
+  get scissor(): Scissor {
     return this._scissor
   }
 
   /**
    * Sets the current scissor region. Useful for rendering in a certain region.
    */
-  setScissor(x: number, y: number, width: number, height: number) {
+  setScissor(x: number, y: number, width: number, height: number): void {
     this._scissor = { x, y, width, height }
   }
 
   /**
    * Returns a list of visible meshes. Will frustum cull and depth-sort with a camera if available.
    */
-  sort(scene: Object3D, camera?: Camera) {
+  sort(scene: Object3D, camera?: Camera): Mesh[] {
     if (camera?.autoUpdate) camera.updateFrustum()
 
     const meshes: Mesh[] = []

@@ -10,7 +10,7 @@ export class Quaternion extends Array {
     this.set(x, y, z, w)
   }
 
-  get x() {
+  get x(): number {
     return this[0]
   }
 
@@ -18,7 +18,7 @@ export class Quaternion extends Array {
     this[0] = x
   }
 
-  get y() {
+  get y(): number {
     return this[1]
   }
 
@@ -26,7 +26,7 @@ export class Quaternion extends Array {
     this[1] = y
   }
 
-  get z() {
+  get z(): number {
     return this[2]
   }
 
@@ -34,7 +34,7 @@ export class Quaternion extends Array {
     this[2] = z
   }
 
-  get w() {
+  get w(): number {
     return this[3]
   }
 
@@ -45,7 +45,7 @@ export class Quaternion extends Array {
   /**
    * Sets this quaternion's x, y, z, and w properties.
    */
-  set(x: number, y: number, z: number, w: number) {
+  set(x: number, y: number, z: number, w: number): this {
     this.x = x
     this.y = y
     this.z = z
@@ -57,7 +57,7 @@ export class Quaternion extends Array {
   /**
    * Copies properties from another `Quaternion`.
    */
-  copy(q: Quaternion) {
+  copy(q: Quaternion): this {
     this.x = q.x
     this.y = q.y
     this.z = q.z
@@ -69,21 +69,21 @@ export class Quaternion extends Array {
   /**
    * Constructs a new `Quaternion` with identical properties.
    */
-  clone() {
+  clone(): Quaternion {
     return new Quaternion().copy(this)
   }
 
   /**
    * Resets to an identity quaternion.
    */
-  identity() {
+  identity(): this {
     return this.set(0, 0, 0, 1)
   }
 
   /**
    * Adds a scalar or `Quaternion`.
    */
-  add(t: number | Quaternion) {
+  add(t: number | Quaternion): this {
     if (typeof t === 'number') {
       this.x += t
       this.y += t
@@ -102,7 +102,7 @@ export class Quaternion extends Array {
   /**
    * Subtracts a scalar or `Quaternion`.
    */
-  sub(t: number | Quaternion) {
+  sub(t: number | Quaternion): this {
     if (typeof t === 'number') {
       this.x -= t
       this.y -= t
@@ -121,7 +121,7 @@ export class Quaternion extends Array {
   /**
    * Multiplies a scalar or `Quaternion`.
    */
-  multiply(t: number | Quaternion) {
+  multiply(t: number | Quaternion): this {
     if (typeof t === 'number') {
       this.x *= t
       this.y *= t
@@ -142,7 +142,7 @@ export class Quaternion extends Array {
   /**
    * Divides a scalar of `Quaternion`.
    */
-  divide(t: number | Quaternion) {
+  divide(t: number | Quaternion): this {
     if (typeof t === 'number') {
       this.x /= t
       this.y /= t
@@ -161,7 +161,7 @@ export class Quaternion extends Array {
   /**
    * Checks for strict equality with another `Quaternion`.
    */
-  equals(q: Quaternion) {
+  equals(q: Quaternion): boolean {
     // prettier-ignore
     return (
       this.x === q.x &&
@@ -174,7 +174,7 @@ export class Quaternion extends Array {
   /**
    * Calculates the conjugate or inverse of this quaternion.
    */
-  conjugate() {
+  conjugate(): this {
     this.x *= -1
     this.y *= -1
     this.z *= -1
@@ -185,28 +185,28 @@ export class Quaternion extends Array {
   /**
    * Returns the Euclidean length of this quaternion.
    */
-  getLength() {
+  getLength(): number {
     return Math.hypot(this.x, this.y, this.z, this.w)
   }
 
   /**
    * Normalizes this quaternion.
    */
-  normalize() {
+  normalize(): this {
     return this.divide(this.getLength() || 1)
   }
 
   /**
    * Calculates the dot product between another `Quaternion`.
    */
-  dot(q: Quaternion) {
+  dot(q: Quaternion): number {
     return this.x * q.x + this.y * q.y + this.z * q.z + this.w * q.w
   }
 
   /**
    * Slerps between another `Quaternion` with a given alpha (`t`).
    */
-  slerp(q: Quaternion, t: number) {
+  slerp(q: Quaternion, t: number): this {
     let cosom = this.x * q.x + this.y * q.y + this.z * q.z + this.w * q.w
     if (cosom < 0) cosom *= -1
 
@@ -235,7 +235,7 @@ export class Quaternion extends Array {
   /**
    * Applies this quaternion's rotation axis and angle to `axis`.
    */
-  getAxisAngle(axis: Vector3) {
+  getAxisAngle(axis: Vector3): Vector3 {
     const rad = Math.acos(this.w) * 2
     const s = Math.sin(rad / 2)
 
@@ -249,7 +249,7 @@ export class Quaternion extends Array {
   /**
    * Applies the rotation from a `Euler` in order.
    */
-  applyEuler(e: Euler) {
+  applyEuler(e: Euler): this {
     for (const axis of e.order) {
       switch (axis) {
         case 'X': {
@@ -282,7 +282,7 @@ export class Quaternion extends Array {
   /**
    * Sets this quaternion's properties from a `Euler`.
    */
-  fromEuler(e: Euler) {
+  fromEuler(e: Euler): this {
     return this.identity().applyEuler(e)
   }
 }

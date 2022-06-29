@@ -80,7 +80,7 @@ export class Object3D {
   /**
    * Rotates to face a point in world space.
    */
-  lookAt(x: Vector3 | number, y?: number, z?: number) {
+  lookAt(x: Vector3 | number, y?: number, z?: number): void {
     if (typeof x === 'number') {
       this.target.set(x, y ?? x, z ?? x)
     } else {
@@ -94,7 +94,7 @@ export class Object3D {
   /**
    * Used internally to calculate global transforms.
    */
-  updateMatrix(updateChildren = true, updateParents = false) {
+  updateMatrix(updateChildren = true, updateParents = false): void {
     if (this.matrixAutoUpdate) {
       _q.copy(this.quaternion).applyEuler(this.rotation)
       this.matrix.compose(this.position, _q, this.scale)
@@ -115,7 +115,7 @@ export class Object3D {
   /**
    * Adds objects as a children.
    */
-  add(...children: Object3D[]) {
+  add(...children: Object3D[]): void {
     for (const child of children) {
       this.children.push(child)
       child.parent = this
@@ -125,7 +125,7 @@ export class Object3D {
   /**
    * Removes objects as children.
    */
-  remove(...children: Object3D[]) {
+  remove(...children: Object3D[]): void {
     for (const child of children) {
       const childIndex = this.children.indexOf(child)
       if (childIndex !== -1) this.children.splice(childIndex, 1)
@@ -136,7 +136,7 @@ export class Object3D {
   /**
    * Traverses through children and executes a callback. Return `true` to stop traversing.
    */
-  traverse(callback: TraverseCallback) {
+  traverse(callback: TraverseCallback): void {
     const shouldStop = callback(this)
     if (shouldStop) return
 

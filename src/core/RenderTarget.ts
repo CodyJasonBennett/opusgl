@@ -58,7 +58,7 @@ export class RenderTarget implements RenderTargetOptions {
   /**
    * Disposes render target from GPU memory.
    */
-  dispose() {
+  dispose(): void {
     // Implemented by renderer
   }
 }

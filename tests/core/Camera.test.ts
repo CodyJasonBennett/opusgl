@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { Camera } from '../../src'
 
 class CameraImpl extends Camera {
-  updateProjectionMatrix() {}
+  updateProjectionMatrix(): void {}
 }
 
 describe('core/Renderer', () => {

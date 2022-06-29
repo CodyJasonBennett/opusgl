@@ -17,7 +17,7 @@ export class PerspectiveCamera extends Camera {
     super()
   }
 
-  updateProjectionMatrix(normalized: boolean) {
+  updateProjectionMatrix(normalized: boolean): void {
     this.projectionMatrix.perspective(this.fov, this.aspect, this.near, this.far, normalized)
   }
 }

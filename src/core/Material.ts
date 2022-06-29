@@ -89,7 +89,7 @@ export class Material implements MaterialOptions {
   /**
    * Disposes material from GPU memory.
    */
-  dispose() {
+  dispose(): void {
     // Implemented by renderer
   }
 }

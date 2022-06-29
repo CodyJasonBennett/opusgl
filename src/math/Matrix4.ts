@@ -50,7 +50,7 @@ export class Matrix4 extends Array {
     m31: number,
     m32: number,
     m33: number,
-  ) {
+  ): this {
     this[0] = m00
     this[1] = m01
     this[2] = m02
@@ -77,7 +77,7 @@ export class Matrix4 extends Array {
   /**
    * Copies elements from another `Matrix4`.
    */
-  copy(m: Matrix4) {
+  copy(m: Matrix4): this {
     this[0] = m[0]
     this[1] = m[1]
     this[2] = m[2]
@@ -104,21 +104,21 @@ export class Matrix4 extends Array {
   /**
    * Constructs a new `Matrix4` with identical elements.
    */
-  clone() {
+  clone(): Matrix4 {
     return new Matrix4().copy(this)
   }
 
   /**
    * Resets to an identity matrix.
    */
-  identity() {
+  identity(): this {
     return this.set(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
   }
 
   /**
    * Multiplies a scalar or `Matrix4`.
    */
-  multiply(t: number | Matrix4) {
+  multiply(t: number | Matrix4): this {
     if (typeof t === 'number') {
       this[0] *= t
       this[1] *= t
@@ -166,7 +166,7 @@ export class Matrix4 extends Array {
   /**
    * Checks for strict equality with another `Matrix4`.
    */
-  equals(m: Matrix4) {
+  equals(m: Matrix4): boolean {
     // prettier-ignore
     return (
       this[0] === m[0] &&
@@ -194,7 +194,7 @@ export class Matrix4 extends Array {
   /**
    * Returns the determinant of this matrix.
    */
-  determinant() {
+  determinant(): number {
     const b0 = this[0] * this[5] - this[1] * this[4]
     const b1 = this[0] * this[6] - this[2] * this[4]
     const b2 = this[1] * this[6] - this[2] * this[5]
@@ -212,7 +212,7 @@ export class Matrix4 extends Array {
   /**
    * Transposes this matrix in place over its diagonal.
    */
-  transpose() {
+  transpose(): this {
     return this.set(
       this[0],
       this[4],
@@ -238,7 +238,7 @@ export class Matrix4 extends Array {
    *
    * Accepts a `normalized` argument, when true creates an WebGL `[-1, 1]` clipping space, and when false creates a WebGPU `[0, 1]` clipping space.
    */
-  perspective(fov: number, aspect: number, near: number, far: number, normalized: boolean) {
+  perspective(fov: number, aspect: number, near: number, far: number, normalized: boolean): this {
     // Degrees to radians
     fov *= Math.PI / 180
 
@@ -276,7 +276,15 @@ export class Matrix4 extends Array {
    *
    * Accepts a `normalized` argument, when true creates an WebGL `[-1, 1]` clipping space, and when false creates a WebGPU `[0, 1]` clipping space.
    */
-  orthogonal(left: number, right: number, bottom: number, top: number, near: number, far: number, normalized: boolean) {
+  orthogonal(
+    left: number,
+    right: number,
+    bottom: number,
+    top: number,
+    near: number,
+    far: number,
+    normalized: boolean,
+  ): this {
     const horizontal = 1 / (left - right)
     const vertical = 1 / (bottom - top)
     const depth = 1 / (near - far)
@@ -310,7 +318,7 @@ export class Matrix4 extends Array {
   /**
    * Calculates a rotation matrix from `eye` to `target`, assuming `up` as world-space up.
    */
-  lookAt(eye: Vector3, target: Vector3, up: Vector3) {
+  lookAt(eye: Vector3, target: Vector3, up: Vector3): this {
     const z = eye.clone().sub(target)
 
     // eye and target are in the same position
@@ -363,7 +371,7 @@ export class Matrix4 extends Array {
   /**
    * Translates this matrix with a `Vector3`.
    */
-  translate(v: Vector3) {
+  translate(v: Vector3): this {
     this[12] += this[0] * v.x + this[4] * v.y + this[8] * v.z
     this[13] += this[1] * v.x + this[5] * v.y + this[9] * v.z
     this[14] += this[2] * v.x + this[6] * v.y + this[10] * v.z
@@ -375,7 +383,7 @@ export class Matrix4 extends Array {
   /**
    * Scales this matrix with a `Vector3`.
    */
-  scale(v: Vector3) {
+  scale(v: Vector3): this {
     this[0] *= v.x
     this[1] *= v.x
     this[2] *= v.x
@@ -395,7 +403,7 @@ export class Matrix4 extends Array {
   /**
    * Rotates this matrix with an angle in radians against an axis.
    */
-  rotate(radians: number, axis: Vector3) {
+  rotate(radians: number, axis: Vector3): this {
     const length = axis.getLength()
 
     if (length < Number.EPSILON) return this
@@ -439,7 +447,7 @@ export class Matrix4 extends Array {
   /**
    * Composes this matrix's elements from position, quaternion, and scale properties.
    */
-  compose(position: Vector3, quaternion: Quaternion, scale: Vector3) {
+  compose(position: Vector3, quaternion: Quaternion, scale: Vector3): this {
     const xx = quaternion.x * (quaternion.x + quaternion.x)
     const xy = quaternion.x * (quaternion.y + quaternion.y)
     const xz = quaternion.x * (quaternion.z + quaternion.z)
@@ -473,7 +481,7 @@ export class Matrix4 extends Array {
   /**
    * Decomposes this matrix into position, quaternion, and scale properties.
    */
-  decompose(position: Vector3, quaternion: Quaternion, scale: Vector3) {
+  decompose(position: Vector3, quaternion: Quaternion, scale: Vector3): this {
     position.set(this[12], this[13], this[14])
 
     scale.x = Math.hypot(this[0], this[1], this[2])
@@ -524,7 +532,7 @@ export class Matrix4 extends Array {
   /**
    * Calculates the inverse of this matrix (no-op with determinant of `0`).
    */
-  invert() {
+  invert(): this {
     const b00 = this[0] * this[5] - this[1] * this[4]
     const b01 = this[0] * this[6] - this[2] * this[4]
     const b02 = this[0] * this[7] - this[3] * this[4]
@@ -567,7 +575,7 @@ export class Matrix4 extends Array {
   /**
    * Calculates a rotation matrix from a `Quaternion`.
    */
-  fromQuaternion(q: Quaternion) {
+  fromQuaternion(q: Quaternion): this {
     return this.compose(_zero, q, _one)
   }
 }

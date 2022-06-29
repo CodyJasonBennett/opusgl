@@ -67,7 +67,7 @@ export class Texture implements TextureOptions {
   /**
    * Sets this texture's image source from an `HTMLImageElement`.
    */
-  async fromImage(image: HTMLImageElement) {
+  async fromImage(image: HTMLImageElement): Promise<this> {
     await image.decode()
     this.image = await createImageBitmap(image)
     this.needsUpdate = true
@@ -78,7 +78,7 @@ export class Texture implements TextureOptions {
   /**
    * Sets this texture's image source from an `HTMLVideoElement`.
    */
-  async fromVideo(video: HTMLVideoElement) {
+  async fromVideo(video: HTMLVideoElement): Promise<this> {
     this.image = await createImageBitmap(video)
     this.generateMipmaps = false
     this.needsUpdate = video.readyState >= video.HAVE_CURRENT_DATA
@@ -89,7 +89,7 @@ export class Texture implements TextureOptions {
   /**
    * Sets this texture's image source from an `ArrayBufferView`.
    */
-  async fromData(data: ArrayBufferView, width: number, height: number) {
+  async fromData(data: ArrayBufferView, width: number, height: number): Promise<this> {
     const source = new ImageData(new Uint8ClampedArray(data.buffer), width, height)
     this.image = await createImageBitmap(source)
     this.needsUpdate = true
@@ -100,7 +100,7 @@ export class Texture implements TextureOptions {
   /**
    * Disposes texture from GPU memory.
    */
-  dispose() {
+  dispose(): void {
     // Implemented by renderer
 
     if (this.image instanceof ImageBitmap) this.image.close()

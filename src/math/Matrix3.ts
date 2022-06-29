@@ -23,7 +23,7 @@ export class Matrix3 extends Array {
     m20: number,
     m21: number,
     m22: number,
-  ) {
+  ): this {
     this[0] = m00
     this[1] = m01
     this[2] = m02
@@ -42,7 +42,7 @@ export class Matrix3 extends Array {
   /**
    * Copies elements from another `Matrix3`.
    */
-  copy(m: Matrix3) {
+  copy(m: Matrix3): this {
     this[0] = m[0]
     this[1] = m[1]
     this[2] = m[2]
@@ -61,21 +61,21 @@ export class Matrix3 extends Array {
   /**
    * Constructs a new `Matrix3` with identical elements.
    */
-  clone() {
+  clone(): Matrix3 {
     return new Matrix3().copy(this)
   }
 
   /**
    * Resets to an identity matrix.
    */
-  identity() {
+  identity(): this {
     return this.set(1, 0, 0, 0, 1, 0, 0, 0, 1)
   }
 
   /**
    * Multiplies a scalar or `Matrix3`.
    */
-  multiply(t: number | Matrix3) {
+  multiply(t: number | Matrix3): this {
     if (typeof t === 'number') {
       this[0] *= t
       this[1] *= t
@@ -108,7 +108,7 @@ export class Matrix3 extends Array {
   /**
    * Checks for strict equality with another `Matrix3`.
    */
-  equals(m: Matrix3) {
+  equals(m: Matrix3): boolean {
     // prettier-ignore
     return (
       this[0] === m[0] &&
@@ -128,21 +128,21 @@ export class Matrix3 extends Array {
   /**
    * Transposes this matrix in place over its diagonal.
    */
-  transpose() {
+  transpose(): this {
     return this.set(this[0], this[3], this[6], this[1], this[4], this[7], this[2], this[5], this[8])
   }
 
   /**
    * Calculates a normal matrix from a model-view matrix.
    */
-  getNormalMatrix(m: Matrix4) {
+  getNormalMatrix(m: Matrix4): this {
     return this.fromMatrix4(m).invert().transpose()
   }
 
   /**
    * Returns the determinant of this matrix.
    */
-  determinant() {
+  determinant(): number {
     return (
       this[0] * (this[8] * this[4] - this[5] * this[7]) +
       this[1] * (-this[8] * this[3] + this[5] * this[6]) +
@@ -153,7 +153,7 @@ export class Matrix3 extends Array {
   /**
    * Calculates the inverse of this matrix (no-op with determinant of `0`).
    */
-  invert() {
+  invert(): this {
     // Make sure we're not dividing by zero
     const det = this.determinant()
     if (!det) return this
@@ -176,7 +176,7 @@ export class Matrix3 extends Array {
   /**
    * Translates this matrix with a `Vector2`.
    */
-  translate(v: Vector2) {
+  translate(v: Vector2): this {
     this[0] += v.x * this[2]
     this[3] += v.x * this[5]
     this[6] += v.x * this[8]
@@ -190,7 +190,7 @@ export class Matrix3 extends Array {
   /**
    * Scales this matrix with a `Vector2`.
    */
-  scale(v: Vector2) {
+  scale(v: Vector2): this {
     this[0] *= v.x
     this[3] *= v.x
     this[6] *= v.x
@@ -204,7 +204,7 @@ export class Matrix3 extends Array {
   /**
    * Rotates this matrix with an angle in radians.
    */
-  rotate(radians: number) {
+  rotate(radians: number): this {
     const c = Math.cos(radians)
     const s = Math.sin(radians)
 
@@ -224,7 +224,7 @@ export class Matrix3 extends Array {
   /**
    * Sets this matrix's elements from a `Matrix4`.
    */
-  fromMatrix4(m: Matrix4) {
+  fromMatrix4(m: Matrix4): this {
     return this.set(m[0], m[4], m[8], m[1], m[5], m[9], m[2], m[6], m[10])
   }
 }

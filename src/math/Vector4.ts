@@ -7,7 +7,7 @@ export class Vector4 extends Array {
     this.set(x, y, z, w)
   }
 
-  get x() {
+  get x(): number {
     return this[0]
   }
 
@@ -15,7 +15,7 @@ export class Vector4 extends Array {
     this[0] = x
   }
 
-  get y() {
+  get y(): number {
     return this[1]
   }
 
@@ -23,7 +23,7 @@ export class Vector4 extends Array {
     this[1] = y
   }
 
-  get z() {
+  get z(): number {
     return this[2]
   }
 
@@ -31,7 +31,7 @@ export class Vector4 extends Array {
     this[2] = z
   }
 
-  get w() {
+  get w(): number {
     return this[3]
   }
 
@@ -42,7 +42,7 @@ export class Vector4 extends Array {
   /**
    * Sets this vector's x, y, z, and w properties.
    */
-  set(x: number, y: number, z: number, w: number) {
+  set(x: number, y: number, z: number, w: number): this {
     this.x = x
     this.y = y
     this.z = z
@@ -54,7 +54,7 @@ export class Vector4 extends Array {
   /**
    * Copies properties from another `Vector4`.
    */
-  copy(v: Vector4) {
+  copy(v: Vector4): this {
     this.x = v.x
     this.y = v.y
     this.z = v.z
@@ -66,14 +66,14 @@ export class Vector4 extends Array {
   /**
    * Constructs a new `Vector4` with identical properties.
    */
-  clone() {
+  clone(): Vector4 {
     return new Vector4().copy(this)
   }
 
   /**
    * Adds a scalar or `Vector4`.
    */
-  add(t: number | Vector4) {
+  add(t: number | Vector4): this {
     if (typeof t === 'number') {
       this.x += t
       this.y += t
@@ -92,7 +92,7 @@ export class Vector4 extends Array {
   /**
    * Subtracts a scalar or `Vector4`.
    */
-  sub(t: number | Vector4) {
+  sub(t: number | Vector4): this {
     if (typeof t === 'number') {
       this.x -= t
       this.y -= t
@@ -111,7 +111,7 @@ export class Vector4 extends Array {
   /**
    * Multiplies a scalar or `Vector4`.
    */
-  multiply(t: number | Vector4) {
+  multiply(t: number | Vector4): this {
     if (typeof t === 'number') {
       this.x *= t
       this.y *= t
@@ -130,7 +130,7 @@ export class Vector4 extends Array {
   /**
    * Divides a scalar of `Vector4`.
    */
-  divide(t: number | Vector4) {
+  divide(t: number | Vector4): this {
     if (typeof t === 'number') {
       this.x /= t
       this.y /= t
@@ -149,7 +149,7 @@ export class Vector4 extends Array {
   /**
    * Checks for strict equality with another `Vector4`.
    */
-  equals(v: Vector4) {
+  equals(v: Vector4): boolean {
     // prettier-ignore
     return (
       this.x === v.x &&
@@ -162,56 +162,56 @@ export class Vector4 extends Array {
   /**
    * Negates or calculates the inverse of this vector.
    */
-  negate() {
+  negate(): this {
     return this.multiply(-1)
   }
 
   /**
    * Calculates the square of the Euclidean length of this vector.
    */
-  lengthSq() {
+  lengthSq(): number {
     return this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w
   }
 
   /**
    * Calculates the Euclidean length of this vector.
    */
-  getLength() {
+  getLength(): number {
     return Math.hypot(this.x, this.y, this.z, this.w)
   }
 
   /**
    * Sets this vector to a length of `l` with the same direction.
    */
-  setLength(l: number) {
+  setLength(l: number): this {
     return this.normalize().multiply(l)
   }
 
   /**
    * Normalizes this vector.
    */
-  normalize() {
+  normalize(): this {
     return this.divide(this.getLength() || 1)
   }
 
   /**
    * Returns the distance to another `Vector4`.
    */
-  distanceTo(v: Vector4) {
+  distanceTo(v: Vector4): number {
     return v.getLength() - this.getLength()
   }
 
   /**
    * Calculates the dot product between another `Vector4`.
    */
-  dot(v: Vector4) {
+  dot(v: Vector4): number {
     return this.x * v.x + this.y * v.y + this.z * v.z + this.w * v.w
   }
 
   /**
    * Lerps between another `Vector4` with a given alpha (`t`).
    */
-  lerp(v: Vector4, t: number) {
+  lerp(v: Vector4, t: number): this {
     this.x += t * (v.x - this.x)
     this.x += t * (v.y - this.y)
     this.x += t * (v.z - this.z)

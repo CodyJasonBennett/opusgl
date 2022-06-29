@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { Renderer, Object3D, Mesh, Geometry, Material, PerspectiveCamera } from '../../src'
 
 class RendererImpl extends Renderer {
-  render() {}
-  compile() {}
+  render(): void {}
+  compile(): void {}
 }
 
 describe('core/Renderer', () => {

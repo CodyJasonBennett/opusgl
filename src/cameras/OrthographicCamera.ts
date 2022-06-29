@@ -21,7 +21,7 @@ export class OrthographicCamera extends Camera {
     super()
   }
 
-  updateProjectionMatrix(normalized: boolean) {
+  updateProjectionMatrix(normalized: boolean): void {
     this.projectionMatrix.orthogonal(this.left, this.right, this.bottom, this.top, this.near, this.far, normalized)
   }
 }

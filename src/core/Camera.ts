@@ -25,7 +25,7 @@ export abstract class Camera extends Object3D {
    */
   readonly planes = [new Vector4(), new Vector4(), new Vector4(), new Vector4(), new Vector4(), new Vector4()]
 
-  updateMatrix(updateChildren?: boolean, updateParents?: boolean) {
+  updateMatrix(updateChildren?: boolean, updateParents?: boolean): void {
     super.updateMatrix(updateChildren, updateParents)
     if (this.matrixAutoUpdate) this.viewMatrix.copy(this.matrix).invert()
   }
@@ -40,7 +40,7 @@ export abstract class Camera extends Object3D {
   /**
    * Updates camera's frustum planes.
    */
-  updateFrustum() {
+  updateFrustum(): void {
     const m = this.projectionViewMatrix.copy(this.projectionMatrix).multiply(this.viewMatrix)
 
     this.planes[0].set(m[3] - m[0], m[7] - m[4], m[11] - m[8], m[15] - m[12])
@@ -53,14 +53,12 @@ export abstract class Camera extends Object3D {
     for (const plane of this.planes) {
       plane.divide(Math.sqrt(plane.x * plane.x + plane.y * plane.y + plane.z * plane.z))
     }
-
-    return this
   }
 
   /**
    * Checks whether a mesh is in view.
    */
-  frustumContains(mesh: Mesh) {
+  frustumContains(mesh: Mesh): boolean {
     const { position } = mesh.geometry.attributes
     const vertices = position.data.length / position.size
 

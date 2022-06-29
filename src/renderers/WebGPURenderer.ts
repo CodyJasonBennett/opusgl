@@ -35,21 +35,21 @@ export class WebGPUBufferObject {
   /**
    * Writes binary data to buffer.
    */
-  write(data: AttributeData) {
+  write(data: AttributeData): void {
     this.device.queue.writeBuffer(this.buffer, data.byteOffset, data)
   }
 
   /**
    * Disposes the buffer from GPU memory.
    */
-  dispose() {
+  dispose(): void {
     this.buffer.destroy()
   }
 }
 
 // Pad to 16 byte chunks of 2, 4 (std140 layout)
-const pad2 = (n: number) => n + (n % 2)
-const pad4 = (n: number) => n + ((4 - (n % 4)) % 4)
+const pad2 = (n: number): number => n + (n % 2)
+const pad4 = (n: number): number => n + ((4 - (n % 4)) % 4)
 
 /**
  * Constructs a WebGPU uniform buffer. Packs uniforms into a buffer via std140.
@@ -90,7 +90,7 @@ export class WebGPUUniformBuffer extends WebGPUBufferObject {
   /**
    * Updates packed uniforms.
    */
-  update(uniforms: UniformList) {
+  update(uniforms: UniformList): void {
     this.uniforms.forEach((memoized, name) => {
       // Skip textures and unchanged uniforms
       const uniform = uniforms[name] as Exclude<Uniform, Texture>
@@ -108,7 +108,7 @@ export class WebGPUUniformBuffer extends WebGPUBufferObject {
     })
   }
 
-  dispose() {
+  dispose(): void {
     super.dispose()
     this.uniforms.clear()
   }
@@ -163,7 +163,7 @@ export class WebGPUBufferAttributes {
     })
   }
 
-  bind(passEncoder: GPURenderPassEncoder) {
+  bind(passEncoder: GPURenderPassEncoder): void {
     this.attributes.forEach((attribute, name) => {
       if (name === 'index') {
         passEncoder.setIndexBuffer(attribute.buffer.buffer, attribute.indexFormat!)
@@ -176,7 +176,7 @@ export class WebGPUBufferAttributes {
   /**
    * Updates attributes flagged for update.
    */
-  update(attributes: AttributeList) {
+  update(attributes: AttributeList): void {
     this.attributes.forEach(({ buffer }, name) => {
       if (name === 'index') return
 
@@ -191,7 +191,7 @@ export class WebGPUBufferAttributes {
   /**
    * Disposes of attributes from GPU memory.
    */
-  dispose() {
+  dispose(): void {
     this.attributes.forEach(({ buffer }) => buffer.dispose())
     this.attributes.clear()
   }
@@ -254,7 +254,7 @@ export class WebGPURenderPipeline {
   /**
    * Binds the render pipeline and its attachments to a render pass encoder.
    */
-  bind(passEncoder: GPURenderPassEncoder) {
+  bind(passEncoder: GPURenderPassEncoder): void {
     if (!this.pipeline) return
 
     passEncoder.setPipeline(this.pipeline)
@@ -266,7 +266,7 @@ export class WebGPURenderPipeline {
   /**
    * Updates pipeline state against a mesh and its attributes.
    */
-  update(target: Mesh, bufferAttributes: WebGPUBufferAttributes, colorAttachments = 1) {
+  update(target: Mesh, bufferAttributes: WebGPUBufferAttributes, colorAttachments = 1): void {
     const pipelineState = {
       transparent: target.material.transparent,
       cullMode: GPU_CULL_SIDES[target.material.side],
@@ -390,14 +390,14 @@ export class WebGPURenderPipeline {
   /**
    * Sets bind group resources at an index.
    */
-  setBindGroupEntries(entries: GPUBindGroupEntry[], index = 0) {
+  setBindGroupEntries(entries: GPUBindGroupEntry[], index = 0): void {
     this.bindGroupEntries.set(index, entries)
   }
 
   /**
    * Disposes of render pipeline resources from GPU memory.
    */
-  dispose() {
+  dispose(): void {
     this.bindGroupEntries.clear()
     this.bindGroups.clear()
     this.UBOs.clear()
@@ -421,7 +421,11 @@ export class WebGPUTextureObject {
   /**
    * Updates the texture from `TextureOptions` with an optional `width` and `height`.
    */
-  update(options: Texture | TextureOptions, width = options.image?.width ?? 0, height = options.image?.height ?? 0) {
+  update(
+    options: Texture | TextureOptions,
+    width = options.image?.width ?? 0,
+    height = options.image?.height ?? 0,
+  ): void {
     this.sampler = this.device.createSampler({
       addressModeU: GPU_TEXTURE_WRAPPINGS[options.wrapS] as GPUAddressMode,
       addressModeV: GPU_TEXTURE_WRAPPINGS[options.wrapT] as GPUAddressMode,
@@ -455,7 +459,7 @@ export class WebGPUTextureObject {
   /**
    * Disposes of the texture from GPU memory.
    */
-  dispose() {
+  dispose(): void {
     this.target?.destroy()
   }
 }
@@ -498,7 +502,7 @@ export class WebGPUFBO {
   /**
    * Disposes of the FBO from GPU memory.
    */
-  dispose() {
+  dispose(): void {
     this.depthTexture.destroy()
   }
 }
@@ -571,7 +575,7 @@ export class WebGPURenderer extends Renderer {
     this.setSize(canvas.width, canvas.height)
   }
 
-  setSize(width: number, height: number) {
+  setSize(width: number, height: number): void {
     super.setSize(width, height)
 
     // Resize swap chain after init
@@ -596,7 +600,7 @@ export class WebGPURenderer extends Renderer {
   /**
    * Initializes the internal WebGPU context and swapchain.
    */
-  async init() {
+  async init(): Promise<this> {
     if (this.device) return this
 
     // Create device
@@ -609,31 +613,7 @@ export class WebGPURenderer extends Renderer {
     return this
   }
 
-  /**
-   * Updates a buffer.
-   */
-  writeBuffer(buffer: GPUBuffer, data: Float32Array | Uint32Array) {
-    this.device.queue.writeBuffer(buffer, 0, data)
-  }
-
-  /**
-   * Creates buffer and initializes it.
-   */
-  createBuffer(data: Float32Array | Uint32Array, usage: GPUBufferUsageFlags) {
-    const buffer = this.device.createBuffer({
-      size: data.byteLength,
-      usage: usage | GPUBufferUsage.COPY_DST,
-      mappedAtCreation: true,
-    })
-
-    // @ts-ignore Map packed buffer
-    new data.constructor(buffer.getMappedRange()).set(data)
-    buffer.unmap()
-
-    return buffer
-  }
-
-  compile(target: Mesh, camera?: Camera) {
+  compile(target: Mesh, camera?: Camera): void {
     // Update built-ins
     target.material.uniforms.modelMatrix = target.matrix
 
@@ -728,14 +708,12 @@ export class WebGPURenderer extends Renderer {
         }
       }
     }
-
-    return { pipeline, bufferAttributes }
   }
 
   /**
    * Compiles and binds a render target to render into.
    */
-  setRenderTarget(renderTarget: RenderTarget | null) {
+  setRenderTarget(renderTarget: RenderTarget | null): void {
     if (!renderTarget) return void (this._renderPass = null)
 
     if (!this._FBOs.has(renderTarget)) {
@@ -792,7 +770,7 @@ export class WebGPURenderer extends Renderer {
     }
   }
 
-  render(scene: Object3D, camera?: Camera) {
+  render(scene: Object3D, camera?: Camera): void {
     const commandEncoder = this.device.createCommandEncoder()
     const passEncoder = commandEncoder.beginRenderPass(
       this._renderPass ?? {
@@ -836,11 +814,13 @@ export class WebGPURenderer extends Renderer {
 
     // Sort and compile children
     const renderList = this.sort(scene, camera)
-    const compiled = renderList.map((child) => this.compile(child, camera))
+    for (const child of renderList) this.compile(child, camera)
 
     for (let i = 0; i < renderList.length; i++) {
       const child = renderList[i]
-      const { pipeline, bufferAttributes } = compiled[i]
+
+      const pipeline = this._pipelines.get(child)!
+      const bufferAttributes = this._bufferAttributes.get(child.geometry)!
 
       // Bind
       pipeline.bind(passEncoder)
@@ -860,7 +840,7 @@ export class WebGPURenderer extends Renderer {
     this.device.queue.submit([commandEncoder.finish()])
   }
 
-  dispose() {
+  dispose(): void {
     this._depthTexture.destroy()
     this.device.destroy()
   }

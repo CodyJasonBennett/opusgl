@@ -7,7 +7,7 @@ export class Vector3 extends Array {
     this.set(x, y, z)
   }
 
-  get x() {
+  get x(): number {
     return this[0]
   }
 
@@ -15,7 +15,7 @@ export class Vector3 extends Array {
     this[0] = x
   }
 
-  get y() {
+  get y(): number {
     return this[1]
   }
 
@@ -23,7 +23,7 @@ export class Vector3 extends Array {
     this[1] = y
   }
 
-  get z() {
+  get z(): number {
     return this[2]
   }
 
@@ -34,7 +34,7 @@ export class Vector3 extends Array {
   /**
    * Sets this vector's x, y, and z properties.
    */
-  set(x: number, y: number = x, z: number = x) {
+  set(x: number, y: number = x, z: number = x): this {
     this.x = x
     this.y = y
     this.z = z
@@ -45,7 +45,7 @@ export class Vector3 extends Array {
   /**
    * Copies properties from another `Vector3`.
    */
-  copy(v: Vector3) {
+  copy(v: Vector3): this {
     this.x = v.x
     this.y = v.y
     this.z = v.z
@@ -56,14 +56,14 @@ export class Vector3 extends Array {
   /**
    * Constructs a new `Vector3` with identical properties.
    */
-  clone() {
+  clone(): Vector3 {
     return new Vector3().copy(this)
   }
 
   /**
    * Adds a scalar or `Vector3`.
    */
-  add(t: number | Vector3) {
+  add(t: number | Vector3): this {
     if (typeof t === 'number') {
       this.x += t
       this.y += t
@@ -80,7 +80,7 @@ export class Vector3 extends Array {
   /**
    * Subtracts a scalar or `Vector3`.
    */
-  sub(t: number | Vector3) {
+  sub(t: number | Vector3): this {
     if (typeof t === 'number') {
       this.x -= t
       this.y -= t
@@ -97,7 +97,7 @@ export class Vector3 extends Array {
   /**
    * Multiplies a scalar or `Vector3`.
    */
-  multiply(t: number | Vector3) {
+  multiply(t: number | Vector3): this {
     if (typeof t === 'number') {
       this.x *= t
       this.y *= t
@@ -114,7 +114,7 @@ export class Vector3 extends Array {
   /**
    * Divides a scalar of `Vector3`.
    */
-  divide(t: number | Vector3) {
+  divide(t: number | Vector3): this {
     if (typeof t === 'number') {
       this.x /= t
       this.y /= t
@@ -131,7 +131,7 @@ export class Vector3 extends Array {
   /**
    * Checks for strict equality with another `Vector3`.
    */
-  equals(v: Vector3) {
+  equals(v: Vector3): boolean {
     // prettier-ignore
     return (
       this.x === v.x &&
@@ -143,63 +143,63 @@ export class Vector3 extends Array {
   /**
    * Negates or calculates the inverse of this vector.
    */
-  negate() {
+  negate(): this {
     return this.multiply(-1)
   }
 
   /**
    * Calculates the square of the Euclidean length of this vector.
    */
-  lengthSq() {
+  lengthSq(): number {
     return this.x * this.x + this.y * this.y + this.z * this.z
   }
 
   /**
    * Calculates the Euclidean length of this vector.
    */
-  getLength() {
+  getLength(): number {
     return Math.hypot(this.x, this.y, this.z)
   }
 
   /**
    * Sets this vector to a length of `l` with the same direction.
    */
-  setLength(l: number) {
+  setLength(l: number): this {
     return this.normalize().multiply(l)
   }
 
   /**
    * Normalizes this vector.
    */
-  normalize() {
+  normalize(): this {
     return this.divide(this.getLength() || 1)
   }
 
   /**
    * Returns the distance to another `Vector3`.
    */
-  distanceTo(v: Vector3) {
+  distanceTo(v: Vector3): number {
     return v.getLength() - this.getLength()
   }
 
   /**
    * Calculates the dot product between another `Vector3`.
    */
-  dot(v: Vector3) {
+  dot(v: Vector3): number {
     return this.x * v.x + this.y * v.y + this.z * v.z
   }
 
   /**
    * Calculates the cross product between another `Vector3`.
    */
-  cross(v: Vector3) {
+  cross(v: Vector3): this {
     return this.set(this.y * v.z - this.z * v.y, this.z * v.x - this.x * v.z, this.x * v.y - this.y * v.x)
   }
 
   /**
    * Lerps between another `Vector3` with a given alpha (`t`).
    */
-  lerp(v: Vector3, t: number) {
+  lerp(v: Vector3, t: number): this {
     return this.set(v.x - this.x, v.y - this.y, v.z - this.z).multiply(t)
   }
 }

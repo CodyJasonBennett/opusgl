@@ -40,7 +40,7 @@ export class Mesh extends Object3D {
   /**
    * Disposes mesh from GPU memory.
    */
-  dispose() {
+  dispose(): void {
     // Implemented by renderer
   }
 }

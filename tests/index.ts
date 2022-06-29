@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
+
 // Polyfill GPU globals
 global.GPUTextureUsage = {
   COPY_DST: 2,
