@@ -814,10 +814,10 @@ export class WebGPURenderer extends Renderer {
 
     // Sort and compile children
     const renderList = this.sort(scene, camera)
-    for (const child of renderList) this.compile(child, camera)
 
     for (let i = 0; i < renderList.length; i++) {
       const child = renderList[i]
+      this.compile(child, camera)
 
       const pipeline = this._pipelines.get(child)!
       const bufferAttributes = this._bufferAttributes.get(child.geometry)!

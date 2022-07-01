@@ -89,6 +89,7 @@ export class Object3D {
 
     this.matrix.lookAt(this.position, this.target, this.up)
     this.matrix.decompose(this.position, this.quaternion, this.scale)
+    this.rotation.set(0)
   }
 
   /**
