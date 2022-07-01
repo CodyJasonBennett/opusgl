@@ -14,7 +14,7 @@ import {
   GL_CULL_SIDES,
   GL_DRAW_MODES,
 } from '../constants'
-import { cloneUniform, uniformsEqual } from '../utils'
+import { cloneUniform, lineNumbers, uniformsEqual } from '../utils'
 
 /**
  * Gets the appropriate WebGL data type for a data view.
@@ -215,10 +215,8 @@ export class WebGLProgramObject {
       this.gl.shaderSource(shader, '#version 300 es\n' + source)
       this.gl.compileShader(shader)
 
-      if (gl.getShaderInfoLog(shader)?.length) {
-        let i = 0
-        throw `${gl.getShaderInfoLog(shader)}\n${type.toUpperCase()}:\n${source.replace(/^/gm, () => `${i++}:`)}`
-      }
+      const error = gl.getShaderInfoLog(shader)
+      if (error) throw `${error}\n${lineNumbers(source)}`
 
       return shader
     })

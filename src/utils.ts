@@ -1,6 +1,11 @@
 import type { Uniform } from './core/Material'
 
 /**
+ * Adds line numbers to a string with an optional starting offset.
+ */
+export const lineNumbers = (source: string, offset = 0): string => source.replace(/^/gm, () => `${offset++}:`)
+
+/**
  * Generates a v4 UUID. Useful for tracking unique objects.
  */
 export const uuid = (): string =>
