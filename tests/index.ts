@@ -1,14 +1,16 @@
-/* eslint-disable @typescript-eslint/explicit-function-return-type */
+/// <reference types="@webgpu/types" />
 
 // Polyfill GPU globals
 global.GPUTextureUsage = {
+  __brand: 'GPUTextureUsage',
   COPY_DST: 2,
   COPY_SRC: 1,
   RENDER_ATTACHMENT: 16,
   STORAGE_BINDING: 8,
   TEXTURE_BINDING: 4,
-}
+} as any
 global.GPUBufferUsage = {
+  __brand: 'GPUBufferUsage',
   COPY_DST: 8,
   COPY_SRC: 4,
   INDEX: 16,
@@ -19,48 +21,285 @@ global.GPUBufferUsage = {
   STORAGE: 128,
   UNIFORM: 64,
   VERTEX: 32,
-}
+} as any
 
 // GPU navigator polyfill
 global.navigator = {
   gpu: {
-    getPreferredCanvasFormat: () => 'bgra8unorm',
-    requestAdapter: async () => ({
-      requestDevice: async () => ({
-        queue: {
-          writeBuffer: () => null,
-          submit: () => null,
+    __brand: 'GPU',
+    getPreferredCanvasFormat: (): GPUTextureFormat => 'bgra8unorm',
+    requestAdapter: async (): Promise<GPUAdapter> => ({
+      __brand: 'GPUAdapter',
+      name: 'GPUAdapter',
+      features: new Set(),
+      limits: {
+        __brand: 'GPUSupportedLimits',
+        maxTextureDimension1D: 0,
+        maxTextureDimension2D: 0,
+        maxTextureDimension3D: 0,
+        maxTextureArrayLayers: 0,
+        maxBindGroups: 0,
+        maxDynamicUniformBuffersPerPipelineLayout: 0,
+        maxDynamicStorageBuffersPerPipelineLayout: 0,
+        maxSampledTexturesPerShaderStage: 0,
+        maxSamplersPerShaderStage: 0,
+        maxStorageBuffersPerShaderStage: 0,
+        maxStorageTexturesPerShaderStage: 0,
+        maxUniformBuffersPerShaderStage: 0,
+        maxUniformBufferBindingSize: 0,
+        maxStorageBufferBindingSize: 0,
+        minUniformBufferOffsetAlignment: 0,
+        minStorageBufferOffsetAlignment: 0,
+        maxVertexBuffers: 0,
+        maxVertexAttributes: 0,
+        maxVertexBufferArrayStride: 0,
+        maxInterStageShaderComponents: 0,
+        maxInterStageShaderVariables: 0,
+        maxColorAttachments: 0,
+        maxComputeWorkgroupStorageSize: 0,
+        maxComputeInvocationsPerWorkgroup: 0,
+        maxComputeWorkgroupSizeX: 0,
+        maxComputeWorkgroupSizeY: 0,
+        maxComputeWorkgroupSizeZ: 0,
+        maxComputeWorkgroupsPerDimension: 0,
+      },
+      isFallbackAdapter: false,
+      requestAdapterInfo: async () => ({
+        __brand: 'GPUAdapterInfo',
+        vendor: '',
+        architecture: '',
+        device: '',
+        description: '',
+      }),
+      requestDevice: async (): Promise<GPUDevice> => ({
+        __brand: 'GPUDevice',
+        label: 'GPUDevice',
+        features: new Set(),
+        limits: {
+          __brand: 'GPUSupportedLimits',
+          maxTextureDimension1D: 0,
+          maxTextureDimension2D: 0,
+          maxTextureDimension3D: 0,
+          maxTextureArrayLayers: 0,
+          maxBindGroups: 0,
+          maxDynamicUniformBuffersPerPipelineLayout: 0,
+          maxDynamicStorageBuffersPerPipelineLayout: 0,
+          maxSampledTexturesPerShaderStage: 0,
+          maxSamplersPerShaderStage: 0,
+          maxStorageBuffersPerShaderStage: 0,
+          maxStorageTexturesPerShaderStage: 0,
+          maxUniformBuffersPerShaderStage: 0,
+          maxUniformBufferBindingSize: 0,
+          maxStorageBufferBindingSize: 0,
+          minUniformBufferOffsetAlignment: 0,
+          minStorageBufferOffsetAlignment: 0,
+          maxVertexBuffers: 0,
+          maxVertexAttributes: 0,
+          maxVertexBufferArrayStride: 0,
+          maxInterStageShaderComponents: 0,
+          maxInterStageShaderVariables: 0,
+          maxColorAttachments: 0,
+          maxComputeWorkgroupStorageSize: 0,
+          maxComputeInvocationsPerWorkgroup: 0,
+          maxComputeWorkgroupSizeX: 0,
+          maxComputeWorkgroupSizeY: 0,
+          maxComputeWorkgroupSizeZ: 0,
+          maxComputeWorkgroupsPerDimension: 0,
         },
-        createBuffer: ({ size = 0 }) => ({
-          getMappedRange: () => size / Float32Array.BYTES_PER_ELEMENT,
-          unmap: () => null,
-          destroy: () => null,
+        createSampler: () => ({
+          __brand: 'GPUSampler',
+          label: 'GPUSampler',
+        }),
+        importExternalTexture: () => ({
+          __brand: 'GPUExternalTexture',
+          label: 'GPUExternalTexture',
+          expired: false,
+        }),
+        createBindGroupLayout: () => ({
+          __brand: 'GPUBindGroupLayout',
+          label: 'GPUBindGroupLayout',
+        }),
+        createPipelineLayout: () => ({
+          __brand: 'GPUPipelineLayout',
+          label: 'GPUPipelineLayout',
+        }),
+        createComputePipeline: () => ({
+          __brand: 'GPUComputePipeline',
+          label: 'GPUComputePipeline',
+          getBindGroupLayout: () => ({
+            __brand: 'GPUBindGroupLayout',
+            label: 'GPUBindGroupLayout',
+          }),
+        }),
+        createComputePipelineAsync: async () => ({
+          __brand: 'GPUComputePipeline',
+          label: 'GPUComputePipeline',
+          getBindGroupLayout: () => ({
+            __brand: 'GPUBindGroupLayout',
+            label: 'GPUBindGroupLayout',
+          }),
+        }),
+        createRenderPipelineAsync: async () => ({
+          __brand: 'GPURenderPipeline',
+          label: 'GPURenderPipeline',
+          getBindGroupLayout: () => ({
+            __brand: 'GPUBindGroupLayout',
+            label: 'GPUBindGroupLayout',
+          }),
+        }),
+        createRenderBundleEncoder: () => ({
+          __brand: 'GPURenderBundleEncoder',
+          label: 'GPURenderBundleEncoder',
+          finish: () => ({
+            __brand: 'GPURenderBundle',
+            label: 'GPURenderBundle',
+          }),
+          pushDebugGroup: () => undefined,
+          popDebugGroup: () => undefined,
+          insertDebugMarker: () => undefined,
+          setBindGroup: () => undefined,
+          setPipeline: () => undefined,
+          setIndexBuffer: () => undefined,
+          setVertexBuffer: () => undefined,
+          draw: () => undefined,
+          drawIndexed: () => undefined,
+          drawIndirect: () => undefined,
+          drawIndexedIndirect: () => undefined,
+        }),
+        createQuerySet: ({ type, count }) => ({
+          __brand: 'GPUQuerySet',
+          label: 'GPUQuerySet',
+          destroy: () => undefined,
+          type,
+          count,
+        }),
+        lost: new Promise((res) =>
+          res({
+            __brand: 'GPUDeviceLostInfo',
+            reason: undefined,
+            message: '',
+          }),
+        ),
+        pushErrorScope: () => undefined,
+        popErrorScope: async () => null,
+        onuncapturederror: () => undefined,
+        addEventListener: () => undefined,
+        dispatchEvent: () => true,
+        removeEventListener: () => undefined,
+        queue: {
+          __brand: 'GPUQueue',
+          label: 'GPUQueue',
+          writeBuffer: () => undefined,
+          submit: () => undefined,
+          onSubmittedWorkDone: async () => undefined,
+          writeTexture: () => undefined,
+          copyExternalImageToTexture: () => undefined,
+        },
+        createBuffer: ({ size = 0, usage }) => ({
+          __brand: 'GPUBuffer',
+          label: 'GPUBuffer',
+          size,
+          usage,
+          getMappedRange: () => new Float32Array(size / Float32Array.BYTES_PER_ELEMENT).buffer,
+          mapAsync: async () => undefined,
+          unmap: () => undefined,
+          destroy: () => undefined,
         }),
         createRenderPipeline: () => ({
-          getBindGroupLayout: () => ({}),
-        }),
-        createShaderModule: () => ({ compilationInfo: async () => ({ messages: [] }) }),
-        createBindGroup: () => ({}),
-        createCommandEncoder: () => ({
-          beginRenderPass: () => ({
-            setViewport: () => null,
-            setScissorRect: () => null,
-            setPipeline: () => null,
-            setBindGroup: () => null,
-            setIndexBuffer: () => null,
-            setVertexBuffer: () => null,
-            drawIndexed: () => null,
-            draw: () => null,
-            end: () => null,
+          __brand: 'GPURenderPipeline',
+          label: 'GPURenderPipeline',
+          getBindGroupLayout: () => ({
+            __brand: 'GPUBindGroupLayout',
+            label: 'GPUBindGroupLayout',
           }),
-          finish: () => null,
         }),
-        createTexture: () => ({ createView: () => null, destroy: () => null }),
-        destroy: () => null,
+        createShaderModule: () => ({
+          __brand: 'GPUShaderModule',
+          label: 'GPUShaderModule',
+          compilationInfo: async () => ({ __brand: 'GPUCompilationInfo', label: 'GPUCompilationInfo', messages: [] }),
+        }),
+        createBindGroup: () => ({
+          __brand: 'GPUBindGroup',
+          label: 'GPUBindGroup',
+        }),
+        createCommandEncoder: () => ({
+          __brand: 'GPUCommandEncoder',
+          label: 'GPUCommandEncoder',
+          beginRenderPass: () => ({
+            __brand: 'GPURenderPassEncoder',
+            label: 'GPURenderPassEncoder',
+            setViewport: () => undefined,
+            setScissorRect: () => undefined,
+            setPipeline: () => undefined,
+            setBindGroup: () => undefined,
+            setIndexBuffer: () => undefined,
+            setVertexBuffer: () => undefined,
+            drawIndexed: () => undefined,
+            draw: () => undefined,
+            end: () => undefined,
+            setBlendConstant: () => undefined,
+            setStencilReference: () => undefined,
+            beginOcclusionQuery: () => undefined,
+            endOcclusionQuery: () => undefined,
+            executeBundles: () => undefined,
+            pushDebugGroup: () => undefined,
+            popDebugGroup: () => undefined,
+            insertDebugMarker: () => undefined,
+            drawIndirect: () => undefined,
+            drawIndexedIndirect: () => undefined,
+          }),
+          beginComputePass: () => ({
+            __brand: 'GPUComputePassEncoder',
+            label: 'GPUComputePassEncoder',
+            setPipeline: () => undefined,
+            dispatchWorkgroups: () => undefined,
+            dispatch: () => undefined,
+            dispatchWorkgroupsIndirect: () => undefined,
+            dispatchIndirect: () => undefined,
+            end: () => undefined,
+            insertDebugMarker: () => undefined,
+            pushDebugGroup: () => undefined,
+            popDebugGroup: () => undefined,
+            nsertDebugMarker: () => undefined,
+            setBindGroup: () => undefined,
+          }),
+          copyBufferToBuffer: () => undefined,
+          copyBufferToTexture: () => undefined,
+          copyTextureToBuffer: () => undefined,
+          copyTextureToTexture: () => undefined,
+          clearBuffer: () => undefined,
+          writeTimestamp: () => undefined,
+          resolveQuerySet: () => undefined,
+          pushDebugGroup: () => undefined,
+          popDebugGroup: () => undefined,
+          insertDebugMarker: () => undefined,
+          finish: () => ({
+            __brand: 'GPUCommandBuffer',
+            label: 'GPUCommandBuffer',
+          }),
+        }),
+        createTexture: ({ size, mipLevelCount = 0, sampleCount = 0, dimension = '2d', format, usage }) => ({
+          __brand: 'GPUTexture',
+          label: 'GPUTexture',
+          width: size[0] ?? (size as GPUExtent3DDict).width,
+          height: size[1] ?? (size as GPUExtent3DDict).height,
+          depthOrArrayLayers: size[2] ?? (size as GPUExtent3DDict).depthOrArrayLayers,
+          mipLevelCount,
+          sampleCount,
+          dimension,
+          format,
+          usage,
+          createView: () => ({
+            __brand: 'GPUTextureView',
+            label: 'GPUTextureView',
+          }),
+          destroy: () => undefined,
+        }),
+        destroy: () => undefined,
       }),
     }),
   },
-} as any
+} as any & { gpu: GPU }
 
 // GL context polyfill
 const functions = [
@@ -560,13 +799,13 @@ class GLContext {
     this.drawingBufferHeight = canvas.height
 
     functions.forEach((func) => {
-      this[func] = () => ({})
+      this[func] = (): any => ({})
     })
 
     Object.assign(this, enums)
   }
 
-  getShaderPrecisionFormat = () => ({
+  getShaderPrecisionFormat = (): Record<string, number> => ({
     rangeMin: 127,
     rangeMax: 127,
     precision: 23,
@@ -576,7 +815,7 @@ class GLContext {
   private SCISSOR_BOX = 3088
   private VIEWPORT = 2978
 
-  getParameter = (paramId: number) => {
+  getParameter = (paramId: number): any => {
     switch (paramId) {
       case this.GL_VERSION:
         return ['WebGL1']
@@ -586,11 +825,11 @@ class GLContext {
     }
   }
 
-  getExtension = (ext: string) => extensions[ext]
+  getExtension = (ext: string): any => extensions[ext]
 
-  getProgramInfoLog = () => ''
+  getProgramInfoLog = (): string => ''
 
-  getShaderInfoLog = () => ''
+  getShaderInfoLog = (): string => ''
 }
 
 // GPU context polyfill
@@ -605,14 +844,14 @@ class GPUContext {
     this.drawingBufferHeight = canvas.height
   }
 
-  configure = () => null
-  getPreferredFormat = () => 'bgra8unorm'
-  getCurrentTexture = () => ({ createView: () => null, destroy: () => null })
+  configure = (): null => null
+  getPreferredFormat = (): string => 'bgra8unorm'
+  getCurrentTexture = (): any => ({ createView: () => null, destroy: () => null })
 }
 
 // Polyfill contexts
 const defaultContext = HTMLCanvasElement.prototype.getContext
-;(HTMLCanvasElement.prototype as any).getContext = function (contextId: string) {
+;(HTMLCanvasElement.prototype as any).getContext = function (contextId: string): any {
   switch (contextId) {
     case 'webgl':
     case 'webgl2':
