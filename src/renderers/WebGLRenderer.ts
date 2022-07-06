@@ -1,20 +1,65 @@
 import { Compiled, Renderer } from '../core/Renderer'
 import { Texture } from '../core/Texture'
-import type { Material, Uniform, UniformList } from '../core/Material'
+import type { TextureFilter, TextureWrapping } from '../core/Texture'
+import type { BlendFactor, BlendOperation, CullSide, Material, Uniform, UniformList } from '../core/Material'
 import type { AttributeList, AttributeData, Attribute, Geometry } from '../core/Geometry'
 import type { TextureOptions } from '../core/Texture'
-import type { Mesh } from '../core/Mesh'
+import type { DrawMode, Mesh } from '../core/Mesh'
 import type { Object3D } from '../core/Object3D'
 import type { Camera } from '../core/Camera'
 import type { RenderTarget } from '../core/RenderTarget'
-import {
-  GL_TEXTURE_FILTERS,
-  GL_TEXTURE_MIPMAP_FILTERS,
-  GL_TEXTURE_WRAPPINGS,
-  GL_CULL_SIDES,
-  GL_DRAW_MODES,
-} from '../constants'
 import { cloneUniform, lineNumbers, uniformsEqual } from '../utils'
+
+const GL_TEXTURE_FILTERS: Record<TextureFilter, number> = {
+  nearest: 9728,
+  linear: 9729,
+} as const
+
+const GL_TEXTURE_MIPMAP_FILTERS: Record<TextureFilter, number> = {
+  nearest: 9985,
+  linear: 9986,
+} as const
+
+const GL_TEXTURE_WRAPPINGS: Record<TextureWrapping, number> = {
+  clamp: 33071,
+  repeat: 10497,
+} as const
+
+const GL_BLEND_OPERATIONS: Record<BlendOperation, number> = {
+  add: 32774,
+  subtract: 32778,
+  'reverse-subtract': 32779,
+  min: 32775,
+  max: 32776,
+} as const
+
+const GL_BLEND_FACTORS: Record<BlendFactor, number> = {
+  zero: 0,
+  one: 1,
+  src: 768,
+  'one-minus-src': 769,
+  'src-alpha': 770,
+  'one-minus-src-alpha': 771,
+  dst: 774,
+  'one-minus-dst': 775,
+  'dst-alpha': 772,
+  'one-minus-dst-alpha': 773,
+  'src-alpha-saturated': 776,
+  constant: 32769,
+  'one-minus-constant': 32770,
+} as const
+
+const GL_CULL_SIDES: Record<CullSide, number> = {
+  front: 1029,
+  back: 1028,
+  both: 0,
+} as const
+
+const GL_DRAW_MODES: Record<DrawMode, number> = {
+  points: 0,
+  lines: 1,
+  triangles: 4,
+} as const
 
 /**
  * Gets the appropriate WebGL data type for a data view.
@@ -186,7 +231,7 @@ export class WebGLUniformBuffer extends WebGLBufferObject {
 export interface WebGLActiveUniform {
   size: number
   type: number
-  location: WebGLUniformLocation
+  location: WebGLUniformLocation | -1
   blockIndex: number
   offset: number
   value?: Uniform
@@ -816,7 +861,7 @@ export class WebGLRenderer extends Renderer {
   /**
    * Sets cull face mode. Useful for reducing drawn faces at runtime.
    */
-  setCullFace(cullMode: typeof GL_CULL_SIDES[keyof typeof GL_CULL_SIDES]): void {
+  setCullFace(cullMode: number): void {
     if (cullMode) {
       this.gl.enable(this.gl.CULL_FACE)
       this.gl.cullFace(cullMode)
@@ -928,14 +973,16 @@ export class WebGLRenderer extends Renderer {
     // Update global uniforms
     program.uniforms.forEach(({ location, value }, name) => {
       const uniform = target.material.uniforms[name]
-      if (location !== -1) {
-        if (uniform instanceof Texture && uniform.needsUpdate) {
+      if (location === -1) return
+
+      if (uniform instanceof Texture) {
+        if (uniform.needsUpdate) {
           const compiled = this._textures.get(uniform)!
           compiled.update(uniform)
           uniform.needsUpdate = false
-        } else if (!(uniform instanceof Texture) && !uniformsEqual(value!, uniform)) {
-          program.setUniform(name, uniform)
         }
+      } else if (!uniformsEqual(value!, uniform)) {
+        program.setUniform(name, uniform)
       }
     })
 
@@ -955,9 +1002,18 @@ export class WebGLRenderer extends Renderer {
     this.setDepthTest(target.material.depthTest)
     this.setDepthMask(target.material.depthWrite)
 
-    if (target.material.transparent) {
+    if (target.material.blending) {
       this.gl.enable(this.gl.BLEND)
-      this.gl.blendFunc(this._params.premultipliedAlpha ? this.gl.ONE : this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA)
+      this.gl.blendFuncSeparate(
+        GL_BLEND_FACTORS[target.material.blending.color.srcFactor!],
+        GL_BLEND_FACTORS[target.material.blending.color.dstFactor!],
+        GL_BLEND_FACTORS[target.material.blending.alpha.srcFactor!],
+        GL_BLEND_FACTORS[target.material.blending.alpha.dstFactor!],
+      )
+      this.gl.blendEquationSeparate(
+        GL_BLEND_OPERATIONS[target.material.blending.color.operation!],
+        GL_BLEND_OPERATIONS[target.material.blending.alpha.operation!],
+      )
     } else {
       this.gl.disable(this.gl.BLEND)
     }

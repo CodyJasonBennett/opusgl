@@ -22,6 +22,14 @@ global.GPUBufferUsage = {
   UNIFORM: 64,
   VERTEX: 32,
 } as any
+global.GPUColorWrite = {
+  __brand: 'GPUColorWrite',
+  RED: 1,
+  GREEN: 2,
+  BLUE: 4,
+  ALPHA: 8,
+  ALL: 15,
+} as any
 
 // GPU navigator polyfill
 global.navigator = {

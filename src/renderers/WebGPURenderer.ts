@@ -1,15 +1,61 @@
 /// <reference types="@webgpu/types" />
 import { Compiled, Renderer } from '../core/Renderer'
 import { Texture } from '../core/Texture'
+import type { TextureFilter, TextureWrapping } from '../core/Texture'
 import type { TextureOptions } from '../core/Texture'
 import type { RenderTarget } from '../core/RenderTarget'
 import type { AttributeData, AttributeList, Geometry } from '../core/Geometry'
-import type { Mesh } from '../core/Mesh'
+import type { DrawMode, Mesh } from '../core/Mesh'
 import type { Camera } from '../core/Camera'
 import type { Object3D } from '../core/Object3D'
-import type { Uniform, UniformList } from '../core/Material'
-import { GPU_CULL_SIDES, GPU_DRAW_MODES, GPU_TEXTURE_FILTERS, GPU_TEXTURE_WRAPPINGS } from '../constants'
+import type { BlendFactor, BlendOperation, CullSide, Uniform, UniformList } from '../core/Material'
 import { cloneUniform, uniformsEqual } from '../utils'
+
+const GPU_BLEND_OPERATIONS: Record<BlendOperation, string> = {
+  add: 'add',
+  subtract: 'subtract',
+  'reverse-subtract': 'reverse-subtract',
+  min: 'min',
+  max: 'max',
+} as const
+
+const GPU_BLEND_FACTORS: Record<BlendFactor, string> = {
+  zero: 'zero',
+  one: 'one',
+  src: 'src',
+  'one-minus-src': 'one-minus-src',
+  'src-alpha': 'src-alpha',
+  'one-minus-src-alpha': 'one-minus-src-alpha',
+  dst: 'dst',
+  'one-minus-dst': 'one-minus-dst',
+  'dst-alpha': 'dst-alpha',
+  'one-minus-dst-alpha': 'one-minus-dst-alpha',
+  'src-alpha-saturated': 'src-alpha-saturated',
+  constant: 'constant',
+  'one-minus-constant': 'one-minus-constant',
+} as const
+
+const GPU_TEXTURE_FILTERS: Record<TextureFilter, string> = {
+  nearest: 'nearest',
+  linear: 'linear',
+} as const
+
+const GPU_TEXTURE_WRAPPINGS: Record<TextureWrapping, string> = {
+  clamp: 'clamp-to-edge',
+  repeat: 'repeat',
+}
+
+const GPU_CULL_SIDES: Record<CullSide, string> = {
+  front: 'back',
+  back: 'front',
+  both: 'none',
+} as const
+
+const GPU_DRAW_MODES: Record<DrawMode, string> = {
+  points: 'point-list',
+  lines: 'line-list',
+  triangles: 'triangle-list',
+} as const
 
 /**
  * Constructs a WebGPU buffer. Can be used to transmit binary data to the GPU.
@@ -274,6 +320,7 @@ export class WebGPURenderPipeline {
       depthWriteEnabled: target.material.depthWrite,
       depthCompare: (target.material.depthTest ? 'less' : 'always') as GPUCompareFunction,
       attributeCount: Array.from(bufferAttributes.attributes.keys()),
+      blending: JSON.stringify(target.material.blending),
       colorAttachments,
     }
     const pipelineCacheKey = JSON.stringify(pipelineState)
@@ -297,27 +344,27 @@ export class WebGPURenderPipeline {
         entryPoint: 'main',
         targets: Array(colorAttachments).fill({
           format: this.format,
-          blend: pipelineState.transparent
+          blend: target.material.blending
             ? {
-                alpha: {
-                  srcFactor: 'one',
-                  dstFactor: 'one-minus-src-alpha',
-                  operation: 'add',
-                },
                 color: {
-                  srcFactor: 'src-alpha',
-                  dstFactor: 'one-minus-src-alpha',
-                  operation: 'add',
+                  operation: GPU_BLEND_OPERATIONS[target.material.blending.color.operation!],
+                  srcFactor: GPU_BLEND_FACTORS[target.material.blending.color.srcFactor!],
+                  dstFactor: GPU_BLEND_FACTORS[target.material.blending.color.srcFactor!],
+                },
+                alpha: {
+                  operation: GPU_BLEND_OPERATIONS[target.material.blending.alpha.operation!],
+                  srcFactor: GPU_BLEND_FACTORS[target.material.blending.alpha.srcFactor!],
+                  dstFactor: GPU_BLEND_FACTORS[target.material.blending.alpha.srcFactor!],
                 },
               }
             : undefined,
-          writeMask: 0xf,
-        }),
+          writeMask: GPUColorWrite.ALL,
+        } as GPUColorTargetState),
       },
       primitive: {
         frontFace: 'ccw',
-        cullMode: pipelineState.cullMode,
-        topology: pipelineState.topology,
+        cullMode: pipelineState.cullMode as GPUCullMode,
+        topology: pipelineState.topology as GPUPrimitiveTopology,
       },
       depthStencil: {
         depthWriteEnabled: pipelineState.depthWriteEnabled,
@@ -429,9 +476,11 @@ export class WebGPUTextureObject {
     this.sampler = this.device.createSampler({
       addressModeU: GPU_TEXTURE_WRAPPINGS[options.wrapS] as GPUAddressMode,
       addressModeV: GPU_TEXTURE_WRAPPINGS[options.wrapT] as GPUAddressMode,
-      magFilter: GPU_TEXTURE_FILTERS[options.magFilter],
-      minFilter: GPU_TEXTURE_FILTERS[options.minFilter],
-      mipmapFilter: options.generateMipmaps ? GPU_TEXTURE_FILTERS[options.minFilter] : undefined,
+      magFilter: GPU_TEXTURE_FILTERS[options.magFilter] as GPUFilterMode,
+      minFilter: GPU_TEXTURE_FILTERS[options.minFilter] as GPUFilterMode,
+      mipmapFilter: options.generateMipmaps
+        ? (GPU_TEXTURE_FILTERS[options.minFilter] as GPUMipmapFilterMode)
+        : undefined,
       maxAnisotropy: options.anisotropy,
     })
 

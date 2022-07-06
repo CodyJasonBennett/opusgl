@@ -1,10 +1,13 @@
-import type { GL_TEXTURE_FILTERS, GL_TEXTURE_WRAPPINGS } from '../constants'
 import { uuid } from '../utils'
 
 /**
  * Represents a texture image source.
  */
 export type ImageRepresentation = ImageBitmap | HTMLCanvasElement
+
+export type TextureFilter = 'nearest' | 'linear'
+
+export type TextureWrapping = 'clamp' | 'repeat'
 
 /**
  * Texture constructor parameters. Accepts an image source and various filtering options.
@@ -17,19 +20,19 @@ export interface TextureOptions {
   /**
    * How to sample when a texel is more than 1 pixel. Default is `nearest`.
    */
-  magFilter: keyof typeof GL_TEXTURE_FILTERS
+  magFilter: TextureFilter
   /**
    * How to sample when a texel is less than 1 pixel. Default is `nearest`.
    */
-  minFilter: keyof typeof GL_TEXTURE_FILTERS
+  minFilter: TextureFilter
   /**
    * Horizontal UV wrapping. Default is `clamp`.
    */
-  wrapS: keyof typeof GL_TEXTURE_WRAPPINGS
+  wrapS: TextureWrapping
   /**
    * Vertical UV wrapping. Default is `clamp`.
    */
-  wrapT: keyof typeof GL_TEXTURE_WRAPPINGS
+  wrapT: TextureWrapping
   /**
    * Whether to generate mipmaps for increased perceived quality. Default is `true`.
    */
@@ -50,10 +53,10 @@ export interface TextureOptions {
 export class Texture implements TextureOptions {
   readonly uuid: string
   public image?: ImageRepresentation
-  public magFilter: keyof typeof GL_TEXTURE_FILTERS = 'nearest'
-  public minFilter: keyof typeof GL_TEXTURE_FILTERS = 'nearest'
-  public wrapS: keyof typeof GL_TEXTURE_WRAPPINGS = 'clamp'
-  public wrapT: keyof typeof GL_TEXTURE_WRAPPINGS = 'clamp'
+  public magFilter: TextureFilter = 'nearest'
+  public minFilter: TextureFilter = 'nearest'
+  public wrapS: TextureWrapping = 'clamp'
+  public wrapT: TextureWrapping = 'clamp'
   public generateMipmaps = true
   public flipY = true
   public anisotropy = 1
