@@ -1,3 +1,4 @@
+import { Vector3 } from '../math/Vector3'
 import { Color } from '../math/Color'
 import { Mesh } from './Mesh'
 import type { Object3D } from './Object3D'
@@ -57,6 +58,8 @@ export interface Scissor {
   width: number
   height: number
 }
+
+const _v = new Vector3()
 
 /**
  * Constructs a renderer object. Can be extended to draw to a canvas.
@@ -142,7 +145,8 @@ export abstract class Renderer {
   sort(scene: Object3D, camera?: Camera): Mesh[] {
     if (camera?.autoUpdate) camera.updateFrustum()
 
-    const meshes: Mesh[] = []
+    const sorted: Mesh[] = []
+    const unsorted: Mesh[] = []
 
     scene.traverse((node) => {
       // Skip invisible nodes
@@ -152,18 +156,31 @@ export abstract class Renderer {
       const mesh = node as Mesh
       if (!(mesh instanceof Mesh)) return
 
+      // Skip culling/sorting without camera
+      if (!camera) return void unsorted.push(mesh)
+
       // Frustum cull if able
-      if (camera && mesh.frustumCulled) {
+      if (mesh.frustumCulled) {
         const inFrustum = camera.frustumContains(mesh)
         if (!inFrustum) return true
       }
 
-      meshes.push(mesh)
+      // Filter sortable objects
+      if (!mesh.material.depthTest) unsorted.push(mesh)
+      else sorted.push(mesh)
     })
 
-    // TODO: handle depth sorting
+    // Don't depth sort without camera
+    if (!camera) return unsorted
 
-    return meshes
+    // Depth sort if able
+    return sorted
+      .sort(
+        (a, b) =>
+          b.matrix.getPosition(_v).applyMatrix4(camera?.projectionMatrix).z -
+          a.matrix.getPosition(_v).applyMatrix4(camera?.projectionMatrix).z,
+      )
+      .concat(unsorted)
   }
 
   /**

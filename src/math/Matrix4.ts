@@ -3,6 +3,7 @@ import type { Quaternion } from './Quaternion'
 
 const _zero = new Vector3(0, 0, 0)
 const _one = new Vector3(1, 1, 1)
+const _v = new Vector3()
 
 /**
  * Calculates a 4x4 matrix.
@@ -445,6 +446,57 @@ export class Matrix4 extends Array {
   }
 
   /**
+   * Sets the properties of a `Vector3` from this matrix's world position.
+   */
+  getPosition(v: Vector3): Vector3 {
+    return v.set(this[12], this[13], this[14])
+  }
+
+  /**
+   * Sets the properties of a `Vector3` from this matrix's scale.
+   */
+  getScale(v: Vector3): Vector3 {
+    return v.set(
+      Math.hypot(this[0], this[1], this[2]),
+      Math.hypot(this[4], this[5], this[6]),
+      Math.hypot(this[8], this[9], this[10]),
+    )
+  }
+
+  /**
+   * Sets the properties of a `Quaternion` from this matrix's rotation.
+   */
+  getQuaternion(q: Quaternion): Quaternion {
+    const scale = this.getScale(_v)
+
+    const sm11 = this[0] * scale.x
+    const sm12 = (this[1] * 1) / scale.y
+    const sm13 = (this[2] * 1) / scale.z
+    const sm21 = this[4] * scale.x
+    const sm22 = (this[5] * 1) / scale.y
+    const sm23 = (this[6] * 1) / scale.z
+    const sm31 = this[8] * scale.x
+    const sm32 = (this[9] * 1) / scale.y
+    const sm33 = (this[10] * 1) / scale.z
+
+    const trace = sm11 + sm22 + sm33
+
+    if (trace > 0) {
+      const S = Math.sqrt(trace + 1.0) * 2
+      return q.set((sm23 - sm32) / S, (sm31 - sm13) / S, (sm12 - sm21) / S, 0.25 * S)
+    } else if (sm11 > sm22 && sm11 > sm33) {
+      const S = Math.sqrt(1.0 + sm11 - sm22 - sm33) * 2
+      return q.set(0.25 * S, (sm12 + sm21) / S, (sm31 + sm13) / S, (sm23 - sm32) / S)
+    } else if (sm22 > sm33) {
+      const S = Math.sqrt(1.0 + sm22 - sm11 - sm33) * 2
+      return q.set((sm12 + sm21) / S, 0.25 * S, (sm23 + sm32) / S, (sm31 - sm13) / S)
+    } else {
+      const S = Math.sqrt(1.0 + sm33 - sm11 - sm22) * 2
+      return q.set((sm31 + sm13) / S, (sm23 + sm32) / S, 0.25 * S, (sm12 - sm21) / S)
+    }
+  }
+
+  /**
    * Composes this matrix's elements from position, quaternion, and scale properties.
    */
   compose(position: Vector3, quaternion: Quaternion, scale: Vector3): this {
@@ -482,49 +534,9 @@ export class Matrix4 extends Array {
    * Decomposes this matrix into position, quaternion, and scale properties.
    */
   decompose(position: Vector3, quaternion: Quaternion, scale: Vector3): this {
-    position.set(this[12], this[13], this[14])
-
-    scale.x = Math.hypot(this[0], this[1], this[2])
-    scale.y = Math.hypot(this[4], this[5], this[6])
-    scale.z = Math.hypot(this[8], this[9], this[10])
-
-    const sm11 = this[0] * scale.x
-    const sm12 = (this[1] * 1) / scale.y
-    const sm13 = (this[2] * 1) / scale.z
-    const sm21 = this[4] * scale.x
-    const sm22 = (this[5] * 1) / scale.y
-    const sm23 = (this[6] * 1) / scale.z
-    const sm31 = this[8] * scale.x
-    const sm32 = (this[9] * 1) / scale.y
-    const sm33 = (this[10] * 1) / scale.z
-
-    const trace = sm11 + sm22 + sm33
-
-    if (trace > 0) {
-      const S = Math.sqrt(trace + 1.0) * 2
-      quaternion.w = 0.25 * S
-      quaternion.x = (sm23 - sm32) / S
-      quaternion.y = (sm31 - sm13) / S
-      quaternion.z = (sm12 - sm21) / S
-    } else if (sm11 > sm22 && sm11 > sm33) {
-      const S = Math.sqrt(1.0 + sm11 - sm22 - sm33) * 2
-      quaternion.w = (sm23 - sm32) / S
-      quaternion.x = 0.25 * S
-      quaternion.y = (sm12 + sm21) / S
-      quaternion.z = (sm31 + sm13) / S
-    } else if (sm22 > sm33) {
-      const S = Math.sqrt(1.0 + sm22 - sm11 - sm33) * 2
-      quaternion.w = (sm31 - sm13) / S
-      quaternion.x = (sm12 + sm21) / S
-      quaternion.y = 0.25 * S
-      quaternion.z = (sm23 + sm32) / S
-    } else {
-      const S = Math.sqrt(1.0 + sm33 - sm11 - sm22) * 2
-      quaternion.w = (sm12 - sm21) / S
-      quaternion.x = (sm31 + sm13) / S
-      quaternion.y = (sm23 + sm32) / S
-      quaternion.z = 0.25 * S
-    }
+    this.getPosition(position)
+    this.getScale(scale)
+    this.getQuaternion(quaternion)
 
     return this
   }
