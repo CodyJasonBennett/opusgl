@@ -601,9 +601,8 @@ export class WebGPURenderer extends Renderer {
   protected _pipelines = new Compiled<Mesh, WebGPURenderPipeline>()
   protected _textures = new Compiled<Texture, WebGPUTextureObject>()
   protected _FBOs = new Compiled<RenderTarget, WebGPUFBO>()
-  private _depthTexture!: GPUTexture
-  private _depthTextureView!: GPUTextureView
-  private _renderPass: GPURenderPassDescriptor | null = null
+  protected _depthTexture!: GPUTexture
+  protected _depthTextureView!: GPUTextureView
 
   constructor({
     canvas = document.createElement('canvas'),
@@ -739,9 +738,7 @@ export class WebGPURenderer extends Renderer {
 
     // Update pipeline state
     const pipeline = this._pipelines.get(target)!
-    // @ts-ignore
-    const colorAttachments = this._renderPass?.colorAttachments.length ?? 1
-    pipeline.update(target, bufferAttributes, colorAttachments)
+    pipeline.update(target, bufferAttributes, this._renderTarget?.count ?? 1)
 
     // Update uniforms
     pipeline.UBOs.forEach((UBO) => UBO.update(target.material.uniforms))
@@ -759,44 +756,36 @@ export class WebGPURenderer extends Renderer {
     }
   }
 
-  /**
-   * Compiles and binds a render target to render into.
-   */
-  setRenderTarget(renderTarget: RenderTarget | null): void {
-    if (!renderTarget) return void (this._renderPass = null)
+  render(scene: Object3D, camera?: Camera): void {
+    // Compile render target
+    if (this._renderTarget && !this._FBOs.has(this._renderTarget)) {
+      const { width, height, count, samples } = this._renderTarget
 
-    if (!this._FBOs.has(renderTarget)) {
-      const textures = renderTarget.textures.map((texture) => {
+      const textures = this._renderTarget.textures.map((texture) => {
         if (!this._textures.has(texture)) {
           this._textures.set(texture, new WebGPUTextureObject(this.device, this.format))
         }
 
         const compiled = this._textures.get(texture)!
         if (texture.needsUpdate) {
-          compiled.update(texture, renderTarget.width, renderTarget.height)
+          compiled.update(texture, width, height)
           texture.needsUpdate = false
         }
 
         return compiled
       })
 
-      this._FBOs.set(
-        renderTarget,
-        new WebGPUFBO(
-          this.device,
-          renderTarget.width,
-          renderTarget.height,
-          renderTarget.count,
-          renderTarget.samples,
-          textures,
-        ),
-      )
+      this._FBOs.set(this._renderTarget, new WebGPUFBO(this.device, width, height, count, samples, textures))
     }
 
-    const compiled = this._FBOs.get(renderTarget)!
+    // Set render target
+    const FBO = this._FBOs.get(this._renderTarget!)
+    const renderViews = FBO?.views ?? [this.context.getCurrentTexture().createView()]
+    const depthView = FBO?.depthTextureView ?? this._depthTextureView
 
-    this._renderPass = {
-      colorAttachments: compiled.views.map((view) => ({
+    const commandEncoder = this.device.createCommandEncoder()
+    const passEncoder = commandEncoder.beginRenderPass({
+      colorAttachments: renderViews.map((view) => ({
         view,
         clearValue: {
           r: this.clearColor.r * this.clearAlpha,
@@ -808,7 +797,7 @@ export class WebGPURenderer extends Renderer {
         storeOp: 'store',
       })),
       depthStencilAttachment: {
-        view: compiled.depthTextureView,
+        view: depthView,
         depthClearValue: 1,
         depthLoadOp: 'clear',
         depthStoreOp: 'store',
@@ -816,40 +805,11 @@ export class WebGPURenderer extends Renderer {
         stencilLoadOp: 'clear',
         stencilStoreOp: 'store',
       },
-    }
-  }
-
-  render(scene: Object3D, camera?: Camera): void {
-    const commandEncoder = this.device.createCommandEncoder()
-    const passEncoder = commandEncoder.beginRenderPass(
-      this._renderPass ?? {
-        colorAttachments: [
-          {
-            view: this.context.getCurrentTexture().createView(),
-            clearValue: {
-              r: this.clearColor.r * this.clearAlpha,
-              g: this.clearColor.g * this.clearAlpha,
-              b: this.clearColor.b * this.clearAlpha,
-              a: this.clearAlpha,
-            },
-            loadOp: 'clear',
-            storeOp: 'store',
-          },
-        ],
-        depthStencilAttachment: {
-          view: this._depthTextureView,
-          depthClearValue: 1,
-          depthLoadOp: 'clear',
-          depthStoreOp: 'store',
-          stencilClearValue: 0,
-          stencilLoadOp: 'clear',
-          stencilStoreOp: 'store',
-        },
-      },
-    )
+    })
 
     // Update drawing area
-    passEncoder.setViewport(this.viewport.x, this.viewport.y, this.viewport.width, this.viewport.height, 0, 1)
+    if (this._renderTarget) passEncoder.setViewport(0, 0, this._renderTarget.width, this._renderTarget.height, 0, 1)
+    else passEncoder.setViewport(this.viewport.x, this.viewport.y, this.viewport.width, this.viewport.height, 0, 1)
     passEncoder.setScissorRect(this.scissor.x, this.scissor.y, this.scissor.width, this.scissor.height)
 
     // Update scene matrices

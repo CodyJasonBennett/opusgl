@@ -46,7 +46,6 @@ const renderTarget = new RenderTarget({ width, height, count, samples })
 
 renderer.setRenderTarget(renderTarget)
 renderer.render(compute)
-renderer.blitRenderTarget(renderTarget)
 
 const { gl } = renderer
 for (let i = 0; i < count; i++) {

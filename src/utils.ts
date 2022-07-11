@@ -16,7 +16,7 @@ export const uuid = (): string =>
 /**
  * Compares two uniforms by keys or reference.
  */
-export const uniformsEqual = (a: Uniform, b: Uniform): boolean => {
+export function uniformsEqual(a: Uniform, b: Uniform): boolean {
   // Recursively compare array uniforms
   if (a instanceof Array && b instanceof Array) return a.every((v, i) => uniformsEqual(v, b[i]))
   // Atomically compare literals
@@ -26,7 +26,7 @@ export const uniformsEqual = (a: Uniform, b: Uniform): boolean => {
 /**
  * Clones a uniform's value into memory.
  */
-export const cloneUniform = (uniform: Uniform, prev?: Uniform): Uniform => {
+export function cloneUniform(uniform: Uniform, prev?: Uniform): Uniform {
   // @ts-ignore
   return (prev ? prev.copy?.(uniform) : uniform.clone?.()) ?? uniform
 }

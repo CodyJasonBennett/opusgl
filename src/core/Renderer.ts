@@ -1,6 +1,7 @@
 import { Vector3 } from '../math/Vector3'
 import { Color } from '../math/Color'
 import { Mesh } from './Mesh'
+import type { RenderTarget } from './RenderTarget'
 import type { Object3D } from './Object3D'
 import type { Camera } from './Camera'
 
@@ -15,7 +16,7 @@ export interface Disposable {
  * A collection of disposable objects and their compiled GPU resource.
  */
 export class Compiled<Compilable extends Disposable, Compiled extends Disposable> {
-  private _objects = new Map<Compilable, Compiled>()
+  private _objects = new WeakMap<Compilable, Compiled>()
 
   has(object: Compilable): boolean {
     return this._objects.has(object)
@@ -81,6 +82,7 @@ export abstract class Renderer {
   private _pixelRatio = 1
   private _viewport: Viewport = { x: 0, y: 0, width: 0, height: 0 }
   private _scissor: Scissor = { x: 0, y: 0, width: 0, height: 0 }
+  protected _renderTarget: RenderTarget | null = null
 
   /**
    * Sets the canvas size. Will reset viewport and scissor state.
@@ -137,6 +139,13 @@ export abstract class Renderer {
    */
   setScissor(x: number, y: number, width: number, height: number): void {
     this._scissor = { x, y, width, height }
+  }
+
+  /**
+   * Sets the current render target to render into.
+   */
+  setRenderTarget(renderTarget: RenderTarget | null): void {
+    this._renderTarget = renderTarget
   }
 
   /**

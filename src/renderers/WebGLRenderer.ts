@@ -586,7 +586,7 @@ export class WebGLFBO {
   readonly count: number
   readonly samples: number
   readonly frameBuffer: WebGLFramebuffer
-  readonly multisampleFrameBuffer: WebGLFramebuffer
+  readonly copyFrameBuffer: WebGLFramebuffer
   readonly textures: WebGLTextureObject[]
   readonly renderBuffers: WebGLRenderbuffer[]
 
@@ -605,7 +605,7 @@ export class WebGLFBO {
     this.samples = samples
 
     this.frameBuffer = this.gl.createFramebuffer()!
-    this.multisampleFrameBuffer = this.gl.createFramebuffer()!
+    this.copyFrameBuffer = this.gl.createFramebuffer()!
     this.textures = textures
     this.renderBuffers = []
 
@@ -642,8 +642,8 @@ export class WebGLFBO {
   /**
    * Binds the FBO.
    */
-  bind(type = this.gl.FRAMEBUFFER, multisampled = this.samples): void {
-    this.gl.bindFramebuffer(type, multisampled ? this.multisampleFrameBuffer : this.frameBuffer)
+  bind(type = this.gl.FRAMEBUFFER): void {
+    this.gl.bindFramebuffer(type, this.frameBuffer)
   }
 
   /**
@@ -663,16 +663,16 @@ export class WebGLFBO {
 
     // Remove FBO attachments
     for (let i = 0; i < this.count; i++) {
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.multisampleFrameBuffer)
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.frameBuffer)
       this.gl.framebufferRenderbuffer(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0 + i, this.gl.RENDERBUFFER, null)
 
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.frameBuffer)
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.copyFrameBuffer)
       this.gl.framebufferTexture2D(this.gl.DRAW_FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0 + i, this.gl.TEXTURE_2D, null, 0)
     }
 
     // Blit multi-sampled renderBuffers to textures
-    this.gl.bindFramebuffer(this.gl.READ_FRAMEBUFFER, this.multisampleFrameBuffer)
-    this.gl.bindFramebuffer(this.gl.DRAW_FRAMEBUFFER, this.frameBuffer)
+    this.gl.bindFramebuffer(this.gl.READ_FRAMEBUFFER, this.frameBuffer)
+    this.gl.bindFramebuffer(this.gl.DRAW_FRAMEBUFFER, this.copyFrameBuffer)
     for (let i = 0; i < this.count; i++) {
       const renderBuffer = this.renderBuffers[i]
       this.gl.framebufferRenderbuffer(
@@ -709,7 +709,7 @@ export class WebGLFBO {
     // Reconstruct FBO attachments
     for (let i = 0; i < this.count; i++) {
       const renderBuffer = this.renderBuffers[i]
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.multisampleFrameBuffer)
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.frameBuffer)
       this.gl.framebufferRenderbuffer(
         this.gl.FRAMEBUFFER,
         this.gl.COLOR_ATTACHMENT0 + i,
@@ -718,7 +718,7 @@ export class WebGLFBO {
       )
 
       const texture = this.textures[i]
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.frameBuffer)
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.copyFrameBuffer)
       this.gl.framebufferTexture2D(
         this.gl.DRAW_FRAMEBUFFER,
         this.gl.COLOR_ATTACHMENT0 + i,
@@ -734,7 +734,7 @@ export class WebGLFBO {
    */
   dispose(): void {
     this.gl.deleteFramebuffer(this.frameBuffer)
-    this.gl.deleteFramebuffer(this.multisampleFrameBuffer)
+    this.gl.deleteFramebuffer(this.copyFrameBuffer)
     for (const renderBuffer of this.renderBuffers) this.gl.deleteRenderbuffer(renderBuffer)
   }
 }
@@ -898,8 +898,8 @@ export class WebGLRenderer extends Renderer {
   /**
    * Clears color and depth buffers.
    */
-  clear(): void {
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT)
+  clear(mask = this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT): void {
+    this.gl.clear(mask)
 
     const multiplier = this._params.premultipliedAlpha ? this.clearAlpha : 1
     this.gl.clearColor(
@@ -1022,58 +1022,41 @@ export class WebGLRenderer extends Renderer {
     VAO.unbind()
   }
 
-  /**
-   * Compiles and binds a render target to render into.
-   */
   setRenderTarget(renderTarget: RenderTarget | null): void {
-    if (!renderTarget) {
-      this.setViewport(this.viewport.x, this.viewport.y, this.viewport.width, this.viewport.height)
-      return this.setFrameBuffer(null)
-    }
+    super.setRenderTarget(renderTarget)
 
-    // Compile FBO
-    if (!this._FBOs.has(renderTarget)) {
+    if (renderTarget) this.gl.viewport(0, 0, renderTarget.width, renderTarget.height)
+    else this.setViewport(this.viewport.x, this.viewport.y, this.viewport.width, this.viewport.height)
+  }
+
+  render(scene: Object3D, camera?: Camera): void {
+    // Compile render target
+    if (this._renderTarget && !this._FBOs.has(this._renderTarget)) {
+      const { width, height, count, samples } = this._renderTarget
+
       // Init texture attachments
-      const textures = renderTarget.textures.map((texture) => {
+      const textures = this._renderTarget.textures.map((texture) => {
         if (!this._textures.has(texture)) {
           this._textures.set(texture, new WebGLTextureObject(this.gl))
         }
 
         const compiled = this._textures.get(texture)!
         if (texture.needsUpdate) {
-          compiled.update(texture, renderTarget.width, renderTarget.height)
+          compiled.update(texture, width, height)
           texture.needsUpdate = false
         }
 
         return compiled
       })
 
-      const FBO = new WebGLFBO(
-        this.gl,
-        renderTarget.width,
-        renderTarget.height,
-        renderTarget.count,
-        renderTarget.samples,
-        textures,
-      )
-      this._FBOs.set(renderTarget, FBO)
+      const FBO = new WebGLFBO(this.gl, width, height, count, samples, textures)
+      this._FBOs.set(this._renderTarget, FBO)
     }
 
-    // Bind
-    const compiled = this._FBOs.get(renderTarget)!
-    compiled.bind()
-    this.gl.viewport(0, 0, renderTarget.width, renderTarget.height)
-  }
+    // Bind render target
+    const FBO = this._FBOs.get(this._renderTarget!)
+    this.setFrameBuffer(FBO?.frameBuffer ?? null)
 
-  /**
-   * Downsamples a multi-sampled render target and its attachments to be readable via `blitFramebuffer`. Supports MRT.
-   */
-  blitRenderTarget(renderTarget: RenderTarget): void {
-    const compiled = this._FBOs.get(renderTarget)
-    if (compiled) compiled.blit()
-  }
-
-  render(scene: Object3D, camera?: Camera): void {
     // Clear screen
     if (this.autoClear) this.clear()
 
@@ -1108,5 +1091,8 @@ export class WebGLRenderer extends Renderer {
       // Unbind
       VAO.unbind()
     }
+
+    // Update current FBO
+    if (FBO) FBO.blit()
   }
 }
