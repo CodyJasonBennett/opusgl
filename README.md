@@ -127,7 +127,6 @@ const material = new Material({
 
     void main() {
       float lighting = dot(vNormal, normalize(vec3(10)));
-
       pc_fragColor = vec4(vColor + lighting * 0.1, 1.0);
     }
   `,
