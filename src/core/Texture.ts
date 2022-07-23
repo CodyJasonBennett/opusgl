@@ -67,12 +67,16 @@ export class Texture implements TextureOptions {
     if (options) Object.assign(this, options)
   }
 
+  private get _bitmapOptions(): ImageBitmapOptions {
+    return { imageOrientation: this.flipY ? 'flipY' : 'none' }
+  }
+
   /**
-   * Sets this texture's image source from an `HTMLImageElement`.
+   * Sets this texture's image source from an `HTMLImageElement` or `SVGImageElement`.
    */
-  async fromImage(image: HTMLImageElement): Promise<this> {
-    await image.decode()
-    this.image = await createImageBitmap(image)
+  async fromImage(image: HTMLOrSVGImageElement): Promise<this> {
+    if (image instanceof HTMLImageElement) await image.decode()
+    this.image = await createImageBitmap(image, this._bitmapOptions)
     this.needsUpdate = true
 
     return this
@@ -82,7 +86,7 @@ export class Texture implements TextureOptions {
    * Sets this texture's image source from an `HTMLVideoElement`.
    */
   async fromVideo(video: HTMLVideoElement): Promise<this> {
-    this.image = await createImageBitmap(video)
+    this.image = await createImageBitmap(video, this._bitmapOptions)
     this.generateMipmaps = false
     this.needsUpdate = video.readyState >= video.HAVE_CURRENT_DATA
 
@@ -94,7 +98,7 @@ export class Texture implements TextureOptions {
    */
   async fromData(data: ArrayBufferView, width: number, height: number): Promise<this> {
     const source = new ImageData(new Uint8ClampedArray(data.buffer), width, height)
-    this.image = await createImageBitmap(source)
+    this.image = await createImageBitmap(source, this._bitmapOptions)
     this.needsUpdate = true
 
     return this

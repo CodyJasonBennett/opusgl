@@ -550,8 +550,6 @@ export class WebGLTextureObject {
       )
     }
 
-    if (options.flipY) this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, options.flipY)
-
     if (options.anisotropy) {
       const anisotropyExt = this.gl.getExtension('EXT_texture_filter_anisotropic')
       if (anisotropyExt)

@@ -497,11 +497,10 @@ export class WebGPUTextureObject {
     })
 
     if (options.image) {
-      this.device.queue.copyExternalImageToTexture(
-        { source: options.image, flipY: options.flipY },
-        { texture: this.target },
-        [options.image.width, options.image.height],
-      )
+      this.device.queue.copyExternalImageToTexture({ source: options.image }, { texture: this.target }, [
+        options.image.width,
+        options.image.height,
+      ])
     }
   }
 
