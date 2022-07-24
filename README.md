@@ -51,7 +51,7 @@ Creates a rotating 3D cube with Lambert shading.
 <details>
   <summary>Show WebGL example</summary>
 
-```js
+```ts
 import { WebGLRenderer, PerspectiveCamera, Geometry, Material, Color, Mesh } from 'opusgl'
 
 const renderer = new WebGLRenderer()
@@ -139,7 +139,7 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight
 })
 
-const animate = (time) => {
+function animate(time: DOMHighResTimeStamp): void {
   requestAnimationFrame(animate)
   mesh.rotation.z = mesh.rotation.y = time / 1500
   renderer.render(mesh, camera)
@@ -152,7 +152,7 @@ requestAnimationFrame(animate)
 <details>
   <summary>Show WebGPU example</summary>
 
-```js
+```ts
 import { WebGPURenderer, PerspectiveCamera, Geometry, Material, Color, Mesh } from 'opusgl'
 
 const renderer = await new WebGPURenderer().init()
@@ -256,7 +256,7 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight
 })
 
-const animate = (time) => {
+function animate(time: DOMHighResTimeStamp): void {
   requestAnimationFrame(animate)
   mesh.rotation.z = mesh.rotation.y = time / 1500
   renderer.render(mesh, camera)
@@ -275,7 +275,7 @@ Creates an animated fullscreen gradient shader from a triangle.
 <details>
   <summary>Show WebGL example</summary>
 
-```js
+```ts
 import { WebGLRenderer, Geometry, Material, Mesh, Texture } from 'opusgl'
 
 const renderer = new WebGLRenderer()
@@ -326,7 +326,7 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight)
 })
 
-const animate = (time) => {
+function animate(time: DOMHighResTimeStamp): void {
   requestAnimationFrame(animate)
   mesh.material.uniforms.time = time / 1000
   renderer.render(mesh)
@@ -339,7 +339,7 @@ requestAnimationFrame(animate)
 <details>
   <summary>Show WebGPU example</summary>
 
-```js
+```ts
 import { WebGPURenderer, Geometry, Material, Mesh, Texture } from 'opusgl'
 
 const renderer = await new WebGPURenderer().init()
@@ -410,7 +410,7 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight)
 })
 
-const animate = (time) => {
+function animate(time: DOMHighResTimeStamp): void {
   requestAnimationFrame(animate)
   mesh.material.uniforms.time = time / 1000
   renderer.render(mesh)

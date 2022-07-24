@@ -289,9 +289,9 @@ global.navigator = {
         createTexture: ({ size, mipLevelCount = 0, sampleCount = 0, dimension = '2d', format, usage }) => ({
           __brand: 'GPUTexture',
           label: 'GPUTexture',
-          width: size[0] ?? (size as GPUExtent3DDict).width,
-          height: size[1] ?? (size as GPUExtent3DDict).height,
-          depthOrArrayLayers: size[2] ?? (size as GPUExtent3DDict).depthOrArrayLayers,
+          width: (size as number[])[0] ?? (size as GPUExtent3DDict).width,
+          height: (size as number[])[1] ?? (size as GPUExtent3DDict).height,
+          depthOrArrayLayers: (size as number[])[2] ?? (size as GPUExtent3DDict).depthOrArrayLayers,
           mipLevelCount,
           sampleCount,
           dimension,

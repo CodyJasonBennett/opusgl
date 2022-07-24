@@ -7,9 +7,10 @@
     "moduleResolution": "node",
     "strict": true,
     "pretty": true,
-    "declaration": true,
-    "emitDeclarationOnly": true,
-    "forceConsistentCasingInFileNames": true
-  },
-  "include": ["src/**/*"]
+    "noEmit": true,
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "opusgl": ["./src"]
+    }
+  }
 }

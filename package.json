@@ -16,30 +16,36 @@
   "repository": "https://github.com/CodyJasonBennett/opusgl",
   "license": "MIT",
   "files": [
-    "dist"
+    "dist/*",
+    "src/*"
   ],
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "exports": {
+    "types": "./dist/index.d.ts",
+    "require": "./dist/index.js",
+    "import": "./dist/index.mjs"
+  },
   "sideEffects": false,
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^5.30.5",
-    "@typescript-eslint/parser": "^5.30.5",
-    "eslint": "^8.19.0",
+    "@typescript-eslint/eslint-plugin": "^5.30.7",
+    "@typescript-eslint/parser": "^5.30.7",
+    "eslint": "^8.20.0",
     "jsdom": "^20.0.0",
     "np": "^7.6.2",
     "typescript": "^4.7.4",
-    "vite": "^2.9.14",
-    "vitest": "^0.18.0"
+    "vite": "^3.0.2",
+    "vitest": "^0.19.0"
   },
   "dependencies": {
     "@webgpu/types": "^0.1.21"
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && tsc",
+    "build": "vite build && echo export * from '../src'>>dist/index.d.ts",
     "test": "vitest run",
-    "lint": "eslint src/**/*.ts",
+    "lint": "eslint src/**/*.ts && tsc",
     "prerelease": "npm run build && npm run test && npm run lint",
     "release": "np"
   }

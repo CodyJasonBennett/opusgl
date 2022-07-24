@@ -2,31 +2,30 @@ import path from 'path'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  logLevel: process.env.NODE_ENV === 'production' ? 'warn' : 'info',
-  root: 'examples',
+  root: !!process.argv[2] ? undefined : 'examples',
   resolve: {
     alias: {
       opusgl: path.resolve(process.cwd(), 'src'),
     },
   },
   test: {
-    dir: path.resolve(process.cwd(), 'tests'),
+    dir: 'tests',
     environment: 'jsdom',
-    setupFiles: path.resolve(process.cwd(), 'tests/index.ts'),
+    setupFiles: 'tests/index.ts',
   },
   build: {
     minify: false,
-    outDir: path.resolve(process.cwd(), 'dist'),
-    emptyOutDir: true,
+    sourcemap: true,
     target: 'esnext',
     lib: {
       formats: ['es', 'cjs'],
-      entry: path.resolve(process.cwd(), 'src/index.ts'),
-      fileName: (format) => (format === 'es' ? '[name].mjs' : '[name].js'),
+      entry: 'src/index.ts',
+      fileName: '[name]',
     },
     rollupOptions: {
+      external: (id) => !id.startsWith('.') && !path.isAbsolute(id),
       output: {
-        preserveModules: true,
+        sourcemapExcludeSources: true,
       },
     },
   },

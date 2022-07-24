@@ -85,7 +85,7 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight
 })
 
-const animate = (time) => {
+function animate(time: DOMHighResTimeStamp): void {
   requestAnimationFrame(animate)
   mesh.rotation.z = mesh.rotation.y = time / 1500
   renderer.render(mesh, camera)
