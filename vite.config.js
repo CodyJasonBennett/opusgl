@@ -25,8 +25,16 @@ export default defineConfig({
     rollupOptions: {
       external: (id) => !id.startsWith('.') && !path.isAbsolute(id),
       output: {
+        preserveModules: true,
         sourcemapExcludeSources: true,
       },
     },
   },
+  plugins: [
+    {
+      generateBundle() {
+        this.emitFile({ type: 'asset', fileName: 'index.d.ts', source: `export * from '../src'` })
+      },
+    },
+  ],
 })

@@ -1,14 +1,14 @@
 import { Vector3 } from './Vector3'
 import type { Quaternion } from './Quaternion'
 
-const _zero = new Vector3(0, 0, 0)
-const _one = new Vector3(1, 1, 1)
-const _v = new Vector3()
-
 /**
  * Calculates a 4x4 matrix.
  */
 export class Matrix4 extends Array {
+  private _zero = new Vector3(0, 0, 0)
+  private _one = new Vector3(1, 1, 1)
+  private _v = new Vector3()
+
   constructor(
     m00 = 1,
     m01 = 0,
@@ -467,7 +467,7 @@ export class Matrix4 extends Array {
    * Sets the properties of a `Quaternion` from this matrix's rotation.
    */
   getQuaternion(q: Quaternion): Quaternion {
-    const scale = this.getScale(_v)
+    const scale = this.getScale(this._v)
 
     const sm11 = this[0] * scale.x
     const sm12 = (this[1] * 1) / scale.y
@@ -588,6 +588,6 @@ export class Matrix4 extends Array {
    * Calculates a rotation matrix from a `Quaternion`.
    */
   fromQuaternion(q: Quaternion): this {
-    return this.compose(_zero, q, _one)
+    return this.compose(this._zero, q, this._one)
   }
 }

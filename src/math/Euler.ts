@@ -1,8 +1,6 @@
 import { Matrix4 } from './Matrix4'
 import type { Quaternion } from './Quaternion'
 
-const _m = new Matrix4()
-
 /**
  * Represents an axis order or the order of rotations around local space.
  */
@@ -13,6 +11,7 @@ export type EulerOrder = 'XYZ' | 'XZY' | 'YXZ' | 'YZX' | 'ZXY' | 'ZYX'
  */
 export class Euler extends Array {
   public order: EulerOrder = 'YXZ'
+  private _m = new Matrix4()
 
   constructor(x = 0, y = x, z = x, order?: EulerOrder) {
     super(3)
@@ -256,6 +255,6 @@ export class Euler extends Array {
    * Sets this euler's properties from a `Quaternion`.
    */
   fromQuaternion(q: Quaternion): this {
-    return this.fromMatrix4(_m.fromQuaternion(q))
+    return this.fromMatrix4(this._m.fromQuaternion(q))
   }
 }

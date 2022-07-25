@@ -4,8 +4,6 @@ import { Euler } from '../math/Euler'
 import { Quaternion } from '../math/Quaternion'
 import { uuid } from '../utils'
 
-const _q = new Quaternion()
-
 /**
  * Represents an Object3D traversal callback.
  */
@@ -73,6 +71,8 @@ export class Object3D {
    */
   public name = ''
 
+  private _q = new Quaternion()
+
   constructor() {
     this.uuid = uuid()
   }
@@ -97,8 +97,8 @@ export class Object3D {
    */
   updateMatrix(updateChildren = true, updateParents = false): void {
     if (this.matrixAutoUpdate) {
-      _q.copy(this.quaternion).applyEuler(this.rotation)
-      this.matrix.compose(this.position, _q, this.scale)
+      this._q.copy(this.quaternion).applyEuler(this.rotation)
+      this.matrix.compose(this.position, this._q, this.scale)
     }
 
     if (this.parent) {

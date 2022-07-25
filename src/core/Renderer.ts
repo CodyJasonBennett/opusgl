@@ -60,8 +60,6 @@ export interface Scissor {
   height: number
 }
 
-const _v = new Vector3()
-
 /**
  * Constructs a renderer object. Can be extended to draw to a canvas.
  */
@@ -79,6 +77,7 @@ export abstract class Renderer {
    */
   public clearAlpha = 0
 
+  private _v = new Vector3()
   private _pixelRatio = 1
   private _viewport: Viewport = { x: 0, y: 0, width: 0, height: 0 }
   private _scissor: Scissor = { x: 0, y: 0, width: 0, height: 0 }
@@ -186,8 +185,8 @@ export abstract class Renderer {
     return sorted
       .sort(
         (a, b) =>
-          b.matrix.getPosition(_v).applyMatrix4(camera?.projectionMatrix).z -
-          a.matrix.getPosition(_v).applyMatrix4(camera?.projectionMatrix).z,
+          b.matrix.getPosition(this._v).applyMatrix4(camera?.projectionMatrix).z -
+          a.matrix.getPosition(this._v).applyMatrix4(camera?.projectionMatrix).z,
       )
       .concat(unsorted)
   }
