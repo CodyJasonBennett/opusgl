@@ -260,9 +260,6 @@ export class WebGLProgramObject {
       this.gl.shaderSource(shader, '#version 300 es\n' + source)
       this.gl.compileShader(shader)
 
-      const error = gl.getShaderInfoLog(shader)
-      if (error) throw `${error}\n${lineNumbers(source)}`
-
       return shader
     })
 
@@ -274,8 +271,13 @@ export class WebGLProgramObject {
     // Link program
     this.gl.linkProgram(this.program)
     if (!this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS)) {
+      for (const shader of shaders) {
+        const error = gl.getShaderInfoLog(shader)
+        if (error) throw `Error compiling shader: ${error}\n${lineNumbers(this.gl.getShaderSource(shader)!)}`
+      }
+
       const error = this.gl.getProgramInfoLog(this.program)
-      throw `Error linking program: ${error}`
+      throw `Error compiling program: ${error}`
     }
 
     // Cleanup shaders
@@ -300,6 +302,12 @@ export class WebGLProgramObject {
         if (type === this.gl.SAMPLER_2D) {
           this.textureLocations.set(name, textureIndex)
           textureIndex++
+        }
+
+        // Allocate UBO container
+        if (blockIndex !== -1 && !this.UBOs.has(blockIndex)) {
+          const UBO = new WebGLUniformBuffer(this.gl, this, blockIndex)
+          this.UBOs.set(blockIndex, UBO)
         }
       }
     }
@@ -485,8 +493,9 @@ export class WebGLBufferAttributes {
   update(attributes: AttributeList): void {
     for (const name in attributes) {
       const attribute = attributes[name]
-      if (attribute.needsUpdate && this.buffers.has(name)) {
-        const buffer = this.buffers.get(name)!
+      const buffer = this.buffers.get(name)
+
+      if (attribute.needsUpdate && buffer) {
         buffer.write(attribute.data)
         attribute.needsUpdate = false
       }
@@ -922,76 +931,61 @@ export class WebGLRenderer extends Renderer {
     }
 
     // Compile mesh VAO
-    if (!this._VAOs.has(target)) {
-      this._VAOs.set(target, new WebGLVAO(this.gl))
+    let VAO = this._VAOs.get(target)
+    if (!VAO) {
+      VAO = new WebGLVAO(this.gl)
+      this._VAOs.set(target, VAO)
     }
 
     // Bind VAO to memoize further gl state
-    const VAO = this._VAOs.get(target)!
     VAO.bind()
 
     // Compile program
-    if (!this._programs.has(target.material)) {
-      const program = new WebGLProgramObject(this.gl, target.material.vertex, target.material.fragment)
+    let program = this._programs.get(target.material)
+    if (!program) {
+      program = new WebGLProgramObject(this.gl, target.material.vertex, target.material.fragment)
       this._programs.set(target.material, program)
-
-      // Keep track of defined UBOs
-      let numUBOs = 0
-
-      // Set global uniforms
-      program.uniforms.forEach((activeUniform, name) => {
-        if (activeUniform.location !== -1) {
-          const uniform = target.material.uniforms[name]
-          program.setUniform(name, uniform)
-
-          if (uniform instanceof Texture) {
-            if (!this._textures.has(uniform)) {
-              this._textures.set(uniform, new WebGLTextureObject(this.gl))
-            }
-
-            const compiled = this._textures.get(uniform)!
-            program.activateTexture(name, compiled)
-          }
-        } else if (activeUniform.blockIndex !== -1) {
-          numUBOs = Math.max(numUBOs, activeUniform.blockIndex + 1)
-        }
-      })
-
-      // Create UBOs
-      for (let i = 0; i < numUBOs; i++) {
-        const UBO = new WebGLUniformBuffer(this.gl, program, i)
-        program.UBOs.set(i, UBO)
-      }
     }
 
-    // Update uniform buffers
-    const program = this._programs.get(target.material)!
-    program.UBOs.forEach((UBO) => UBO.update(target.material.uniforms))
+    // Keep track of defined UBOs
+    let numUBOs = 0
 
     // Update global uniforms
-    program.uniforms.forEach(({ location, value }, name) => {
-      const uniform = target.material.uniforms[name]
+    program.uniforms.forEach(({ blockIndex, location, value }, name) => {
+      if (blockIndex !== -1) return (numUBOs = Math.max(numUBOs, blockIndex + 1))
       if (location === -1) return
 
+      const uniform = target.material.uniforms[name]
+
       if (uniform instanceof Texture) {
+        let compiled = this._textures.get(uniform)
+        if (!compiled) {
+          compiled = new WebGLTextureObject(this.gl)
+          this._textures.set(uniform, compiled)
+        }
+
         if (uniform.needsUpdate) {
-          const compiled = this._textures.get(uniform)!
           compiled.update(uniform)
           uniform.needsUpdate = false
         }
-      } else if (!uniformsEqual(value!, uniform)) {
-        program.setUniform(name, uniform)
+
+        if (!value) program!.activateTexture(name, compiled)
       }
+
+      if (!uniformsEqual(value!, uniform)) program!.setUniform(name, uniform)
     })
 
+    // Update UBOs
+    program.UBOs.forEach((UBO) => UBO.update(target.material.uniforms))
+
     // Compile buffer attributes
-    if (!this._bufferAttributes.has(target.geometry)) {
-      const bufferAttributes = new WebGLBufferAttributes(this.gl)
+    let bufferAttributes = this._bufferAttributes.get(target.geometry)
+    if (!bufferAttributes) {
+      bufferAttributes = new WebGLBufferAttributes(this.gl)
       this._bufferAttributes.set(target.geometry, bufferAttributes)
     }
 
     // Bind and update buffer attributes
-    const bufferAttributes = this._bufferAttributes.get(target.geometry)!
     bufferAttributes.setAttributes(program, target.geometry.attributes)
     bufferAttributes.update(target.geometry.attributes)
 
@@ -1029,16 +1023,18 @@ export class WebGLRenderer extends Renderer {
 
   render(scene: Object3D, camera?: Camera): void {
     // Compile render target
-    if (this._renderTarget && !this._FBOs.has(this._renderTarget)) {
+    let FBO = this._FBOs.get(this._renderTarget!)
+    if (this._renderTarget && !FBO) {
       const { width, height, count, samples } = this._renderTarget
 
       // Init texture attachments
       const textures = this._renderTarget.textures.map((texture) => {
-        if (!this._textures.has(texture)) {
-          this._textures.set(texture, new WebGLTextureObject(this.gl))
+        let compiled = this._textures.get(texture)
+        if (!compiled) {
+          compiled = new WebGLTextureObject(this.gl)
+          this._textures.set(texture, compiled)
         }
 
-        const compiled = this._textures.get(texture)!
         if (texture.needsUpdate) {
           compiled.update(texture, width, height)
           texture.needsUpdate = false
@@ -1047,12 +1043,11 @@ export class WebGLRenderer extends Renderer {
         return compiled
       })
 
-      const FBO = new WebGLFBO(this.gl, width, height, count, samples, textures)
+      FBO = new WebGLFBO(this.gl, width, height, count, samples, textures)
       this._FBOs.set(this._renderTarget, FBO)
     }
 
     // Bind render target
-    const FBO = this._FBOs.get(this._renderTarget!)
     this.setFrameBuffer(FBO?.frameBuffer ?? null)
 
     // Clear screen

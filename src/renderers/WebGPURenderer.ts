@@ -419,8 +419,11 @@ export class WebGPURenderPipeline {
     // Filter resources by group and type
     const groups = new Map<number, BindGroupInfoGroup>()
     resources.forEach((resource) => {
-      if (!groups.has(resource.group)) groups.set(resource.group, { samplers: [], textures: [], buffers: [] })
-      const group = groups.get(resource.group)!
+      let group = groups.get(resource.group)
+      if (!group) {
+        group = { samplers: [], textures: [], buffers: [] }
+        groups.set(resource.group, group)
+      }
 
       if (resource.type === 'sampler') {
         group.samplers.push(resource)
@@ -674,8 +677,9 @@ export class WebGPURenderer extends Renderer {
     }
 
     // Create pipeline and initial layout on first compile
-    if (!this._pipelines.has(target)) {
-      const pipeline = new WebGPURenderPipeline(this.device, this.format)
+    let pipeline = this._pipelines.get(target)
+    if (!pipeline) {
+      pipeline = new WebGPURenderPipeline(this.device, this.format)
       this._pipelines.set(target, pipeline)
 
       const bindInfo = pipeline.getBindGroupInfo(target.material.vertex, target.material.fragment)
@@ -687,26 +691,28 @@ export class WebGPURenderer extends Renderer {
           const textureIndex = group.textures.indexOf(textureResource)
           const sampler = group.samplers[textureIndex]
 
-          const uniform = target.material.uniforms[textureResource.name] as Texture
-          if (!this._textures.has(uniform)) {
-            const texture = new WebGPUTextureObject(this.device, this.format)
-            this._textures.set(uniform, texture)
+          const uniform = target.material.uniforms[textureResource.name]
+          if (!(uniform instanceof Texture)) continue
+
+          let compiled = this._textures.get(uniform)
+          if (!compiled) {
+            compiled = new WebGPUTextureObject(this.device, this.format)
+            this._textures.set(uniform, compiled)
           }
 
-          const texture = this._textures.get(uniform)!
           if (uniform.needsUpdate) {
-            texture.update(uniform)
+            compiled.update(uniform)
             uniform.needsUpdate = false
           }
 
           entries.push(
             {
               binding: sampler.binding,
-              resource: texture.sampler!,
+              resource: compiled.sampler!,
             },
             {
               binding: textureResource.binding,
-              resource: texture.target!.createView(),
+              resource: compiled.target!.createView(),
             },
           )
         }
@@ -720,11 +726,11 @@ export class WebGPURenderer extends Renderer {
           )
 
           const UBO = new WebGPUUniformBuffer(this.device, uniforms)
-          pipeline.UBOs.set(buffer.name, UBO)
+          pipeline!.UBOs.set(buffer.name, UBO)
           entries.push({ binding: buffer.binding, resource: { buffer: UBO.buffer } })
         }
 
-        pipeline.setBindGroupEntries(entries, groupIndex)
+        pipeline!.setBindGroupEntries(entries, groupIndex)
       })
     }
 
@@ -736,7 +742,6 @@ export class WebGPURenderer extends Renderer {
     bufferAttributes.update(target.geometry.attributes)
 
     // Update pipeline state
-    const pipeline = this._pipelines.get(target)!
     pipeline.update(target, bufferAttributes, this._renderTarget?.count ?? 1)
 
     // Update uniforms
@@ -744,28 +749,29 @@ export class WebGPURenderer extends Renderer {
 
     for (const name in target.material.uniforms) {
       const uniform = target.material.uniforms[name]
-      if (uniform instanceof Texture && this._textures.has(uniform)) {
-        const texture = this._textures.get(uniform)!
+      if (!(uniform instanceof Texture)) continue
 
-        if (uniform.needsUpdate) {
-          texture.update(uniform)
-          uniform.needsUpdate = false
-        }
+      const compiled = this._textures.get(uniform)
+      if (compiled && uniform.needsUpdate) {
+        compiled.update(uniform)
+        uniform.needsUpdate = false
       }
     }
   }
 
   render(scene: Object3D, camera?: Camera): void {
     // Compile render target
-    if (this._renderTarget && !this._FBOs.has(this._renderTarget)) {
+    let FBO = this._FBOs.get(this._renderTarget!)
+    if (this._renderTarget && !FBO) {
       const { width, height, count, samples } = this._renderTarget
 
       const textures = this._renderTarget.textures.map((texture) => {
-        if (!this._textures.has(texture)) {
-          this._textures.set(texture, new WebGPUTextureObject(this.device, this.format))
+        let compiled = this._textures.get(texture)
+        if (!compiled) {
+          compiled = new WebGPUTextureObject(this.device, this.format)
+          this._textures.set(texture, compiled)
         }
 
-        const compiled = this._textures.get(texture)!
         if (texture.needsUpdate) {
           compiled.update(texture, width, height)
           texture.needsUpdate = false
@@ -774,11 +780,11 @@ export class WebGPURenderer extends Renderer {
         return compiled
       })
 
-      this._FBOs.set(this._renderTarget, new WebGPUFBO(this.device, width, height, count, samples, textures))
+      FBO = new WebGPUFBO(this.device, width, height, count, samples, textures)
+      this._FBOs.set(this._renderTarget, FBO)
     }
 
     // Set render target
-    const FBO = this._FBOs.get(this._renderTarget!)
     const renderViews = FBO?.views ?? [this.context.getCurrentTexture().createView()]
     const depthView = FBO?.depthTextureView ?? this._depthTextureView
 
