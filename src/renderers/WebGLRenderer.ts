@@ -947,12 +947,8 @@ export class WebGLRenderer extends Renderer {
       this._programs.set(target.material, program)
     }
 
-    // Keep track of defined UBOs
-    let numUBOs = 0
-
     // Update global uniforms
-    program.uniforms.forEach(({ blockIndex, location, value }, name) => {
-      if (blockIndex !== -1) return (numUBOs = Math.max(numUBOs, blockIndex + 1))
+    program.uniforms.forEach(({ location, value }, name) => {
       if (location === -1) return
 
       const uniform = target.material.uniforms[name]
