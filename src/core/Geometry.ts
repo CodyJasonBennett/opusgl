@@ -24,7 +24,7 @@ export interface Attribute {
   /**
    * The size (per vertex) of the data array. Used to allocate data to each vertex.
    */
-  size: 1 | 2 | 3 | 4
+  size: number
   /**
    * Used internally to mark attribute for updates.
    */
