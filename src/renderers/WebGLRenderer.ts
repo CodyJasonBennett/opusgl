@@ -254,10 +254,12 @@ export class WebGLProgramObject {
 
     // Compile shaders
     const shaders = Object.entries({ vertex, fragment }).map(([type, source]) => {
+      if (!source.startsWith('#version')) source = '#version 300 es\n' + source
+
       const target = type === 'vertex' ? this.gl.VERTEX_SHADER : this.gl.FRAGMENT_SHADER
       const shader = this.gl.createShader(target)!
 
-      this.gl.shaderSource(shader, '#version 300 es\n' + source)
+      this.gl.shaderSource(shader, source)
       this.gl.compileShader(shader)
 
       return shader
