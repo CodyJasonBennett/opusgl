@@ -824,6 +824,7 @@ export class WebGPURenderer extends Renderer {
     if (camera?.autoUpdate) {
       if (camera.parent === null) camera.updateMatrix()
       camera.updateProjectionMatrix(false)
+      camera.updateFrustum(false)
     }
 
     // Sort and compile children

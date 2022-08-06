@@ -64,7 +64,7 @@ const GL_DRAW_MODES: Record<DrawMode, number> = {
 /**
  * Gets the appropriate WebGL data type for a data view.
  */
-const getDataType = (data: AttributeData): number | null => {
+function getDataType(data: AttributeData): number | null {
   switch (data.constructor) {
     case Float32Array:
       return 5126 // FLOAT
@@ -1058,6 +1058,7 @@ export class WebGLRenderer extends Renderer {
     if (camera?.autoUpdate) {
       if (camera.parent === null) camera.updateMatrix()
       camera.updateProjectionMatrix(true)
+      camera.updateFrustum(true)
     }
 
     // Compile & render visible children

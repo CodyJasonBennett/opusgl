@@ -39,20 +39,20 @@ export abstract class Camera extends Object3D {
 
   /**
    * Updates camera's frustum planes.
+   *
+   * Accepts a `normalized` argument, when true creates an WebGL `[-1, 1]` clipping space, and when false creates a WebGPU `[0, 1]` clipping space.
    */
-  updateFrustum(): void {
+  updateFrustum(normalized: boolean): void {
     const m = this.projectionViewMatrix.copy(this.projectionMatrix).multiply(this.viewMatrix)
 
-    this.planes[0].set(m[3] - m[0], m[7] - m[4], m[11] - m[8], m[15] - m[12])
-    this.planes[1].set(m[3] + m[0], m[7] + m[4], m[11] + m[8], m[15] + m[12])
-    this.planes[2].set(m[3] + m[1], m[7] + m[5], m[11] + m[9], m[15] + m[13])
-    this.planes[3].set(m[3] - m[1], m[7] - m[5], m[11] - m[9], m[15] - m[13])
-    this.planes[4].set(m[3] - m[2], m[7] - m[6], m[11] - m[10], m[15] - m[14])
-    this.planes[5].set(m[3] + m[2], m[7] + m[6], m[11] + m[10], m[15] + m[14])
+    this.planes[0].set(m[3] - m[0], m[7] - m[4], m[11] - m[8], m[15] - m[12]).normalize()
+    this.planes[1].set(m[3] + m[0], m[7] + m[4], m[11] + m[8], m[15] + m[12]).normalize()
+    this.planes[2].set(m[3] + m[1], m[7] + m[5], m[11] + m[9], m[15] + m[13]).normalize()
+    this.planes[3].set(m[3] - m[1], m[7] - m[5], m[11] - m[9], m[15] - m[13]).normalize()
+    this.planes[4].set(m[3] - m[2], m[7] - m[6], m[11] - m[10], m[15] - m[14]).normalize()
 
-    for (const plane of this.planes) {
-      plane.divide(Math.sqrt(plane.x * plane.x + plane.y * plane.y + plane.z * plane.z))
-    }
+    if (normalized) this.planes[5].set(m[3] + m[2], m[7] + m[6], m[11] + m[10], m[15] + m[14]).normalize()
+    else this.planes[5].set(m[2], m[6], m[10], m[14]).normalize()
   }
 
   /**

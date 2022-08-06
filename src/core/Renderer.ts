@@ -151,8 +151,6 @@ export abstract class Renderer {
    * Returns a list of visible meshes. Will frustum cull and depth-sort with a camera if available.
    */
   sort(scene: Object3D, camera?: Camera): Mesh[] {
-    if (camera?.autoUpdate) camera.updateFrustum()
-
     const sorted: Mesh[] = []
     const unsorted: Mesh[] = []
 

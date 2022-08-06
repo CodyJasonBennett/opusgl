@@ -39,17 +39,30 @@ describe('core/Renderer', () => {
       }),
       new Material(),
     )
-    const camera = new PerspectiveCamera(45, 2)
-    camera.updateProjectionMatrix(true)
+    const camera = new PerspectiveCamera(45)
 
     camera.position.z = 5
     camera.updateMatrix()
-    mesh.updateMatrix()
+    camera.updateProjectionMatrix(true)
+    camera.updateFrustum(true)
+    expect(renderer.sort(mesh, camera).length).toBe(1)
+
+    camera.position.z = 5
+    camera.updateMatrix()
+    camera.updateProjectionMatrix(false)
+    camera.updateFrustum(false)
     expect(renderer.sort(mesh, camera).length).toBe(1)
 
     camera.position.z = -5
     camera.updateMatrix()
-    mesh.updateMatrix()
+    camera.updateProjectionMatrix(true)
+    camera.updateFrustum(true)
+    expect(renderer.sort(mesh, camera).length).toBe(0)
+
+    camera.position.z = -5
+    camera.updateMatrix()
+    camera.updateProjectionMatrix(false)
+    camera.updateFrustum(false)
     expect(renderer.sort(mesh, camera).length).toBe(0)
   })
 })
