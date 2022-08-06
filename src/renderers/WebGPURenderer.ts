@@ -607,6 +607,11 @@ export class WebGPURenderer extends Renderer {
   public context!: GPUCanvasContext
   public format!: GPUTextureFormat
 
+  /**
+   * Whether to clear the drawing buffer between renders. Default is `true`.
+   */
+  public autoClear = true
+
   protected _params: Partial<Omit<WebGPURendererOptions, 'canvas'>>
   protected _bufferAttributes = new Compiled<Geometry, WebGPUBufferAttributes>()
   protected _pipelines = new Compiled<Material, WebGPURenderPipeline>()
@@ -796,6 +801,7 @@ export class WebGPURenderer extends Renderer {
     // Set render target
     const renderViews = FBO?.views ?? [this.context.getCurrentTexture().createView()]
     const depthView = FBO?.depthTextureView ?? this._depthTextureView
+    const loadOp: GPULoadOp = this.autoClear ? 'clear' : 'load'
 
     const commandEncoder = this.device.createCommandEncoder()
     const passEncoder = commandEncoder.beginRenderPass({
@@ -807,16 +813,16 @@ export class WebGPURenderer extends Renderer {
           b: this.clearColor.b * this.clearAlpha,
           a: this.clearAlpha,
         },
-        loadOp: 'clear',
+        loadOp,
         storeOp: 'store',
       })),
       depthStencilAttachment: {
         view: depthView,
         depthClearValue: 1,
-        depthLoadOp: 'clear',
+        depthLoadOp: loadOp,
         depthStoreOp: 'store',
         stencilClearValue: 0,
-        stencilLoadOp: 'clear',
+        stencilLoadOp: loadOp,
         stencilStoreOp: 'store',
       },
     })
