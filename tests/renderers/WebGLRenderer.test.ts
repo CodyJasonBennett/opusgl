@@ -37,7 +37,7 @@ describe('renderers/WebGLRenderer', () => {
     expect(bind).toHaveBeenLastCalledWith(null)
 
     // Cleans up on dispose
-    mesh.dispose()
+    mesh.geometry.dispose()
     expect(dispose).toHaveBeenCalledOnce()
     expect(dispose).not.toHaveBeenCalledWith(null)
   })

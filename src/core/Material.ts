@@ -32,8 +32,14 @@ export interface UniformList {
   [name: string]: Uniform
 }
 
+/**
+ * The blend operation to use when applying blending.
+ */
 export type BlendOperation = 'add' | 'subtract' | 'reverse-subtract' | 'min' | 'max'
 
+/**
+ * The blend factor to be used when applying blending.
+ */
 export type BlendFactor =
   | 'zero'
   | 'one'
@@ -49,27 +55,41 @@ export type BlendFactor =
   | 'constant'
   | 'one-minus-constant'
 
+/**
+ * Describes blending between a material and a color buffer's components.
+ */
 export interface BlendComponent {
   /**
-   * The {@link BlendOperation} used to calculate values written to the target attachment components.
+   * The blend operation to use when applying blending.
    */
   operation?: BlendOperation
   /**
-   * The {@link BlendFactor} operation to be performed on values from the fragment shader.
+   * The blend factor to be used on values from the fragment shader.
    */
   srcFactor?: BlendFactor
   /**
-   * The {@link BlendFactor} operation to be performed on values from the target attachment.
+   * The blend factor to be used on values to a color buffer.
    */
   dstFactor?: BlendFactor
 }
 
+/**
+ * How a material should blend into a color buffer and its components.
+ */
 export interface Blending {
   color: BlendComponent
   alpha: BlendComponent
 }
 
+/**
+ * Which sides of faces should be rendered.
+ */
 export type CullSide = 'front' | 'back' | 'both'
+
+/**
+ * Which primitive mode to render with.
+ */
+export type DrawMode = 'points' | 'lines' | 'triangles'
 
 /**
  * Material constructor parameters. Accepts shaders, their uniforms, and various blending & culling options.
@@ -92,6 +112,10 @@ export interface MaterialOptions {
    */
   side?: CullSide
   /**
+   * Which primitive mode to render with. Default is `triangles`.
+   */
+  mode?: DrawMode
+  /**
    * Whether the material should support transparent rendering. Default is `false`.
    */
   transparent?: boolean
@@ -104,7 +128,7 @@ export interface MaterialOptions {
    */
   depthWrite?: boolean
   /**
-   *
+   * How the material should blend into a color buffer and its components.
    */
   blending?: Blending
 }
@@ -118,6 +142,7 @@ export class Material implements MaterialOptions {
   public vertex!: string
   public fragment!: string
   public side: CullSide = 'front'
+  public mode: DrawMode = 'triangles'
   public transparent = false
   public depthTest = true
   public depthWrite = true

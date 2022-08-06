@@ -18,7 +18,8 @@ describe('renderers/WebGPURenderer', () => {
     expect(async () => {
       const renderer = await new WebGPURenderer().init()
       renderer.render(mesh, camera)
-      mesh.dispose()
+      mesh.geometry.dispose()
+      mesh.material.dispose()
     }).not.toThrow()
   })
 })

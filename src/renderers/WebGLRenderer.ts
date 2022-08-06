@@ -1,10 +1,10 @@
 import { Compiled, Renderer } from '../core/Renderer'
 import { Texture } from '../core/Texture'
 import type { TextureFilter, TextureWrapping } from '../core/Texture'
-import type { BlendFactor, BlendOperation, CullSide, Material, Uniform, UniformList } from '../core/Material'
+import type { BlendFactor, BlendOperation, CullSide, DrawMode, Material, Uniform, UniformList } from '../core/Material'
 import type { AttributeList, AttributeData, Attribute, Geometry } from '../core/Geometry'
 import type { TextureOptions } from '../core/Texture'
-import type { DrawMode, Mesh } from '../core/Mesh'
+import type { Mesh } from '../core/Mesh'
 import type { Object3D } from '../core/Object3D'
 import type { Camera } from '../core/Camera'
 import type { RenderTarget } from '../core/RenderTarget'
@@ -83,40 +83,6 @@ function getDataType(data: AttributeData): number | null {
       return 5125 // UNSIGNED_INT
     default:
       return null
-  }
-}
-
-/**
- * Constructs a WebGL VAO. Can be used to memoize gl state.
- */
-export class WebGLVAO {
-  readonly gl: WebGL2RenderingContext
-  readonly VAO: WebGLVertexArrayObject
-
-  constructor(gl: WebGL2RenderingContext) {
-    this.gl = gl
-    this.VAO = this.gl.createVertexArray()!
-  }
-
-  /**
-   * Binds the VAO. Further modifications to global gl state are memoized.
-   */
-  bind(): void {
-    this.gl.bindVertexArray(this.VAO)
-  }
-
-  /**
-   * Unbinds the VAO. Further state is not memoized.
-   */
-  unbind(): void {
-    this.gl.bindVertexArray(null)
-  }
-
-  /**
-   * Disposes the VAO from GPU memory.
-   */
-  dispose(): void {
-    this.gl.deleteVertexArray(this.VAO)
   }
 }
 
@@ -458,46 +424,50 @@ export class WebGLProgramObject {
 }
 
 /**
- * Constructs a WebGL buffer attribute manager.
+ * Constructs a WebGL VAO. Can be used to memoize geometry state.
  */
-export class WebGLBufferAttributes {
+export class WebGLVAO {
   readonly gl: WebGL2RenderingContext
+  readonly VAO: WebGLVertexArrayObject
   readonly buffers: Map<string, WebGLBufferObject> = new Map()
 
   constructor(gl: WebGL2RenderingContext) {
     this.gl = gl
+    this.VAO = this.gl.createVertexArray()!
   }
 
   /**
-   * Compiles and binds attributes into buffers.
+   * Binds the VAO. Further modifications to global gl state are memoized.
+   */
+  bind(): void {
+    this.gl.bindVertexArray(this.VAO)
+  }
+
+  /**
+   * Unbinds the VAO. Further state is not memoized.
+   */
+  unbind(): void {
+    this.gl.bindVertexArray(null)
+  }
+
+  /**
+   * Compiles and binds attributes to a program.
    */
   setAttributes(program: WebGLProgramObject, attributes: AttributeList): void {
     for (const name in attributes) {
       const attribute = attributes[name]
 
-      if (!this.buffers.has(name)) {
+      let buffer = this.buffers.get(name)
+      if (!buffer) {
         const type = name === 'index' ? this.gl.ELEMENT_ARRAY_BUFFER : this.gl.ARRAY_BUFFER
-        const buffer = new WebGLBufferObject(this.gl, attribute.data, type)
+        buffer = new WebGLBufferObject(this.gl, attribute.data, type)
         this.buffers.set(name, buffer)
         attribute.needsUpdate = false
       }
 
-      if (!program.attributeLocations.has(name)) {
-        const buffer = this.buffers.get(name)!
-        program.setAttribute(name, attribute, buffer)
-      }
-    }
-  }
+      if (!program.attributeLocations.has(name)) program.setAttribute(name, attribute, buffer)
 
-  /**
-   * Updates attributes flagged for update.
-   */
-  update(attributes: AttributeList): void {
-    for (const name in attributes) {
-      const attribute = attributes[name]
-      const buffer = this.buffers.get(name)
-
-      if (attribute.needsUpdate && buffer) {
+      if (attribute.needsUpdate) {
         buffer.write(attribute.data)
         attribute.needsUpdate = false
       }
@@ -505,9 +475,10 @@ export class WebGLBufferAttributes {
   }
 
   /**
-   * Disposes of attributes from GPU memory.
+   * Disposes of VAO and its attributes from GPU memory.
    */
   dispose(): void {
+    this.gl.deleteVertexArray(this.VAO)
     this.buffers.forEach((buffer) => buffer.dispose())
     this.buffers.clear()
   }
@@ -802,9 +773,8 @@ export class WebGLRenderer extends Renderer {
   public autoClear = true
 
   protected _params: Partial<Omit<WebGLRendererOptions, 'canvas' | 'context'>>
-  protected _VAOs = new Compiled<Mesh, WebGLVAO>()
   protected _programs = new Compiled<Material, WebGLProgramObject>()
-  protected _bufferAttributes = new Compiled<Geometry, WebGLBufferAttributes>()
+  protected _VAOs = new Compiled<Geometry, WebGLVAO>()
   protected _textures = new Compiled<Texture, WebGLTextureObject>()
   protected _FBOs = new Compiled<RenderTarget, WebGLFBO>()
 
@@ -821,6 +791,7 @@ export class WebGLRenderer extends Renderer {
     powerPreference = 'default',
   }: Partial<WebGLRendererOptions> = {}) {
     super()
+
     this._params = {
       alpha,
       antialias,
@@ -932,16 +903,6 @@ export class WebGLRenderer extends Renderer {
       target.normalMatrix.getNormalMatrix(target.modelViewMatrix)
     }
 
-    // Compile mesh VAO
-    let VAO = this._VAOs.get(target)
-    if (!VAO) {
-      VAO = new WebGLVAO(this.gl)
-      this._VAOs.set(target, VAO)
-    }
-
-    // Bind VAO to memoize further gl state
-    VAO.bind()
-
     // Compile program
     let program = this._programs.get(target.material)
     if (!program) {
@@ -976,16 +937,18 @@ export class WebGLRenderer extends Renderer {
     // Update UBOs
     program.UBOs.forEach((UBO) => UBO.update(target.material.uniforms))
 
-    // Compile buffer attributes
-    let bufferAttributes = this._bufferAttributes.get(target.geometry)
-    if (!bufferAttributes) {
-      bufferAttributes = new WebGLBufferAttributes(this.gl)
-      this._bufferAttributes.set(target.geometry, bufferAttributes)
+    // Compile VAO
+    let VAO = this._VAOs.get(target.geometry)
+    if (!VAO) {
+      VAO = new WebGLVAO(this.gl)
+      this._VAOs.set(target.geometry, VAO)
     }
 
+    // Bind VAO to memoize further gl state
+    VAO.bind()
+
     // Bind and update buffer attributes
-    bufferAttributes.setAttributes(program, target.geometry.attributes)
-    bufferAttributes.update(target.geometry.attributes)
+    VAO.setAttributes(program, target.geometry.attributes)
 
     // Update material state
     this.setCullFace(GL_CULL_SIDES[target.material.side])
@@ -1068,12 +1031,12 @@ export class WebGLRenderer extends Renderer {
       this.compile(child, camera)
 
       // Bind
-      const VAO = this._VAOs.get(child)!
+      const VAO = this._VAOs.get(child.geometry)!
       VAO.bind()
 
       // Alternate drawing for indexed and non-indexed children
       const { index, position } = child.geometry.attributes
-      const mode = GL_DRAW_MODES[child.mode]
+      const mode = GL_DRAW_MODES[child.material.mode]
       if (index) {
         this.gl.drawElements(mode, index.data.length / index.size, getDataType(index.data)!, 0)
       } else {

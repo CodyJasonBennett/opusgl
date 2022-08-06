@@ -5,10 +5,19 @@ import type { TextureFilter, TextureWrapping } from '../core/Texture'
 import type { TextureOptions } from '../core/Texture'
 import type { RenderTarget } from '../core/RenderTarget'
 import type { AttributeData, AttributeList, Geometry } from '../core/Geometry'
-import type { DrawMode, Mesh } from '../core/Mesh'
+import type { Mesh } from '../core/Mesh'
 import type { Camera } from '../core/Camera'
 import type { Object3D } from '../core/Object3D'
-import type { BlendFactor, BlendOperation, CullSide, Uniform, UniformList } from '../core/Material'
+import type {
+  BlendFactor,
+  BlendOperation,
+  CullSide,
+  DrawMode,
+  Material,
+  MaterialOptions,
+  Uniform,
+  UniformList,
+} from '../core/Material'
 import { cloneUniform, uniformsEqual } from '../utils'
 
 const GPU_BLEND_OPERATIONS: Record<BlendOperation, string> = {
@@ -312,15 +321,15 @@ export class WebGPURenderPipeline {
   /**
    * Updates pipeline state against a mesh and its attributes.
    */
-  update(target: Mesh, bufferAttributes: WebGPUBufferAttributes, colorAttachments = 1): void {
+  update(options: Material | MaterialOptions, bufferAttributes: WebGPUBufferAttributes, colorAttachments = 1): void {
     const pipelineState = {
-      transparent: target.material.transparent,
-      cullMode: GPU_CULL_SIDES[target.material.side],
-      topology: GPU_DRAW_MODES[target.mode],
-      depthWriteEnabled: target.material.depthWrite,
-      depthCompare: (target.material.depthTest ? 'less' : 'always') as GPUCompareFunction,
+      transparent: !!options.transparent,
+      cullMode: GPU_CULL_SIDES[options.side ?? 'front'],
+      topology: GPU_DRAW_MODES[options.mode ?? 'triangles'],
+      depthWriteEnabled: !!options.depthWrite,
+      depthCompare: (options.depthTest ? 'less' : 'always') as GPUCompareFunction,
       attributeCount: Array.from(bufferAttributes.attributes.keys()),
-      blending: JSON.stringify(target.material.blending),
+      blending: JSON.stringify(options.blending),
       colorAttachments,
     }
     const pipelineCacheKey = JSON.stringify(pipelineState)
@@ -335,26 +344,26 @@ export class WebGPURenderPipeline {
     this.pipeline = this.device.createRenderPipeline({
       label: pipelineCacheKey,
       vertex: {
-        module: this.device.createShaderModule({ code: target.material.vertex }),
+        module: this.device.createShaderModule({ code: options.vertex }),
         entryPoint: 'main',
         buffers,
       },
       fragment: {
-        module: this.device.createShaderModule({ code: target.material.fragment }),
+        module: this.device.createShaderModule({ code: options.fragment }),
         entryPoint: 'main',
         targets: Array(colorAttachments).fill({
           format: this.format,
-          blend: target.material.blending
+          blend: options.blending
             ? {
                 color: {
-                  operation: GPU_BLEND_OPERATIONS[target.material.blending.color.operation!],
-                  srcFactor: GPU_BLEND_FACTORS[target.material.blending.color.srcFactor!],
-                  dstFactor: GPU_BLEND_FACTORS[target.material.blending.color.srcFactor!],
+                  operation: GPU_BLEND_OPERATIONS[options.blending.color.operation!],
+                  srcFactor: GPU_BLEND_FACTORS[options.blending.color.srcFactor!],
+                  dstFactor: GPU_BLEND_FACTORS[options.blending.color.srcFactor!],
                 },
                 alpha: {
-                  operation: GPU_BLEND_OPERATIONS[target.material.blending.alpha.operation!],
-                  srcFactor: GPU_BLEND_FACTORS[target.material.blending.alpha.srcFactor!],
-                  dstFactor: GPU_BLEND_FACTORS[target.material.blending.alpha.srcFactor!],
+                  operation: GPU_BLEND_OPERATIONS[options.blending.alpha.operation!],
+                  srcFactor: GPU_BLEND_FACTORS[options.blending.alpha.srcFactor!],
+                  dstFactor: GPU_BLEND_FACTORS[options.blending.alpha.srcFactor!],
                 },
               }
             : undefined,
@@ -600,7 +609,7 @@ export class WebGPURenderer extends Renderer {
 
   protected _params: Partial<Omit<WebGPURendererOptions, 'canvas'>>
   protected _bufferAttributes = new Compiled<Geometry, WebGPUBufferAttributes>()
-  protected _pipelines = new Compiled<Mesh, WebGPURenderPipeline>()
+  protected _pipelines = new Compiled<Material, WebGPURenderPipeline>()
   protected _textures = new Compiled<Texture, WebGPUTextureObject>()
   protected _FBOs = new Compiled<RenderTarget, WebGPUFBO>()
   protected _depthTexture!: GPUTexture
@@ -677,10 +686,10 @@ export class WebGPURenderer extends Renderer {
     }
 
     // Create pipeline and initial layout on first compile
-    let pipeline = this._pipelines.get(target)
+    let pipeline = this._pipelines.get(target.material)
     if (!pipeline) {
       pipeline = new WebGPURenderPipeline(this.device, this.format)
-      this._pipelines.set(target, pipeline)
+      this._pipelines.set(target.material, pipeline)
 
       const bindInfo = pipeline.getBindGroupInfo(target.material.vertex, target.material.fragment)
       bindInfo.groups.forEach((group, groupIndex) => {
@@ -742,7 +751,7 @@ export class WebGPURenderer extends Renderer {
     bufferAttributes.update(target.geometry.attributes)
 
     // Update pipeline state
-    pipeline.update(target, bufferAttributes, this._renderTarget?.count ?? 1)
+    pipeline.update(target.material, bufferAttributes, this._renderTarget?.count ?? 1)
 
     // Update uniforms
     pipeline.UBOs.forEach((UBO) => UBO.update(target.material.uniforms))
@@ -834,7 +843,7 @@ export class WebGPURenderer extends Renderer {
       const child = renderList[i]
       this.compile(child, camera)
 
-      const pipeline = this._pipelines.get(child)!
+      const pipeline = this._pipelines.get(child.material)!
       const bufferAttributes = this._bufferAttributes.get(child.geometry)!
 
       // Bind
