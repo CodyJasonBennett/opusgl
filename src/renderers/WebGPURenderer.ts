@@ -685,6 +685,7 @@ export class WebGPURenderer extends Renderer {
       target.material.uniforms.projectionMatrix = camera.projectionMatrix
       target.material.uniforms.viewMatrix = camera.viewMatrix
       target.material.uniforms.normalMatrix = target.normalMatrix
+      target.material.uniforms.modelViewMatrix = target.modelViewMatrix
 
       target.modelViewMatrix.copy(camera.viewMatrix).multiply(target.matrix)
       target.normalMatrix.getNormalMatrix(target.modelViewMatrix)

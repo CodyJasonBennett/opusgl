@@ -37,8 +37,7 @@ const material = new Material({
   vertex: `
     struct Uniforms {
       projectionMatrix: mat4x4<f32>,
-      modelMatrix: mat4x4<f32>,
-      viewMatrix: mat4x4<f32>,
+      modelViewMatrix: mat4x4<f32>,
     };
     @binding(0) @group(0) var<uniform> uniforms: Uniforms;
 
@@ -55,7 +54,7 @@ const material = new Material({
     @vertex
     fn main(input: VertexIn) -> VertexOut {
       var out: VertexOut;
-      out.position = uniforms.projectionMatrix * uniforms.viewMatrix * uniforms.modelMatrix * vec4(input.position, 0.0, 1.0);
+      out.position = uniforms.projectionMatrix * uniforms.modelViewMatrix * vec4(input.position, 0.0, 1.0);
       out.color = input.color;
       return out;
     }

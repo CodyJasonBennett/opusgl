@@ -101,8 +101,7 @@ const material = new Material({
   vertex: `
     layout(std140) uniform Uniforms {
       mat4 projectionMatrix;
-      mat4 viewMatrix;
-      mat4 modelMatrix;
+      mat4 modelViewMatrix;
       mat3 normalMatrix;
       vec3 color;
     };
@@ -115,7 +114,7 @@ const material = new Material({
     void main() {
       vNormal = normalMatrix * normal;
       vColor = color;
-      gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
   `,
   fragment: `
@@ -202,8 +201,7 @@ const material = new Material({
   vertex: `
     struct Uniforms {
       projectionMatrix: mat4x4<f32>,
-      modelMatrix: mat4x4<f32>,
-      viewMatrix: mat4x4<f32>,
+      modelViewMatrix: mat4x4<f32>,
       normalMatrix: mat3x3<f32>,
       color: vec3<f32>,
     };
@@ -223,7 +221,7 @@ const material = new Material({
     @vertex
     fn main(input: VertexIn) -> VertexOut {
       var out: VertexOut;
-      out.position = uniforms.projectionMatrix * uniforms.viewMatrix * uniforms.modelMatrix * vec4(input.position, 1.0);
+      out.position = uniforms.projectionMatrix * uniforms.modelViewMatrix * vec4(input.position, 1.0);
       out.color = uniforms.color;
       out.normal = uniforms.normalMatrix * input.normal;
       return out;

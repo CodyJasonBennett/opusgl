@@ -47,8 +47,7 @@ const material = new Material({
   vertex: `
     layout(std140) uniform Uniforms {
       mat4 projectionMatrix;
-      mat4 viewMatrix;
-      mat4 modelMatrix;
+      mat4 modelViewMatrix;
       mat3 normalMatrix;
       vec3 color;
     };
@@ -61,7 +60,7 @@ const material = new Material({
     void main() {
       vNormal = normalMatrix * normal;
       vColor = color;
-      gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
   `,
   fragment: `

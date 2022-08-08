@@ -5,8 +5,14 @@ import { uuid } from '../utils'
  */
 export type ImageRepresentation = ImageBitmap | HTMLCanvasElement
 
+/**
+ * Represents a texture texel filter.
+ */
 export type TextureFilter = 'nearest' | 'linear'
 
+/**
+ * Represents a texture wrapping mode.
+ */
 export type TextureWrapping = 'clamp' | 'repeat'
 
 /**

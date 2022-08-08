@@ -173,7 +173,7 @@ export class WebGLUniformBuffer extends WebGLBufferObject {
       if (memoized.blockIndex !== this.index) return
 
       // Skip textures and unchanged uniforms
-      const uniform = uniforms[name.replace(`${this.name}.`, '')] as Exclude<Uniform, Texture>
+      const uniform = uniforms[name.split('.').pop()!] as Exclude<Uniform, Texture>
       if (memoized.value != null && uniformsEqual(memoized.value!, uniform)) return
 
       // Memoize new values
@@ -898,6 +898,7 @@ export class WebGLRenderer extends Renderer {
       target.material.uniforms.projectionMatrix = camera.projectionMatrix
       target.material.uniforms.viewMatrix = camera.viewMatrix
       target.material.uniforms.normalMatrix = target.normalMatrix
+      target.material.uniforms.modelViewMatrix = target.modelViewMatrix
 
       target.modelViewMatrix.copy(camera.viewMatrix).multiply(target.matrix)
       target.normalMatrix.getNormalMatrix(target.modelViewMatrix)

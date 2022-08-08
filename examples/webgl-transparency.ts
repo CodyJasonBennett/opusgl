@@ -36,8 +36,7 @@ const material = new Material({
   transparent: true,
   vertex: `
     uniform mat4 projectionMatrix;
-    uniform mat4 viewMatrix;
-    uniform mat4 modelMatrix;
+    uniform mat4 modelViewMatrix;
 
     in vec3 position;
     in vec3 color;
@@ -45,7 +44,7 @@ const material = new Material({
 
     void main() {
       vColor = color;
-      gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
   `,
   fragment: `
