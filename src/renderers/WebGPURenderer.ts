@@ -90,8 +90,14 @@ export class WebGPUBufferObject {
   /**
    * Writes binary data to buffer.
    */
-  write(data: AttributeData): void {
-    this.device.queue.writeBuffer(this.buffer, data.byteOffset, data)
+  write(data: AttributeData, byteLength = data.byteLength, srcByteOffset = 0, dstByteOffset = data.byteOffset): void {
+    this.device.queue.writeBuffer(
+      this.buffer,
+      dstByteOffset,
+      data,
+      srcByteOffset / data.BYTES_PER_ELEMENT,
+      byteLength / data.BYTES_PER_ELEMENT,
+    )
   }
 
   /**
@@ -154,12 +160,15 @@ export class WebGPUUniformBuffer extends WebGPUBufferObject {
       // Memoize new values
       memoized.value = cloneUniform(uniform, memoized.value)
 
+      // Update buffer storage
       const length = typeof uniform === 'number' ? 1 : uniform.length
-
       if (typeof uniform === 'number') this.data[memoized.offset] = uniform
       else this.data.set(uniform, memoized.offset)
 
-      this.write(this.data.subarray(memoized.offset, pad4(memoized.offset + length)))
+      // Write to buffer
+      const byteLength = length * this.data.BYTES_PER_ELEMENT
+      const byteOffset = memoized.offset * this.data.BYTES_PER_ELEMENT
+      this.write(this.data, byteLength, byteOffset, byteOffset)
     })
   }
 

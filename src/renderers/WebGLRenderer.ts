@@ -121,16 +121,22 @@ export class WebGLBufferObject {
   /**
    * Writes binary data to buffer.
    */
-  write(data: AttributeData): void {
+  write(data: AttributeData, byteLength = data.byteLength, srcByteOffset = 0, dstByteOffset = data.byteOffset): void {
     this.bind()
 
-    const byteLength = this.gl.getBufferParameter(this.type, this.gl.BUFFER_SIZE)
-    const usage = this.gl.getBufferParameter(this.type, this.gl.BUFFER_USAGE)
+    const dstByteLength = this.gl.getBufferParameter(this.type, this.gl.BUFFER_SIZE)
+    const dstUsage = this.gl.getBufferParameter(this.type, this.gl.BUFFER_USAGE)
 
-    if (data.byteOffset === 0 && (data.byteLength > byteLength || this.usage !== usage)) {
+    if (dstByteOffset === 0 && (data.byteLength > dstByteLength || this.usage !== dstUsage)) {
       this.gl.bufferData(this.type, data, this.usage)
     } else {
-      this.gl.bufferSubData(this.type, data.byteOffset, data)
+      this.gl.bufferSubData(
+        this.type,
+        dstByteOffset,
+        data,
+        srcByteOffset / data.BYTES_PER_ELEMENT,
+        byteLength / data.BYTES_PER_ELEMENT,
+      )
     }
   }
 
@@ -181,12 +187,13 @@ export class WebGLUniformBuffer extends WebGLBufferObject {
 
       // Update buffer storage
       const length = typeof uniform === 'number' ? 1 : uniform.length
-
       if (typeof uniform === 'number') this.data[memoized.offset] = uniform
       else this.data.set(uniform, memoized.offset)
 
       // Write to buffer
-      this.write(this.data.subarray(memoized.offset, memoized.offset + length))
+      const byteLength = length * this.data.BYTES_PER_ELEMENT
+      const byteOffset = memoized.offset * this.data.BYTES_PER_ELEMENT
+      this.write(this.data, byteLength, byteOffset, byteOffset)
     })
   }
 }
