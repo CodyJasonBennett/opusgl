@@ -68,7 +68,7 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight)
 })
 
-function animate(time: DOMHighResTimeStamp): void {
+function animate(time: DOMHighResTimeStamp) {
   requestAnimationFrame(animate)
   mesh.material.uniforms.time = time / 1000
   renderer.render(mesh)

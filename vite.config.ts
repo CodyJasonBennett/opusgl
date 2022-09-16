@@ -1,8 +1,10 @@
-import path from 'path'
+/// <reference types="vitest" />
+import * as path from 'path'
 import { defineConfig } from 'vite'
 
-export default defineConfig({
-  root: !!process.argv[2] ? undefined : 'examples',
+export default defineConfig(({ command }) => ({
+  root: command === 'serve' ? 'examples' : undefined,
+  logLevel: command === 'serve' ? 'info' : 'warn',
   resolve: {
     alias: {
       opusgl: path.resolve(process.cwd(), 'src'),
@@ -32,9 +34,10 @@ export default defineConfig({
   },
   plugins: [
     {
+      name: 'vite-tsc',
       generateBundle() {
         this.emitFile({ type: 'asset', fileName: 'index.d.ts', source: `export * from '../src'` })
       },
     },
   ],
-})
+}))
