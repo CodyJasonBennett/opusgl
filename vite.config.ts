@@ -2,9 +2,9 @@
 import * as path from 'path'
 import { defineConfig } from 'vite'
 
-export default defineConfig(({ command }) => ({
-  root: command === 'serve' ? 'examples' : undefined,
-  logLevel: command === 'serve' ? 'info' : 'warn',
+export default defineConfig({
+  root: process.argv[2] ? undefined : 'examples',
+  logLevel: process.argv[2] ? 'warn' : 'info',
   resolve: {
     alias: {
       opusgl: path.resolve(process.cwd(), 'src'),
@@ -40,4 +40,4 @@ export default defineConfig(({ command }) => ({
       },
     },
   ],
-}))
+})
