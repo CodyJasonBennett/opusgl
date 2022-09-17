@@ -409,10 +409,10 @@ export class WebGLProgramObject {
     this.gl.enableVertexAttribArray(location)
 
     const dataType = getDataType(attribute.data)!
-    if (dataType === this.gl.INT || dataType === this.gl.UNSIGNED_INT) {
-      this.gl.vertexAttribIPointer(location, attribute.size, dataType, 0, 0)
-    } else {
+    if (attribute.data instanceof Float32Array) {
       this.gl.vertexAttribPointer(location, attribute.size, dataType, false, 0, 0)
+    } else {
+      this.gl.vertexAttribIPointer(location, attribute.size, dataType, 0, 0)
     }
 
     this.attributeLocations.set(name, location)
