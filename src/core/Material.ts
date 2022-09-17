@@ -1,5 +1,4 @@
 import type { Color } from '../math/Color'
-import type { Euler } from '../math/Euler'
 import type { Matrix3 } from '../math/Matrix3'
 import type { Matrix4 } from '../math/Matrix4'
 import type { Quaternion } from '../math/Quaternion'
@@ -7,23 +6,11 @@ import type { Vector2 } from '../math/Vector2'
 import type { Vector3 } from '../math/Vector3'
 import type { Vector4 } from '../math/Vector4'
 import type { Texture } from './Texture'
-import { uuid } from '../utils'
 
 /**
  * Represents a program uniform.
  */
-export type Uniform =
-  | number
-  | number[]
-  | Color
-  | Euler
-  | Matrix3
-  | Matrix4
-  | Quaternion
-  | Vector2
-  | Vector3
-  | Vector4
-  | Texture
+export type Uniform = number | number[] | Color | Matrix3 | Matrix4 | Quaternion | Vector2 | Vector3 | Vector4 | Texture
 
 /**
  * Represents a list of uniforms.
@@ -137,7 +124,6 @@ export interface MaterialOptions {
  * Constructs a material object. Used to store program shaders and uniforms.
  */
 export class Material implements MaterialOptions {
-  readonly uuid: string
   readonly uniforms: { [name: string]: Uniform } = {}
   public vertex!: string
   public fragment!: string
@@ -149,8 +135,6 @@ export class Material implements MaterialOptions {
   public blending?: Blending
 
   constructor(options?: MaterialOptions) {
-    this.uuid = uuid()
-
     if (options) {
       if (options.transparent) {
         this.blending = {

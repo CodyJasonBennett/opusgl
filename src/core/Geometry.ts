@@ -1,5 +1,3 @@
-import { uuid } from '../utils'
-
 /**
  * Represents an attribute data view.
  */
@@ -26,6 +24,10 @@ export interface Attribute {
    */
   size: number
   /**
+   * The size (per instance) of the data array. Used to allocate data to each instance.
+   */
+  divisor?: number
+  /**
    * Used internally to mark attribute for updates.
    */
   needsUpdate?: boolean
@@ -42,30 +44,13 @@ export interface AttributeList {
  * Constructs a geometry object. Used to store program attributes.
  */
 export class Geometry {
-  readonly uuid: string
   readonly attributes: AttributeList = {}
 
   constructor(attributes?: AttributeList) {
-    this.uuid = uuid()
-
-    for (const name in attributes) {
-      this.setAttribute(name, attributes[name])
+    for (const key in attributes) {
+      this.attributes[key] = attributes[key]
+      this.attributes[key].needsUpdate = true
     }
-  }
-
-  /**
-   * Gets an attribute by name.
-   */
-  getAttribute(name: string): Attribute {
-    return this.attributes[name]
-  }
-
-  /**
-   * Sets an attribute by name. Will update existing attributes.
-   */
-  setAttribute(name: string, attribute: Attribute): void {
-    attribute.needsUpdate = !!this.attributes[name]
-    this.attributes[name] = attribute
   }
 
   /**

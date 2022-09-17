@@ -2,7 +2,6 @@ import { Matrix4 } from '../math/Matrix4'
 import { Vector3 } from '../math/Vector3'
 import { Euler } from '../math/Euler'
 import { Quaternion } from '../math/Quaternion'
-import { uuid } from '../utils'
 
 /**
  * Represents an Object3D traversal callback.
@@ -13,15 +12,10 @@ export type TraverseCallback = (object: Object3D) => boolean | void
  * Constructs a 3D object. Useful for calculating transform matrices.
  */
 export class Object3D {
-  readonly uuid: string
   /**
    * Combined transforms of the object in world space.
    */
   readonly matrix = new Matrix4()
-  /**
-   * Used to store the object's orientation when using the `lookAt` method.
-   */
-  readonly target = new Vector3()
   /**
    * Used to orient the object when using the `lookAt` method. Default is `0, 1, 0`.
    */
@@ -35,7 +29,7 @@ export class Object3D {
    */
   readonly scale = new Vector3(1)
   /**
-   * Local rotation for this object and its descendants. Default is `0, 0, 0`, ordered as `YXZ`.
+   * Local rotation for this object and its descendants. Default is `0, 0, 0`, ordered as `ZYX`.
    */
   readonly rotation = new Euler()
   /**
@@ -71,10 +65,11 @@ export class Object3D {
    */
   public name = ''
 
-  private _q = new Quaternion()
+  private _v = new Vector3()
+  private _m = new Matrix4()
 
-  constructor() {
-    this.uuid = uuid()
+  private get _prefersEulers(): boolean {
+    return this.rotation.getLength() !== 0
   }
 
   /**
@@ -82,14 +77,18 @@ export class Object3D {
    */
   lookAt(x: Vector3 | number, y?: number, z?: number): void {
     if (typeof x === 'number') {
-      this.target.set(x, y ?? x, z ?? x)
+      this._v.set(x, y, z)
     } else {
-      this.target.copy(x)
+      this._v.copy(x)
     }
 
-    this.matrix.lookAt(this.position, this.target, this.up)
-    this.matrix.decompose(this.position, this.quaternion, this.scale)
-    this.rotation.set(0)
+    this._m.lookAt(this.position, this._v, this.up)
+    this._m.getQuaternion(this.quaternion)
+
+    if (this._prefersEulers) {
+      this.rotation.fromQuaternion(this.quaternion)
+      this.quaternion.identity()
+    }
   }
 
   /**
@@ -97,8 +96,9 @@ export class Object3D {
    */
   updateMatrix(updateChildren = true, updateParents = false): void {
     if (this.matrixAutoUpdate) {
-      this._q.copy(this.quaternion).applyEuler(this.rotation)
-      this.matrix.compose(this.position, this._q, this.scale)
+      if (this._prefersEulers) this.quaternion.fromEuler(this.rotation)
+      this.matrix.compose(this.position, this.quaternion, this.scale)
+      if (this._prefersEulers) this.quaternion.identity()
     }
 
     if (this.parent) {

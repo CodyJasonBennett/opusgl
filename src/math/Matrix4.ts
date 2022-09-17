@@ -7,7 +7,9 @@ import type { Quaternion } from './Quaternion'
 export class Matrix4 extends Array {
   private _zero = new Vector3(0, 0, 0)
   private _one = new Vector3(1, 1, 1)
-  private _v = new Vector3()
+  private _a = new Vector3()
+  private _b = new Vector3()
+  private _c = new Vector3()
 
   constructor(
     m00 = 1,
@@ -235,15 +237,56 @@ export class Matrix4 extends Array {
   }
 
   /**
+   * Calculates the inverse of this matrix (no-op with determinant of `0`).
+   */
+  invert(): this {
+    const b00 = this[0] * this[5] - this[1] * this[4]
+    const b01 = this[0] * this[6] - this[2] * this[4]
+    const b02 = this[0] * this[7] - this[3] * this[4]
+    const b03 = this[1] * this[6] - this[2] * this[5]
+    const b04 = this[1] * this[7] - this[3] * this[5]
+    const b05 = this[2] * this[7] - this[3] * this[6]
+    const b06 = this[8] * this[13] - this[9] * this[12]
+    const b07 = this[8] * this[14] - this[10] * this[12]
+    const b08 = this[8] * this[15] - this[11] * this[12]
+    const b09 = this[9] * this[14] - this[10] * this[13]
+    const b10 = this[9] * this[15] - this[11] * this[13]
+    const b11 = this[10] * this[15] - this[11] * this[14]
+
+    // Make sure we're not dividing by zero
+    const det = this.determinant()
+    if (!det) return this
+
+    const invDet = 1 / det
+
+    return this.set(
+      this[5] * b11 - this[6] * b10 + this[7] * b09,
+      this[2] * b10 - this[1] * b11 - this[3] * b09,
+      this[13] * b05 - this[14] * b04 + this[15] * b03,
+      this[10] * b04 - this[9] * b05 - this[11] * b03,
+      this[6] * b08 - this[4] * b11 - this[7] * b07,
+      this[0] * b11 - this[2] * b08 + this[3] * b07,
+      this[14] * b02 - this[12] * b05 - this[15] * b01,
+      this[8] * b05 - this[10] * b02 + this[11] * b01,
+      this[4] * b10 - this[5] * b08 + this[7] * b06,
+      this[1] * b08 - this[0] * b10 - this[3] * b06,
+      this[12] * b04 - this[13] * b02 + this[15] * b00,
+      this[9] * b02 - this[8] * b04 - this[11] * b00,
+      this[5] * b07 - this[4] * b09 - this[6] * b06,
+      this[0] * b09 - this[1] * b07 + this[2] * b06,
+      this[13] * b01 - this[12] * b03 - this[14] * b00,
+      this[8] * b03 - this[9] * b01 + this[10] * b00,
+    ).multiply(invDet)
+  }
+
+  /**
    * Calculates a perspective projection matrix.
    *
-   * Accepts a `normalized` argument, when true creates an WebGL `[-1, 1]` clipping space, and when false creates a WebGPU `[0, 1]` clipping space.
+   * Accepts a `normalized` argument, when `true` creates an WebGL `[-1, 1]` clipping space, and when `false` creates a WebGPU `[0, 1]` clipping space.
    */
   perspective(fov: number, aspect: number, near: number, far: number, normalized: boolean): this {
-    // Degrees to radians
-    fov *= Math.PI / 180
-
-    const f = 1 / Math.tan(fov / 2)
+    const fovRad = fov * (Math.PI / 180)
+    const f = 1 / Math.tan(fovRad / 2)
     const depth = 1 / (near - far)
 
     this[0] = f / aspect
@@ -275,7 +318,7 @@ export class Matrix4 extends Array {
   /**
    * Calculates an orthographic projection matrix.
    *
-   * Accepts a `normalized` argument, when true creates an WebGL `[-1, 1]` clipping space, and when false creates a WebGPU `[0, 1]` clipping space.
+   * Accepts a `normalized` argument, when `true` creates an WebGL `[-1, 1]` clipping space, and when `false` creates a WebGPU `[0, 1]` clipping space.
    */
   orthogonal(
     left: number,
@@ -320,34 +363,34 @@ export class Matrix4 extends Array {
    * Calculates a rotation matrix from `eye` to `target`, assuming `up` as world-space up.
    */
   lookAt(eye: Vector3, target: Vector3, up: Vector3): this {
-    const z = eye.clone().sub(target)
+    const z = this._a.copy(eye).sub(target)
 
     // eye and target are in the same position
-    if (!z.lengthSq()) {
+    if (z.getLength() ** 2 === 0) {
       z.z = 1
     } else {
       z.normalize()
     }
 
-    const x = up.clone().cross(z)
+    const x = this._b.copy(up).cross(z)
 
     // up and z are parallel
-    if (!x.lengthSq()) {
-      up = up.clone()
+    if (x.getLength() ** 2 === 0) {
+      const pup = this._c.copy(up)
 
-      if (up.z) {
-        up.x += 1e-6
-      } else if (up.y) {
-        up.z += 1e-6
+      if (pup.z) {
+        pup.x += 1e-6
+      } else if (pup.y) {
+        pup.z += 1e-6
       } else {
-        up.y += 1e-6
+        pup.y += 1e-6
       }
 
-      x.cross(up)
+      x.cross(pup)
     }
     x.normalize()
 
-    const y = z.clone().cross(x)
+    const y = this._c.copy(z).cross(x)
 
     this[0] = x.x
     this[1] = x.y
@@ -367,82 +410,6 @@ export class Matrix4 extends Array {
     this[15] = 1
 
     return this
-  }
-
-  /**
-   * Translates this matrix with a `Vector3`.
-   */
-  translate(v: Vector3): this {
-    this[12] += this[0] * v.x + this[4] * v.y + this[8] * v.z
-    this[13] += this[1] * v.x + this[5] * v.y + this[9] * v.z
-    this[14] += this[2] * v.x + this[6] * v.y + this[10] * v.z
-    this[15] += this[3] * v.x + this[7] * v.y + this[11] * v.z
-
-    return this
-  }
-
-  /**
-   * Scales this matrix with a `Vector3`.
-   */
-  scale(v: Vector3): this {
-    this[0] *= v.x
-    this[1] *= v.x
-    this[2] *= v.x
-    this[3] *= v.x
-    this[4] *= v.y
-    this[5] *= v.y
-    this[6] *= v.y
-    this[7] *= v.y
-    this[8] *= v.z
-    this[9] *= v.z
-    this[10] *= v.z
-    this[11] *= v.z
-
-    return this
-  }
-
-  /**
-   * Rotates this matrix with an angle in radians against an axis.
-   */
-  rotate(radians: number, axis: Vector3): this {
-    const length = axis.getLength()
-
-    if (length < Number.EPSILON) return this
-
-    axis.multiply(1 / length)
-
-    const s = Math.sin(radians)
-    const c = Math.cos(radians)
-    const t = 1 - c
-
-    const b00 = axis.x * axis.x * t + c
-    const b02 = axis.z * axis.x * t - axis.y * s
-    const b01 = axis.y * axis.x * t + axis.z * s
-    const b10 = axis.x * axis.y * t - axis.z * s
-    const b11 = axis.y * axis.y * t + c
-    const b12 = axis.z * axis.y * t + axis.x * s
-    const b20 = axis.x * axis.z * t + axis.y * s
-    const b21 = axis.y * axis.z * t - axis.x * s
-    const b22 = axis.z * axis.z * t + c
-
-    return this.set(
-      this[0] * b00 + this[4] * b01 + this[8] * b02,
-      this[1] * b00 + this[5] * b01 + this[9] * b02,
-      this[2] * b00 + this[6] * b01 + this[10] * b02,
-      this[3] * b00 + this[7] * b01 + this[11] * b02,
-      this[0] * b10 + this[4] * b11 + this[8] * b12,
-      this[1] * b10 + this[5] * b11 + this[9] * b12,
-      this[2] * b10 + this[6] * b11 + this[10] * b12,
-      this[3] * b10 + this[7] * b11 + this[11] * b12,
-      this[0] * b20 + this[4] * b21 + this[8] * b22,
-      this[1] * b20 + this[5] * b21 + this[9] * b22,
-      this[2] * b20 + this[6] * b21 + this[10] * b22,
-      this[3] * b20 + this[7] * b21 + this[11] * b22,
-      this[12],
-      this[13],
-      this[14],
-      this[15],
-    )
   }
 
   /**
@@ -467,7 +434,7 @@ export class Matrix4 extends Array {
    * Sets the properties of a `Quaternion` from this matrix's rotation.
    */
   getQuaternion(q: Quaternion): Quaternion {
-    const scale = this.getScale(this._v)
+    const scale = this.getScale(this._a)
 
     const sm11 = this[0] * scale.x
     const sm12 = (this[1] * 1) / scale.y
@@ -494,6 +461,17 @@ export class Matrix4 extends Array {
       const S = Math.sqrt(1.0 + sm33 - sm11 - sm22) * 2
       return q.set((sm31 + sm13) / S, (sm23 + sm32) / S, 0.25 * S, (sm12 - sm21) / S)
     }
+  }
+
+  /**
+   * Decomposes this matrix into position, quaternion, and scale properties.
+   */
+  decompose(position: Vector3, quaternion: Quaternion, scale: Vector3): this {
+    this.getPosition(position)
+    this.getScale(scale)
+    this.getQuaternion(quaternion)
+
+    return this
   }
 
   /**
@@ -528,60 +506,6 @@ export class Matrix4 extends Array {
     this[15] = 1
 
     return this
-  }
-
-  /**
-   * Decomposes this matrix into position, quaternion, and scale properties.
-   */
-  decompose(position: Vector3, quaternion: Quaternion, scale: Vector3): this {
-    this.getPosition(position)
-    this.getScale(scale)
-    this.getQuaternion(quaternion)
-
-    return this
-  }
-
-  /**
-   * Calculates the inverse of this matrix (no-op with determinant of `0`).
-   */
-  invert(): this {
-    const b00 = this[0] * this[5] - this[1] * this[4]
-    const b01 = this[0] * this[6] - this[2] * this[4]
-    const b02 = this[0] * this[7] - this[3] * this[4]
-    const b03 = this[1] * this[6] - this[2] * this[5]
-    const b04 = this[1] * this[7] - this[3] * this[5]
-    const b05 = this[2] * this[7] - this[3] * this[6]
-    const b06 = this[8] * this[13] - this[9] * this[12]
-    const b07 = this[8] * this[14] - this[10] * this[12]
-    const b08 = this[8] * this[15] - this[11] * this[12]
-    const b09 = this[9] * this[14] - this[10] * this[13]
-    const b10 = this[9] * this[15] - this[11] * this[13]
-    const b11 = this[10] * this[15] - this[11] * this[14]
-
-    // Make sure we're not dividing by zero
-    const det = this.determinant()
-    if (!det) return this
-
-    const invDet = 1 / det
-
-    return this.set(
-      this[5] * b11 - this[6] * b10 + this[7] * b09,
-      this[2] * b10 - this[1] * b11 - this[3] * b09,
-      this[13] * b05 - this[14] * b04 + this[15] * b03,
-      this[10] * b04 - this[9] * b05 - this[11] * b03,
-      this[6] * b08 - this[4] * b11 - this[7] * b07,
-      this[0] * b11 - this[2] * b08 + this[3] * b07,
-      this[14] * b02 - this[12] * b05 - this[15] * b01,
-      this[8] * b05 - this[10] * b02 + this[11] * b01,
-      this[4] * b10 - this[5] * b08 + this[7] * b06,
-      this[1] * b08 - this[0] * b10 - this[3] * b06,
-      this[12] * b04 - this[13] * b02 + this[15] * b00,
-      this[9] * b02 - this[8] * b04 - this[11] * b00,
-      this[5] * b07 - this[4] * b09 - this[6] * b06,
-      this[0] * b09 - this[1] * b07 + this[2] * b06,
-      this[13] * b01 - this[12] * b03 - this[14] * b00,
-      this[8] * b03 - this[9] * b01 + this[10] * b00,
-    ).multiply(invDet)
   }
 
   /**

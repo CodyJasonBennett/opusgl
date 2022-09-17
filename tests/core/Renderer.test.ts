@@ -42,27 +42,31 @@ describe('core/Renderer', () => {
     const camera = new PerspectiveCamera(45)
 
     camera.position.z = 5
+    camera.clippingSpace = 'webgl'
     camera.updateMatrix()
-    camera.updateProjectionMatrix(true)
-    camera.updateFrustum(true)
+    camera.updateProjectionMatrix()
+    camera.updateFrustum()
     expect(renderer.sort(mesh, camera).length).toBe(1)
 
     camera.position.z = 5
+    camera.clippingSpace = 'webgpu'
     camera.updateMatrix()
-    camera.updateProjectionMatrix(false)
-    camera.updateFrustum(false)
+    camera.updateProjectionMatrix()
+    camera.updateFrustum()
     expect(renderer.sort(mesh, camera).length).toBe(1)
 
     camera.position.z = -5
+    camera.clippingSpace = 'webgl'
     camera.updateMatrix()
-    camera.updateProjectionMatrix(true)
-    camera.updateFrustum(true)
+    camera.updateProjectionMatrix()
+    camera.updateFrustum()
     expect(renderer.sort(mesh, camera).length).toBe(0)
 
     camera.position.z = -5
+    camera.clippingSpace = 'webgpu'
     camera.updateMatrix()
-    camera.updateProjectionMatrix(false)
-    camera.updateFrustum(false)
+    camera.updateProjectionMatrix()
+    camera.updateFrustum()
     expect(renderer.sort(mesh, camera).length).toBe(0)
   })
 })

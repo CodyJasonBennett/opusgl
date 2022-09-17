@@ -1,5 +1,4 @@
 import { Texture } from './Texture'
-import { uuid } from '../utils'
 
 /**
  * RenderTarget constructor parameters. Accepts drawing dimensions, attachment and sample size.
@@ -31,7 +30,6 @@ export interface RenderTargetOptions {
  * Constructs a render target to draw into.
  */
 export class RenderTarget implements RenderTargetOptions {
-  readonly uuid: string
   readonly width: number = 0
   readonly height: number = 0
   readonly count: number = 1
@@ -39,7 +37,6 @@ export class RenderTarget implements RenderTargetOptions {
   readonly textures: Texture[] = []
 
   constructor(options: RenderTargetOptions) {
-    this.uuid = uuid()
     Object.assign(this, options)
 
     if (!this.textures?.length) {

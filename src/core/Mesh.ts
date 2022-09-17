@@ -24,6 +24,10 @@ export class Mesh extends Object3D {
    * A `Material` object describing the mesh's visual behavior.
    */
   public material!: Material
+  /**
+   * The number of instances to render of this mesh.
+   */
+  public instances = 1
 
   constructor(geometry?: Geometry, material?: Material) {
     super()

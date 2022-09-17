@@ -10,7 +10,7 @@ export type EulerOrder = 'XYZ' | 'XZY' | 'YXZ' | 'YZX' | 'ZXY' | 'ZYX'
  * Calculates a Euler angle with a defined axis order.
  */
 export class Euler extends Array {
-  public order: EulerOrder = 'YXZ'
+  public order: EulerOrder = 'ZYX'
   private _m = new Matrix4()
 
   constructor(x = 0, y = x, z = x, order?: EulerOrder) {
@@ -152,6 +152,34 @@ export class Euler extends Array {
       this.z === e.z &&
       this.order === e.order
     )
+  }
+
+  /**
+   * Negates or calculates the inverse of this euler.
+   */
+  invert(): this {
+    return this.multiply(-1)
+  }
+
+  /**
+   * Calculates the Euclidean length of this euler.
+   */
+  getLength(): number {
+    return Math.hypot(this.x, this.y, this.z)
+  }
+
+  /**
+   * Sets this euler to a length of `l` with the same direction.
+   */
+  setLength(l: number): this {
+    return this.normalize().multiply(l)
+  }
+
+  /**
+   * Normalizes this euler.
+   */
+  normalize(): this {
+    return this.divide(this.getLength() || 1)
   }
 
   /**

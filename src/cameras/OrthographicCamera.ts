@@ -21,7 +21,8 @@ export class OrthographicCamera extends Camera {
     super()
   }
 
-  updateProjectionMatrix(normalized: boolean): void {
+  updateProjectionMatrix(): void {
+    const normalized = this.clippingSpace === 'webgl'
     this.projectionMatrix.orthogonal(this.left, this.right, this.bottom, this.top, this.near, this.far, normalized)
   }
 }

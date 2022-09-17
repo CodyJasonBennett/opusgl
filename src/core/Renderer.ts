@@ -183,8 +183,8 @@ export abstract class Renderer {
     return sorted
       .sort(
         (a, b) =>
-          b.matrix.getPosition(this._v).applyMatrix4(camera?.projectionMatrix).z -
-          a.matrix.getPosition(this._v).applyMatrix4(camera?.projectionMatrix).z,
+          b.matrix.getPosition(this._v).applyMatrix4(camera?.projectionViewMatrix).z -
+          a.matrix.getPosition(this._v).applyMatrix4(camera?.projectionViewMatrix).z,
       )
       .concat(unsorted)
   }

@@ -72,34 +72,6 @@ describe('math/Matrix4', () => {
     expect(matrix).toMatchSnapshot()
   })
 
-  it('can translate with a vector', () => {
-    const matrix = new Matrix4().translate(new Vector3())
-
-    expect(matrix[12]).toBe(0)
-    expect(matrix[13]).toBe(0)
-    expect(matrix[14]).toBe(0)
-    expect(matrix[15]).toBe(1)
-
-    const matrix2 = new Matrix4().translate(new Vector3(1))
-
-    expect(matrix2[12]).toBe(1)
-    expect(matrix2[13]).toBe(1)
-    expect(matrix2[14]).toBe(1)
-    expect(matrix2[15]).toBe(1)
-  })
-
-  it('can scale from a vector', () => {
-    const matrix = new Matrix4().scale(new Vector3(2))
-
-    expect(Array.from(matrix)).toMatchSnapshot()
-  })
-
-  it('can rotate along an axis', () => {
-    const matrix = new Matrix4().rotate(0, new Vector3(0, 1, 0))
-
-    expect(Array.from(matrix)).toMatchSnapshot()
-  })
-
   it('can compose from a set of properties', () => {
     const position = new Vector3(1, 2, 3)
     const quaternion = new Quaternion().fromEuler(new Euler(Math.PI))

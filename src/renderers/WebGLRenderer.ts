@@ -408,11 +408,19 @@ export class WebGLProgramObject {
 
     this.gl.enableVertexAttribArray(location)
 
-    const dataType = getDataType(attribute.data)!
-    if (attribute.data instanceof Float32Array) {
-      this.gl.vertexAttribPointer(location, attribute.size, dataType, false, 0, 0)
-    } else {
-      this.gl.vertexAttribIPointer(location, attribute.size, dataType, 0, 0)
+    const slots = Math.min(4, Math.max(1, Math.floor(attribute.size / 3)))
+
+    for (let i = 0; i < slots; i++) {
+      this.gl.enableVertexAttribArray(location + i)
+
+      const dataType = getDataType(attribute.data)!
+      if (attribute.data instanceof Float32Array) {
+        this.gl.vertexAttribPointer(location, attribute.size, dataType, false, 0, 0)
+      } else {
+        this.gl.vertexAttribIPointer(location, attribute.size, dataType, 0, 0)
+      }
+
+      if (attribute.divisor) this.gl.vertexAttribDivisor(location + i, attribute.divisor)
     }
 
     this.attributeLocations.set(name, location)
@@ -1027,9 +1035,10 @@ export class WebGLRenderer extends Renderer {
 
     // Update camera matrices
     if (camera?.autoUpdate) {
+      if (camera.clippingSpace !== 'webgl') camera.clippingSpace = 'webgl'
       if (camera.parent === null) camera.updateMatrix()
-      camera.updateProjectionMatrix(true)
-      camera.updateFrustum(true)
+      camera.updateProjectionMatrix()
+      camera.updateFrustum()
     }
 
     // Compile & render visible children
@@ -1046,9 +1055,15 @@ export class WebGLRenderer extends Renderer {
       const { index, position } = child.geometry.attributes
       const mode = GL_DRAW_MODES[child.material.mode]
       if (index) {
-        this.gl.drawElements(mode, index.data.length / index.size, getDataType(index.data)!, 0)
+        this.gl.drawElementsInstanced(
+          mode,
+          index.data.length / index.size,
+          getDataType(index.data)!,
+          0,
+          child.instances,
+        )
       } else {
-        this.gl.drawArrays(mode, 0, position.data.length / position.size)
+        this.gl.drawArraysInstanced(mode, 0, position.data.length / position.size, child.instances)
       }
 
       // Unbind

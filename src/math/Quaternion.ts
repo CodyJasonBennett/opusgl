@@ -1,5 +1,5 @@
-import type { Euler } from './Euler'
 import type { Vector3 } from './Vector3'
+import type { Euler } from './Euler'
 
 /**
  * Calculates a quaternion with a defined rotation axis (x, y, z) and magnitude (w).
@@ -174,7 +174,7 @@ export class Quaternion extends Array {
   /**
    * Calculates the conjugate or inverse of this quaternion.
    */
-  conjugate(): this {
+  invert(): this {
     this.x *= -1
     this.y *= -1
     this.z *= -1
@@ -187,6 +187,13 @@ export class Quaternion extends Array {
    */
   getLength(): number {
     return Math.hypot(this.x, this.y, this.z, this.w)
+  }
+
+  /**
+   * Sets this vector to a length of `l` with the same direction.
+   */
+  setLength(l: number): this {
+    return this.normalize().multiply(l)
   }
 
   /**

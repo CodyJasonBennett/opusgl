@@ -162,15 +162,8 @@ export class Vector4 extends Array {
   /**
    * Negates or calculates the inverse of this vector.
    */
-  negate(): this {
+  invert(): this {
     return this.multiply(-1)
-  }
-
-  /**
-   * Calculates the square of the Euclidean length of this vector.
-   */
-  lengthSq(): number {
-    return this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w
   }
 
   /**
@@ -195,10 +188,14 @@ export class Vector4 extends Array {
   }
 
   /**
-   * Returns the distance to another `Vector4`.
+   * Returns the distance from another `Vector4`.
    */
   distanceTo(v: Vector4): number {
-    return v.getLength() - this.getLength()
+    const x = this.x - v.x
+    const y = this.y - v.y
+    const z = this.z - v.z
+    const w = this.z - v.w
+    return Math.sqrt(x * x + y * y + z * z + w * w)
   }
 
   /**

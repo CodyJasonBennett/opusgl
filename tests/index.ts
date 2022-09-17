@@ -358,7 +358,9 @@ const functions = [
   'disable',
   'disableVertexAttribArray',
   'drawArrays',
+  'drawArraysInstanced',
   'drawElements',
+  'drawElementsInstanced',
   'enable',
   'enableVertexAttribArray',
   'finish',
@@ -445,6 +447,8 @@ const functions = [
   'vertexAttrib4f',
   'vertexAttrib4fv',
   'vertexAttribPointer',
+  'vertexAttribIPointer',
+  'vertexAttribDivisor',
   'viewport',
 ]
 

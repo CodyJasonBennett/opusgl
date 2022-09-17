@@ -1,5 +1,3 @@
-import { uuid } from '../utils'
-
 /**
  * Represents a texture image source.
  */
@@ -57,7 +55,6 @@ export interface TextureOptions {
  * Constructs a texture. Useful for displaying and storing image data.
  */
 export class Texture implements TextureOptions {
-  readonly uuid: string
   public image?: ImageRepresentation
   public magFilter: TextureFilter = 'nearest'
   public minFilter: TextureFilter = 'nearest'
@@ -69,7 +66,6 @@ export class Texture implements TextureOptions {
   public needsUpdate = true
 
   constructor(options?: Partial<TextureOptions>) {
-    this.uuid = uuid()
     if (options) Object.assign(this, options)
   }
 

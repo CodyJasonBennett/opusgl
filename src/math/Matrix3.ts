@@ -1,4 +1,3 @@
-import type { Vector2 } from './Vector2'
 import type { Matrix4 } from './Matrix4'
 
 /**
@@ -133,13 +132,6 @@ export class Matrix3 extends Array {
   }
 
   /**
-   * Calculates a normal matrix from a model-view matrix.
-   */
-  getNormalMatrix(m: Matrix4): this {
-    return this.fromMatrix4(m).invert().transpose()
-  }
-
-  /**
    * Returns the determinant of this matrix.
    */
   determinant(): number {
@@ -174,57 +166,16 @@ export class Matrix3 extends Array {
   }
 
   /**
-   * Translates this matrix with a `Vector2`.
-   */
-  translate(v: Vector2): this {
-    this[0] += v.x * this[2]
-    this[3] += v.x * this[5]
-    this[6] += v.x * this[8]
-    this[1] += v.y * this[2]
-    this[4] += v.y * this[5]
-    this[7] += v.y * this[8]
-
-    return this
-  }
-
-  /**
-   * Scales this matrix with a `Vector2`.
-   */
-  scale(v: Vector2): this {
-    this[0] *= v.x
-    this[3] *= v.x
-    this[6] *= v.x
-    this[1] *= v.y
-    this[4] *= v.y
-    this[7] *= v.y
-
-    return this
-  }
-
-  /**
-   * Rotates this matrix with an angle in radians.
-   */
-  rotate(radians: number): this {
-    const c = Math.cos(radians)
-    const s = Math.sin(radians)
-
-    return this.set(
-      c * this[0] + s * this[1],
-      -s * this[0] + c * this[1],
-      this[2],
-      c * this[3] + s * this[4],
-      -s * this[3] + c * this[4],
-      this[5],
-      c * this[6] + s * this[7],
-      -s * this[6] + c * this[7],
-      this[8],
-    )
-  }
-
-  /**
    * Sets this matrix's elements from a `Matrix4`.
    */
   fromMatrix4(m: Matrix4): this {
     return this.set(m[0], m[4], m[8], m[1], m[5], m[9], m[2], m[6], m[10])
+  }
+
+  /**
+   * Calculates a normal matrix from a model-view matrix.
+   */
+  getNormalMatrix(m: Matrix4): this {
+    return this.fromMatrix4(m).invert().transpose()
   }
 }

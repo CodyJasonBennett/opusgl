@@ -847,9 +847,10 @@ export class WebGPURenderer extends Renderer {
 
     // Update camera matrices
     if (camera?.autoUpdate) {
+      if (camera.clippingSpace !== 'webgpu') camera.clippingSpace = 'webgpu'
       if (camera.parent === null) camera.updateMatrix()
-      camera.updateProjectionMatrix(false)
-      camera.updateFrustum(false)
+      camera.updateProjectionMatrix()
+      camera.updateFrustum()
     }
 
     // Sort and compile children
@@ -869,9 +870,9 @@ export class WebGPURenderer extends Renderer {
       // Alternate drawing for indexed and non-indexed children
       const { index, position } = child.geometry.attributes
       if (index) {
-        passEncoder.drawIndexed(index.data.length / index.size)
+        passEncoder.drawIndexed(index.data.length / index.size, child.instances)
       } else {
-        passEncoder.draw(position.data.length / position.size)
+        passEncoder.draw(position.data.length / position.size, child.instances)
       }
     }
 

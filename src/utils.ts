@@ -6,14 +6,6 @@ import type { Uniform } from './core/Material'
 export const lineNumbers = (source: string, offset = 0): string => source.replace(/^/gm, () => `${offset++}:`)
 
 /**
- * Generates a v4 UUID. Useful for tracking unique objects.
- */
-export const uuid = (): string =>
-  '00-0-4-1-000'.replace(/\d/g, (s) =>
-    (((Math.random() + Number(s)) * 0x10000) >> Number(s)).toString(16).padStart(4, '0').toUpperCase(),
-  )
-
-/**
  * Compares two uniforms by keys or reference.
  */
 export function uniformsEqual(a: Uniform, b: Uniform): boolean {

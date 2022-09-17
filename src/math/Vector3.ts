@@ -146,15 +146,8 @@ export class Vector3 extends Array {
   /**
    * Negates or calculates the inverse of this vector.
    */
-  negate(): this {
+  invert(): this {
     return this.multiply(-1)
-  }
-
-  /**
-   * Calculates the square of the Euclidean length of this vector.
-   */
-  lengthSq(): number {
-    return this.x * this.x + this.y * this.y + this.z * this.z
   }
 
   /**
@@ -179,10 +172,13 @@ export class Vector3 extends Array {
   }
 
   /**
-   * Returns the distance to another `Vector3`.
+   * Returns the distance from another `Vector3`.
    */
   distanceTo(v: Vector3): number {
-    return v.getLength() - this.getLength()
+    const x = this.x - v.x
+    const y = this.x - v.y
+    const z = this.x - v.z
+    return Math.sqrt(x * x + y * y + z * z)
   }
 
   /**
@@ -231,9 +227,9 @@ export class Vector3 extends Array {
     const w = m[3] * this.x + m[7] * this.y + m[11] * this.z + m[15] || 1
 
     return this.set(
-      (m[0] * this.x + m[4] * this.y + m[8] * this.z + m[12]) / w,
-      (m[1] * this.x + m[5] * this.y + m[9] * this.z + m[13]) / w,
-      (m[2] * this.x + m[6] * this.y + m[10] * this.z + m[14]) / w,
-    )
+      m[0] * this.x + m[4] * this.y + m[8] * this.z + m[12],
+      m[1] * this.x + m[5] * this.y + m[9] * this.z + m[13],
+      m[2] * this.x + m[6] * this.y + m[10] * this.z + m[14],
+    ).divide(w)
   }
 }

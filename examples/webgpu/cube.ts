@@ -42,7 +42,7 @@ const geometry = new Geometry({
 
 const material = new Material({
   uniforms: {
-    color: new Color('hotpink'),
+    color: new Color(0xff69b4),
   },
   vertex: `
     struct Uniforms {
