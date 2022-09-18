@@ -15,6 +15,7 @@ export class PerspectiveCamera extends Camera {
     public far = 1000,
   ) {
     super()
+    this.updateProjectionMatrix()
   }
 
   updateProjectionMatrix(): void {

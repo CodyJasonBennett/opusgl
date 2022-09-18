@@ -19,6 +19,7 @@ export class OrthographicCamera extends Camera {
     public top = 1,
   ) {
     super()
+    this.updateProjectionMatrix()
   }
 
   updateProjectionMatrix(): void {

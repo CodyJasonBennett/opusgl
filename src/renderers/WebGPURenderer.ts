@@ -842,16 +842,14 @@ export class WebGPURenderer extends Renderer {
     else passEncoder.setViewport(this.viewport.x, this.viewport.y, this.viewport.width, this.viewport.height, 0, 1)
     passEncoder.setScissorRect(this.scissor.x, this.scissor.y, this.scissor.width, this.scissor.height)
 
-    // Update scene matrices
-    if (scene.autoUpdate) scene.updateMatrix()
-
     // Update camera matrices
     if (camera?.autoUpdate) {
-      if (camera.clippingSpace !== 'webgpu') camera.clippingSpace = 'webgpu'
-      if (camera.parent === null) camera.updateMatrix()
-      camera.updateProjectionMatrix()
-      camera.updateFrustum()
+      camera.clippingSpace = 'webgpu'
+      camera.updateMatrix()
     }
+
+    // Update scene matrices
+    if (scene.autoUpdate) scene.updateMatrix()
 
     // Sort and compile children
     const renderList = this.sort(scene, camera)

@@ -28,9 +28,7 @@ const material = new Material({
   fragment: `
     precision highp float;
 
-    layout(std140) uniform Uniforms {
-      float time;
-    };
+    uniform float time;
     uniform sampler2D color;
 
     in vec2 vUv;

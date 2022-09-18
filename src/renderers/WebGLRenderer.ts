@@ -1,7 +1,16 @@
 import { Compiled, Renderer } from '../core/Renderer'
 import { Texture } from '../core/Texture'
 import type { TextureFilter, TextureWrapping } from '../core/Texture'
-import type { BlendFactor, BlendOperation, CullSide, DrawMode, Material, Uniform, UniformList } from '../core/Material'
+import type {
+  BlendFactor,
+  Blending,
+  BlendOperation,
+  CullSide,
+  DrawMode,
+  Material,
+  Uniform,
+  UniformList,
+} from '../core/Material'
 import type { AttributeList, AttributeData, Attribute, Geometry } from '../core/Geometry'
 import type { TextureOptions } from '../core/Texture'
 import type { Mesh } from '../core/Mesh'
@@ -47,12 +56,6 @@ const GL_BLEND_FACTORS: Record<BlendFactor, number> = {
   'src-alpha-saturated': 776,
   constant: 32769,
   'one-minus-constant': 32770,
-} as const
-
-const GL_CULL_SIDES: Record<CullSide, number> = {
-  front: 1029,
-  back: 1028,
-  both: 0,
 } as const
 
 const GL_DRAW_MODES: Record<DrawMode, number> = {
@@ -409,7 +412,6 @@ export class WebGLProgramObject {
     this.gl.enableVertexAttribArray(location)
 
     const slots = Math.min(4, Math.max(1, Math.floor(attribute.size / 3)))
-
     for (let i = 0; i < slots; i++) {
       this.gl.enableVertexAttribArray(location + i)
 
@@ -821,11 +823,7 @@ export class WebGLRenderer extends Renderer {
     this.canvas = canvas
     this.gl = context ?? (this.canvas.getContext('webgl2', this._params) as WebGL2RenderingContext)
 
-    if (depth) {
-      this.gl.enable(this.gl.DEPTH_TEST)
-      this.gl.depthFunc(this.gl.LESS)
-    }
-
+    this.setDepthTest(depth)
     this.setSize(canvas.width, canvas.height)
   }
 
@@ -854,33 +852,56 @@ export class WebGLRenderer extends Renderer {
   }
 
   /**
-   * Sets cull face mode. Useful for reducing drawn faces at runtime.
+   * Enables depth test. Useful for toggling testing against the depth buffer.
    */
-  setCullFace(cullMode: number): void {
-    if (cullMode) {
-      this.gl.enable(this.gl.CULL_FACE)
-      this.gl.cullFace(cullMode)
-    } else {
-      this.gl.disable(this.gl.CULL_FACE)
-    }
-  }
-
-  /**
-   * Enables depth test. Useful for controlling occlusion behavior.
-   */
-  setDepthTest(enabled: boolean): void {
+  setDepthTest(enabled: boolean, depthFunc = this.gl.LESS): void {
     if (enabled) {
       this.gl.enable(this.gl.DEPTH_TEST)
+      this.gl.depthFunc(depthFunc)
     } else {
       this.gl.disable(this.gl.DEPTH_TEST)
     }
   }
 
   /**
-   * Toggles depthmask. Useful for controlling objects can occlude others.
+   * Enables depthmask. Useful for toggling writing to the depth buffer.
    */
   setDepthMask(enabled: boolean): void {
     this.gl.depthMask(enabled)
+  }
+
+  /**
+   * Sets the current visible side. Will cull other sides.
+   */
+  setCullSide(side: CullSide = 'both'): void {
+    if (side === 'both') {
+      this.gl.disable(this.gl.CULL_FACE)
+      this.gl.disable(this.gl.DEPTH_TEST)
+    } else {
+      this.gl.enable(this.gl.CULL_FACE)
+      this.gl.cullFace(side === 'front' ? this.gl.BACK : this.gl.FRONT)
+    }
+  }
+
+  /**
+   * Configures color and alpha blending.
+   */
+  setBlending(blending?: Blending): void {
+    if (blending) {
+      this.gl.enable(this.gl.BLEND)
+      this.gl.blendFuncSeparate(
+        GL_BLEND_FACTORS[blending.color.srcFactor!],
+        GL_BLEND_FACTORS[blending.color.dstFactor!],
+        GL_BLEND_FACTORS[blending.alpha.srcFactor!],
+        GL_BLEND_FACTORS[blending.alpha.dstFactor!],
+      )
+      this.gl.blendEquationSeparate(
+        GL_BLEND_OPERATIONS[blending.color.operation!],
+        GL_BLEND_OPERATIONS[blending.alpha.operation!],
+      )
+    } else {
+      this.gl.disable(this.gl.BLEND)
+    }
   }
 
   /**
@@ -967,25 +988,10 @@ export class WebGLRenderer extends Renderer {
     VAO.setAttributes(program, target.geometry.attributes)
 
     // Update material state
-    this.setCullFace(GL_CULL_SIDES[target.material.side])
     this.setDepthTest(target.material.depthTest)
     this.setDepthMask(target.material.depthWrite)
-
-    if (target.material.blending) {
-      this.gl.enable(this.gl.BLEND)
-      this.gl.blendFuncSeparate(
-        GL_BLEND_FACTORS[target.material.blending.color.srcFactor!],
-        GL_BLEND_FACTORS[target.material.blending.color.dstFactor!],
-        GL_BLEND_FACTORS[target.material.blending.alpha.srcFactor!],
-        GL_BLEND_FACTORS[target.material.blending.alpha.dstFactor!],
-      )
-      this.gl.blendEquationSeparate(
-        GL_BLEND_OPERATIONS[target.material.blending.color.operation!],
-        GL_BLEND_OPERATIONS[target.material.blending.alpha.operation!],
-      )
-    } else {
-      this.gl.disable(this.gl.BLEND)
-    }
+    this.setCullSide(target.material.side)
+    this.setBlending(target.material.blending)
 
     // Cleanup
     VAO.unbind()
@@ -1030,16 +1036,14 @@ export class WebGLRenderer extends Renderer {
     // Clear screen
     if (this.autoClear) this.clear()
 
-    // Update scene matrices
-    if (scene.autoUpdate) scene.updateMatrix()
-
     // Update camera matrices
     if (camera?.autoUpdate) {
-      if (camera.clippingSpace !== 'webgl') camera.clippingSpace = 'webgl'
-      if (camera.parent === null) camera.updateMatrix()
-      camera.updateProjectionMatrix()
-      camera.updateFrustum()
+      camera.clippingSpace = 'webgl'
+      camera.updateMatrix()
     }
+
+    // Update scene matrices
+    if (scene.autoUpdate) scene.updateMatrix()
 
     // Compile & render visible children
     const renderList = this.sort(scene, camera)
