@@ -271,7 +271,7 @@ export class WebGLProgramObject {
       const activeUniform = this.gl.getActiveUniform(this.program, i)
       if (activeUniform) {
         const { name, size, type } = activeUniform
-        const location = this.getUniformLocation(name)
+        const location = this.gl.getAttribLocation(this.program, name)
         const blockIndex = this.gl.getActiveUniforms(this.program, [i], this.gl.UNIFORM_BLOCK_INDEX)[0]
         const offset =
           this.gl.getActiveUniforms(this.program, [i], this.gl.UNIFORM_OFFSET)[0] / Float32Array.BYTES_PER_ELEMENT
@@ -308,32 +308,11 @@ export class WebGLProgramObject {
   }
 
   /**
-   * Returns an active attribute's location by name. Will return `-1` if not found.
-   */
-  getAttributeLocation(name: string): number {
-    return this.gl.getAttribLocation(this.program, name)
-  }
-
-  /**
-   * Returns an active uniform's location by name. Will return `-1` if not found.
-   */
-  getUniformLocation(name: string): WebGLUniformLocation | -1 {
-    return this.gl.getUniformLocation(this.program, name) ?? -1
-  }
-
-  /**
-   * Returns an active texture's location by name. Will return `-1` if not found.
-   */
-  getTextureLocation(name: string): number {
-    return this.textureLocations.get(name) ?? -1
-  }
-
-  /**
    * Binds and activates a texture by name.
    */
   activateTexture(name: string, texture: WebGLTextureObject): void {
-    const location = this.getTextureLocation(name)
-    if (location !== -1) {
+    const location = this.textureLocations.get(name)
+    if (location) {
       this.gl.activeTexture(this.gl.TEXTURE0 + location)
       texture.bind()
     }
@@ -347,64 +326,30 @@ export class WebGLProgramObject {
     const uniform = this.uniforms.get(name)
     if (!uniform || uniform.location === -1) return
 
-    // Set texture locations for texture uniforms
-    const data = (this.textureLocations.get(name) ?? value) as number | number[]
-
-    if (typeof data === 'number') {
-      switch (uniform.type) {
-        case this.gl.FLOAT:
-          this.gl.uniform1f(uniform.location, data)
-          break
-        case this.gl.BOOL:
-        case this.gl.INT:
-        case this.gl.SAMPLER_2D:
-          this.gl.uniform1i(uniform.location, data)
-          break
-      }
-    } else {
-      switch (uniform.type) {
-        case this.gl.FLOAT_VEC2:
-          this.gl.uniform2fv(uniform.location, data)
-          break
-        case this.gl.BOOL_VEC2:
-        case this.gl.INT_VEC2:
-          this.gl.uniform2iv(uniform.location, data)
-          break
-        case this.gl.FLOAT_VEC3:
-          this.gl.uniform3fv(uniform.location, data)
-          break
-        case this.gl.BOOL_VEC3:
-        case this.gl.INT_VEC3:
-          this.gl.uniform3iv(uniform.location, data)
-          break
-        case this.gl.FLOAT_VEC4:
-          this.gl.uniform4fv(uniform.location, data)
-          break
-        case this.gl.BOOL_VEC4:
-        case this.gl.INT_VEC4:
-          this.gl.uniform4iv(uniform.location, data)
-          break
-        case this.gl.FLOAT_MAT2:
-          this.gl.uniformMatrix2fv(uniform.location, false, data)
-          break
-        case this.gl.FLOAT_MAT3:
-          this.gl.uniformMatrix3fv(uniform.location, false, data)
-          break
-        case this.gl.FLOAT_MAT4:
-          this.gl.uniformMatrix4fv(uniform.location, false, data)
-          break
-      }
-    }
-
     // Memoize previous uniform values for diffing
     uniform.value = cloneUniform(value, uniform.value)
+
+    if (value instanceof Texture) return this.gl.uniform1i(uniform.location, this.textureLocations.get(name)!)
+    if (typeof value === 'number') return this.gl.uniform1f(location, value)
+    switch (value.length) {
+      case 2:
+        return this.gl.uniform2fv(location, value)
+      case 3:
+        return this.gl.uniform3fv(location, value)
+      case 4:
+        return this.gl.uniform4fv(location, value)
+      case 9:
+        return this.gl.uniformMatrix3fv(location, false, value)
+      case 16:
+        return this.gl.uniformMatrix4fv(location, false, value)
+    }
   }
 
   /**
    * Sets a program buffer attribute by name.
    */
   setAttribute(name: string, attribute: Attribute, buffer: WebGLBufferObject): void {
-    const location = this.getAttributeLocation(name)
+    const location = this.gl.getAttribLocation(this.program, name)
     if (location === -1) return
 
     buffer.bind()
