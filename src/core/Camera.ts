@@ -75,15 +75,16 @@ export abstract class Camera extends Object3D {
     let radius = 0
 
     for (let i = 0; i < vertices; i += position.size) {
-      const vertexLength = Math.hypot(...position.data.slice(i, position.size))
-      radius = Math.max(radius, vertexLength)
+      let vertexLengthSquared = 0
+      for (let vi = i; vi < i + position.size; vi++) vertexLengthSquared += position.data[vi] ** 2
+      radius = Math.max(radius, Math.sqrt(vertexLengthSquared))
     }
 
     radius *= Math.max(...mesh.scale)
 
     for (const plane of this.planes) {
       const distance = plane.x * mesh.matrix[12] + plane.y * mesh.matrix[13] + plane.z * mesh.matrix[14] + plane.w
-      if (distance <= radius) return false
+      if (distance <= -radius) return false
     }
 
     return true
