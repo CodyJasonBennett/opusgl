@@ -35,7 +35,7 @@ Make sure you specify a fixed version (`opusgl@0.0.1`) so your code doesn't brea
 
 ```html
 <script type="module">
-  import { WebGLRenderer, Program, Vector3, Color } from 'https://cdn.skypack.dev/opusgl'
+  import { WebGLRenderer, Geometry, Material, Mesh, Vector3, Color } from 'https://cdn.skypack.dev/opusgl'
 </script>
 ```
 
