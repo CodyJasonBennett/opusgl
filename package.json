@@ -1,6 +1,6 @@
 {
   "name": "opusgl",
-  "version": "0.0.0",
+  "version": "0.0.0-alpha.0",
   "description": "A minimal rendering library.",
   "keywords": [
     "3d",
