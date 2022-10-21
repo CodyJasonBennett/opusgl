@@ -1,6 +1,10 @@
 /// <reference types="vitest" />
-import * as path from 'path'
+import * as path from 'node:path'
+import * as dns from 'node:dns'
 import { defineConfig } from 'vite'
+
+// Serve on localhost for origin trial
+dns.setDefaultResultOrder('verbatim')
 
 export default defineConfig({
   root: process.argv[2] ? undefined : 'examples',
