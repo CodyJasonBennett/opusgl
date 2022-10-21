@@ -271,7 +271,7 @@ export class WebGLProgramObject {
       const activeUniform = this.gl.getActiveUniform(this.program, i)
       if (activeUniform) {
         const { name, size, type } = activeUniform
-        const location = this.gl.getAttribLocation(this.program, name)
+        const location = this.gl.getUniformLocation(this.program, name) ?? -1
         const blockIndex = this.gl.getActiveUniforms(this.program, [i], this.gl.UNIFORM_BLOCK_INDEX)[0]
         const offset =
           this.gl.getActiveUniforms(this.program, [i], this.gl.UNIFORM_OFFSET)[0] / Float32Array.BYTES_PER_ELEMENT
@@ -330,18 +330,18 @@ export class WebGLProgramObject {
     uniform.value = cloneUniform(value, uniform.value)
 
     if (value instanceof Texture) return this.gl.uniform1i(uniform.location, this.textureLocations.get(name)!)
-    if (typeof value === 'number') return this.gl.uniform1f(location, value)
+    if (typeof value === 'number') return this.gl.uniform1f(uniform.location, value)
     switch (value.length) {
       case 2:
-        return this.gl.uniform2fv(location, value)
+        return this.gl.uniform2fv(uniform.location, value)
       case 3:
-        return this.gl.uniform3fv(location, value)
+        return this.gl.uniform3fv(uniform.location, value)
       case 4:
-        return this.gl.uniform4fv(location, value)
+        return this.gl.uniform4fv(uniform.location, value)
       case 9:
-        return this.gl.uniformMatrix3fv(location, false, value)
+        return this.gl.uniformMatrix3fv(uniform.location, false, value)
       case 16:
-        return this.gl.uniformMatrix4fv(location, false, value)
+        return this.gl.uniformMatrix4fv(uniform.location, false, value)
     }
   }
 
