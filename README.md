@@ -2,6 +2,8 @@
 
 A minimal rendering library.
 
+> **Warning**: This library is a collection of years of experimental work with a playground for features and APIs fielded for [three.js](https://github.com/mrdoob/three.js), [react-three-fiber](https://github.com/pmndrs/react-three-fiber), [OGL](https://github.com/oframe/ogl), and [react-ogl](https://github.com/pmndrs/react-ogl). I do not intend to ship it in its current form, so I'm open-sourcing it as a learning resource in the meantime.
+
 ## Table of Contents
 
 - [Install](#install)
@@ -29,7 +31,7 @@ yarn add opusgl
 
 If you'd prefer to not use build tools and use a CDN, I'd recommend [Skypack](https://skypack.dev) as it bundles things for you.
 
-Make sure you specify a fixed version (`opusgl@0.0.0`) so your code doesn't break down the line.
+Make sure you specify a fixed version (`opusgl@0.0.1`) so your code doesn't break down the line.
 
 ```html
 <script type="module">

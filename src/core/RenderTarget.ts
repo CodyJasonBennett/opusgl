@@ -21,7 +21,7 @@ export interface RenderTargetOptions {
    */
   samples?: number
   /**
-   * Textures to write color attachments to. Default is created with `linear` filtering.
+   * Textures to write color attachments to. Default is created with `nearest` filtering.
    */
   textures?: Texture[]
 }
