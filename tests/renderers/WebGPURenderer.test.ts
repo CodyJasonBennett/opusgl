@@ -16,8 +16,8 @@ beforeEach(() => {
 describe('renderers/WebGPURenderer', () => {
   it('can render a Mesh', () => {
     expect(async () => {
-      const renderer = await new WebGPURenderer().init()
-      renderer.render(mesh, camera)
+      const renderer = new WebGPURenderer()
+      await renderer.render(mesh, camera)
       mesh.geometry.dispose()
       mesh.material.dispose()
     }).not.toThrow()

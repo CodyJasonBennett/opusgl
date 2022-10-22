@@ -1,6 +1,6 @@
 import { WebGPURenderer, Geometry, Material, Mesh, RenderTarget } from 'opusgl'
 
-const renderer = await new WebGPURenderer().init()
+const renderer = new WebGPURenderer()
 renderer.setSize(window.innerWidth, window.innerHeight)
 document.body.appendChild(renderer.canvas)
 
@@ -56,7 +56,7 @@ const count = 4
 const renderTarget = new RenderTarget({ width, height, count })
 
 renderer.setRenderTarget(renderTarget)
-renderer.render(compute)
+await renderer.render(compute)
 renderer.setRenderTarget(null)
 
 const composite = new Mesh(
