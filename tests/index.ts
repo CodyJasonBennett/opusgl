@@ -70,6 +70,9 @@ global.navigator = {
         maxComputeWorkgroupSizeY: 0,
         maxComputeWorkgroupSizeZ: 0,
         maxComputeWorkgroupsPerDimension: 0,
+        maxBindingsPerBindGroup: 0,
+        maxBufferSize: 0,
+        maxColorAttachmentBytesPerPixel: 0,
       },
       isFallbackAdapter: false,
       requestAdapterInfo: async () => ({
@@ -113,6 +116,9 @@ global.navigator = {
           maxComputeWorkgroupSizeY: 0,
           maxComputeWorkgroupSizeZ: 0,
           maxComputeWorkgroupsPerDimension: 0,
+          maxBindingsPerBindGroup: 0,
+          maxBufferSize: 0,
+          maxColorAttachmentBytesPerPixel: 0,
         },
         createSampler: () => ({
           __brand: 'GPUSampler',
@@ -203,16 +209,23 @@ global.navigator = {
           writeTexture: () => undefined,
           copyExternalImageToTexture: () => undefined,
         },
-        createBuffer: ({ size = 0, usage }) => ({
-          __brand: 'GPUBuffer',
-          label: 'GPUBuffer',
-          size,
-          usage,
-          getMappedRange: () => new Float32Array(size / Float32Array.BYTES_PER_ELEMENT).buffer,
-          mapAsync: async () => undefined,
-          unmap: () => undefined,
-          destroy: () => undefined,
-        }),
+        createBuffer({ size = 0, usage }): GPUBuffer {
+          let mapState: GPUBufferMapState = 'unmapped'
+
+          return {
+            __brand: 'GPUBuffer',
+            label: 'GPUBuffer',
+            size,
+            usage,
+            mapState,
+            getMappedRange: () => (
+              (mapState = 'mapped'), new Float32Array(size / Float32Array.BYTES_PER_ELEMENT).buffer
+            ),
+            mapAsync: async () => void (mapState = 'mapped'),
+            unmap: () => void (mapState = 'unmapped'),
+            destroy: () => undefined,
+          }
+        },
         createRenderPipeline: () => ({
           __brand: 'GPURenderPipeline',
           label: 'GPURenderPipeline',
