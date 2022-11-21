@@ -6,43 +6,62 @@ import { defineConfig } from 'vite'
 // Serve on localhost for origin trial
 dns.setDefaultResultOrder('verbatim')
 
+// Whether dev server is running (dev server takes no arguments)
+const dev = !process.argv[2]
+
 export default defineConfig({
-  root: process.argv[2] ? undefined : 'examples',
-  logLevel: process.argv[2] ? 'warn' : 'info',
+  // Point to examples/index.html when running dev server
+  root: dev ? 'examples' : undefined,
   server: { port: 80 },
+  // Allow local imports to package from examples/tests
   resolve: {
     alias: {
       opusgl: path.resolve(process.cwd(), 'src'),
     },
   },
+  // Testing options available with Vitest
   test: {
     dir: 'tests',
     environment: 'jsdom',
     setupFiles: 'tests/index.ts',
   },
   build: {
+    // Disable library minification since it can mangle tree-shaking
     minify: false,
+    // Publish sourcemaps so errors point to sourcecode in development
     sourcemap: true,
-    target: 'esnext',
+    // Downlevel transpile for compat between Node versions
+    target: 'es2018',
     lib: {
+      // Configure ESM/CJS targets
       formats: ['es', 'cjs'],
+      // Package entrypoint, local to config
       entry: 'src/index.ts',
+      // Keep the original name with `preserveModules`
       fileName: '[name]',
     },
     rollupOptions: {
+      // Don't bundle dependencies (only include any with invalid/problematic Node configuration)
       external: (id) => !id.startsWith('.') && !path.isAbsolute(id),
       output: {
+        // Don't bundle files so tools can skip whole trees when tree-shaking
         preserveModules: true,
+        // Don't inline source blobs into sourcemaps, point them to src instead
         sourcemapExcludeSources: true,
       },
     },
   },
   plugins: [
+    // Points TypeScript definitions to source rather than run `tsc` postbuild since we publish sourcemaps
     {
       name: 'vite-tsc',
       generateBundle() {
         this.emitFile({ type: 'asset', fileName: 'index.d.ts', source: `export * from '../src'` })
       },
+    },
+    // Inserts a WebGPU origin trial token for local testing
+    {
+      name: 'vite-gpu',
       transformIndexHtml() {
         return [
           {
