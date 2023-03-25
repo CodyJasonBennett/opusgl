@@ -613,8 +613,8 @@ export interface WebGPURendererOptions {
 
 export class WebGPURenderer extends Renderer {
   public device!: GPUDevice
-  public context!: GPUCanvasContext
-  public format!: GPUTextureFormat
+  public context: GPUCanvasContext
+  public format: GPUTextureFormat
 
   /**
    * Whether to clear the drawing buffer between renders. Default is `true`.
@@ -628,6 +628,7 @@ export class WebGPURenderer extends Renderer {
   protected _FBOs = new Compiled<RenderTarget, WebGPUFBO>()
   protected _depthTexture!: GPUTexture
   protected _depthTextureView!: GPUTextureView
+  protected _init: Promise<void>
 
   constructor({
     canvas = document.createElement('canvas'),
@@ -641,11 +642,24 @@ export class WebGPURenderer extends Renderer {
     this.canvas = canvas
     this.context = context ?? this.canvas.getContext('webgpu')!
     this.format = format ?? navigator.gpu.getPreferredCanvasFormat()
-
-    if (device) this.device = device
     this._params = params
 
-    this.setSize(canvas.width, canvas.height)
+    this.setSize(this.canvas.width, this.canvas.height)
+
+    this._init = new Promise(async (res) => {
+      // Create device
+      if (device) {
+        this.device = device
+      } else {
+        const adapter = await navigator.gpu.requestAdapter(this._params)
+        this.device = await adapter!.requestDevice(this._params)
+      }
+
+      // Resize swapchain
+      this.setSize(this.viewport.width, this.viewport.height)
+
+      res()
+    })
   }
 
   setSize(width: number, height: number): void {
@@ -670,23 +684,9 @@ export class WebGPURenderer extends Renderer {
     }
   }
 
-  /**
-   * Initializes the internal WebGPU context and swapchain.
-   */
-  async init(): Promise<this> {
-    if (this.device) return this
+  async compile(target: Mesh, camera?: Camera): Promise<void> {
+    await this._init
 
-    // Create device
-    const adapter = await navigator.gpu.requestAdapter(this._params)
-    this.device = await adapter!.requestDevice(this._params)
-
-    // Resize swapchain
-    this.setSize(this.canvas.width, this.canvas.height)
-
-    return this
-  }
-
-  compile(target: Mesh, camera?: Camera): void {
     // Update built-ins
     target.material.uniforms.modelMatrix = target.matrix
 
@@ -783,7 +783,9 @@ export class WebGPURenderer extends Renderer {
     }
   }
 
-  render(scene: Object3D, camera?: Camera): void {
+  async render(scene: Object3D, camera?: Camera): Promise<void> {
+    await this._init
+
     // Compile render target
     let FBO = this._FBOs.get(this._renderTarget!)
     if (this._renderTarget && !FBO) {
@@ -851,12 +853,15 @@ export class WebGPURenderer extends Renderer {
     // Update scene matrices
     if (scene.autoUpdate) scene.updateMatrix()
 
-    // Sort and compile children
+    // Sort and cull children
     const renderList = this.sort(scene, camera)
 
+    // Parallel compile
+    await Promise.all(renderList.map(async (child) => this.compile(child, camera)))
+
+    // Render children
     for (let i = 0; i < renderList.length; i++) {
       const child = renderList[i]
-      this.compile(child, camera)
 
       const pipeline = this._pipelines.get(child.material)!
       const bufferAttributes = this._bufferAttributes.get(child.geometry)!
